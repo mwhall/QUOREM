@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link type="text/css" rel="stylesheet" href="{% static 'landingpage/css/style.css' %}">
+  <!--<link type="text/css" rel="stylesheet" href="{% static 'vendors/css/materialize.min.css' %}"> -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+<header>
+  <div class="navbar">
+    <ul>
+      <li><a href="{% url 'accounts:signup' %}">Sign Up</a></li>
+      <li><a href="{% url 'accounts:signin' %}">Sign In</a></li>
+      {% if user.is_authenticated  %}
+      <li><a href="{% url 'accounts:logout' %}">Logout</a></li>
+      <li><a href="#">Search</a></li>
+      <li><a href="#">Upload</a></li>
+      <li><a href="#">Browse</a></li>
+      {% endif %}
+      <li><a href="#">About</a></li>
+    </ul>
+  </div>
+  {% block content %}
+  {% endblock %}
+
+</header>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% from 'bs_nav_items.htm' import bs_nav_items with context -%}
+{% set navs = [
+    {
+    'url': url('upload'),
+    'text': _('Upload Data')},
+    {
+    'url': url('investigation_all'),
+    'text': _('View All Investigations')}, 
+    {
+    'url': url('investigation_create'),
+    'text': _('Create Investigation')},
+    {
+    'url': url('sample_all'),
+    'text': _('View All Samples')},
+    { 
+    'url': url('protocol_step_all'),
+    'text': _('View All Protocol Steps')},
+    {
+    'url': url('protocol_step_create'),
+    'text': _('Create Protocol Step')},
+    {
+    'url': url('protocol_all'),
+    'text': _('View All Protocols')},
+    {
+    'url': url('protocol_create'),
+    'text': _('Create Protocol')
+    }
+] -%}
+{{ bs_nav_items(navs) }}

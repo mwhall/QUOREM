@@ -1,0 +1,19 @@
+{% extends 'landingpage/base.html' %}
+
+{% block content %}
+    <div class = "auth-form">
+      <form method="POST">{% csrf_token %}
+        <p class="form-label"><em>{{ action }}</em></p>
+      <ul>
+        <li>Email</li>
+        <li>{{ form.email }}</li>
+        <li>Password</li>
+        <li>{{ form.password }}</li>
+        <li>Confirm Password</li>
+        <li>{{ form.confirm_password }}</li>
+      </ul>
+        <div class= "center"><button>SignUp</button></div>
+        <p class = "small" >Already Registered? <a href="{% url 'accounts:signin' %}">Sign-In</a></p>
+      </form>
+    </div>
+{% endblock %}

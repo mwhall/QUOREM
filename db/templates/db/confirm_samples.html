@@ -1,0 +1,23 @@
+{% extends "db/base.html" %}
+{% block content %}
+<h3>Confirm Samples</h3>
+{% if form %}
+<form method="post">
+{% csrf_token %}
+<div class="well">
+<table>
+       <tr> <th>Confirm Add Sample</th></tr>
+{% for sample in form.get_sample_checklist %}
+<tr><td>{{ sample.label }}</td><td>{{ sample }}<td/><tr/>
+{% endfor %}
+</table>
+</div>
+<button id="confirm_button" name="confirm_button" type="submit" 
+        class="btn btn-primary" style="float: right; margin-bottom: 4rem;"/>
+        Confirm
+</button>
+</form>
+{% else %}
+<p>Nothing to confirm!</p>
+{% endif %}
+{% endblock %}
