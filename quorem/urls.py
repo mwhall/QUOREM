@@ -18,7 +18,6 @@ from django.urls import path, re_path, include
 from django.conf.urls import url
 from landingpage.views import index
 from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, ProtocolStepFkWidgetGrid
-from db.forms import UploadForm
 from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
     InvestigationUpdate, InvestigationMetadataDetail, 
@@ -31,7 +30,7 @@ from db.views import (
 urlpatterns = [
     # Main page routing
     path('admin/', admin.site.urls),
-    re_path(r'upload/', UploadCreate.as_view(), name='upload', 
+    re_path('upload/', UploadCreate.as_view(), name='upload', 
         kwargs={'view_title': "Upload Data"} ), 
     path('account/', include('accounts.urls')),
     path('', index, name='landing'),

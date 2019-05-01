@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect
 from .forms import SignInForm, SignUpForm
 from django.contrib.auth import authenticate, login, logout
+from django.apps import apps
 
+UserProfile = apps.get_model("db", "UserProfile")
 
 def account_signup(request):
     form = SignUpForm(request.POST or None)
@@ -14,6 +16,8 @@ def account_signup(request):
         if form.passwords_match():
             user.set_password(password)
             user.save()
+            up = UserProfile.create(user=user)
+            up.save()
             authenticate(email=email, password=password)
             login(request, user)
             return redirect('landing')

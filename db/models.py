@@ -1,7 +1,25 @@
 from django.db import models
 from django.urls import reverse
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+#We need to wrap the auth model to make it a model the djk will work with
+#It must be based on models.Model, but User is based on AbstractUser
+#But this allows us to store metadata
+class UserProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    @classmethod
+    def create(cls, user):
+        userprofile = cls(user=user)
+        return userprofile
+    def __str__(self):
+        return self.user.email
 
 class UploadInputFile(models.Model):
+    userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
 
 class Investigation(models.Model):

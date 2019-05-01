@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .forms import UploadTestForm, CreateInvestigationForm, ConfirmSampleForm
+from .forms import CreateInvestigationForm, ConfirmSampleForm
 from django.shortcuts import render
 from django.views import View
 from django.contrib.auth.decorators import login_required
@@ -9,15 +9,12 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 
-from django_jinja_knockout.utils.sdv import call_prop
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView
 )
 
 import django_tables2 as tables
 import io
-
-from quorem.middleware import ContextMiddleware
 
 from .formatters import format_sample_metadata, guess_filetype
 from .models import (
@@ -30,7 +27,7 @@ from .forms import (
     ProtocolForm, ProtocolDisplayWithInlineSteps, 
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
     ProtocolWithInlineSteps, SampleDisplayWithInlineMetadata,
-    SampleWithInlineMetadata, UploadForm
+    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads
 )
 
 import pandas as pd
@@ -41,12 +38,10 @@ DJK INVESTIGATIONS
 Class-based Django-Jinja-Knockout views
 '''
 
-class UploadCreate(InlineCreateView):
-    model = UploadInputFile
+class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
-#    pk_url_kwarg = 'upload_id'
-    form_with_inline_formsets = UploadForm
-    template_name = 'upload_form.htm'
+    pk_url_kwarg = 'userprofile_id'
+    form_with_inline_formsets = UserWithInlineUploads
     def get_bs_form_opts(self):
         return {
                 'title': 'Upload Files',

@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'djk_ui',
 ] + DJK_APPS
 
-DJK_MIDDLEWARE = 'django_jinja_knockout.middleware.ContextMiddleware'
+DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

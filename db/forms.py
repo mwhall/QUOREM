@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.db import models
 from django.forms.widgets import HiddenInput
 from django.forms.utils import flatatt
@@ -7,7 +8,7 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile
+    UploadInputFile, UserProfile
 )
 
 from django_jinja_knockout.forms import (
@@ -16,16 +17,34 @@ from django_jinja_knockout.forms import (
 )
 from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
 
+
 '''
 Django-Jinja-Knockout Forms
 '''
 
 #Base Forms and Display Forms
 
+class UserProfileForm(RendererModelForm):
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
         fields = '__all__'
+
+UserUploadFormset = ko_inlineformset_factory(UserProfile,
+                                             UploadInputFile,
+                                             form=UploadForm,
+                                             extra=0,
+                                             min_num=1)
+
+class UserWithInlineUploads(FormWithInlineFormsets):
+    FormClass = UserProfileForm
+    FormsetClasses = [UserUploadFormset]
+    def get_formset_inline_title(self, formset):
+        return "User Uploads"
 
 class InvestigationForm(RendererModelForm):
     class Meta:
@@ -227,9 +246,6 @@ class ProtocolStepDisplayWithInlineParameters(FormWithInlineFormsets):
         return "Protocol Step Parameters"
 
 ''' Django Forms '''
-
-class UploadTestForm(forms.Form):
-    upload_file = models.FileField() 
 
 class CreateInvestigationForm(forms.ModelForm):
     class Meta:
