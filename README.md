@@ -28,3 +28,5 @@ Set your NAME, USER and PASSWORD for your database.
 
 6) Run the application:
 `python manage.py runserver`
+
+------this is just a test
