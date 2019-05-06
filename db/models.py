@@ -2,7 +2,6 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
-
 User = get_user_model()
 
 #We need to wrap the auth model to make it a model the djk will work with
@@ -21,6 +20,13 @@ class UserProfile(models.Model):
 class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
+    UploadInputFile(userprofile, upload_file)
+    def save(self, *args, **kwargs):
+        #CHECK THAT ITS VALID HERE
+        
+        super().save(*args, **kwargs)
+        #THIS IS WHERE THE FILE CAN BE VALIDATED
+        print(self.upload_file)
 
 class Investigation(models.Model):
     """

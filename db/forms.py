@@ -192,7 +192,7 @@ SampleReplicateFormset = ko_inlineformset_factory(Sample, BiologicalReplicate,
 
 class SampleWithInlineMetadata(FormWithInlineFormsets):
     FormClass = SampleForm
-    FormsetClasses = [SampleMetadataFormset, SampleReplicateFormset]
+    FormsetClasses = [SampleMetadataFormset]
     def get_formset_inline_title(self, formset):
         return "Sample Metadata"
 
