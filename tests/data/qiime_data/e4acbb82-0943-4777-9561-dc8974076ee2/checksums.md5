@@ -1,0 +1,8 @@
+feea9bc4f7035a12723bfa8775a74d59  VERSION
+16f9ef90ef9ced0241b28097cb1f50d8  metadata.yaml
+e238c2bac12c901b7161e3db4977db85  data/barcodes.fastq.gz
+754022eb0c74a9cc75834e7a0f64579b  data/sequences.fastq.gz
+feea9bc4f7035a12723bfa8775a74d59  provenance/VERSION
+501e20dfc7a2aaa1d273dcf99f030a38  provenance/citations.bib
+16f9ef90ef9ced0241b28097cb1f50d8  provenance/metadata.yaml
+9e8e21b2e6723d451cd40c616b01e6f7  provenance/action/action.yaml

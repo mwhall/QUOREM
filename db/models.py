@@ -30,14 +30,15 @@ class UploadInputFile(models.Model):
 
         #Note: upload_file is now a Django object called FieldFile and has access to its methods
         # and attributes, many of which are useful.
+
         file_from_upload = self.upload_file._get_file()
-        #file_from_upload is now Django File, which wraps a Python File.
-        print(file_from_upload)
-        #djangofile.file is just a python file, which out formatter methods can deal with.
+        #file_from_upload is now Django File, which wraps a Python File
         infile = file_from_upload.open()
         filetype = guess_filetype(infile)
+        #Reset the file seeker to the start of the file so as to be able to read it again for processing
         infile.seek(0)
         react_to_filetype(filetype,infile)
+
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
@@ -149,6 +150,17 @@ class ProtocolStep(models.Model):
     def __str__(self):
         return '%s -> %s' % (self.name, self.method)
 
+"""
+def protocol_step_from_table(intable):
+    count = 0
+    pks = [] #keys of created protocols
+    for index, row in intable.iterrows():
+        #table should have columns 'step' and 'method'
+        protocolStep = ProtocolStep(name=row['step'], method=row['method'])
+        protocolStep.save()
+        count += 1
+    print("Added ", count, " entries to table ProtocolStep")
+"""
 class ProtocolStepParameter(models.Model):
     """
     The default parameters for each protocol step
@@ -158,6 +170,16 @@ class ProtocolStepParameter(models.Model):
     name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+
+#####TODO Ensure ProtocolStep and ProtocolStepParameter are made at the same time, share keys where needed
+"""
+def protocol_step_parameter_from_table(intable):
+    count = 0
+
+    for index, row in intable.iterrows():
+        #table should have 'step', 'method', 'description', 'parameter_name', and 'parameter_default'
+        protocolStepParameter = ProtocolStepParameter(protocol_step=fks[count], name='
+"""
 
 class ProtocolStepParameterDeviation(models.Model):
     """

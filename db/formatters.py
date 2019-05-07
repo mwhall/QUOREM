@@ -20,7 +20,7 @@ def guess_filetype(unknown_file):
     if zipfile.is_zipfile(unknown_file):
         #Probably an artifact/visualization file
         #check if the base directory is a uuid
-        zf = zipfile.ZipFile(file_data)
+        zf = zipfile.ZipFile(unknown_file)
         for filename in zf.namelist():
             try:
                 uuid.UUID(filename.split("/")[0])
@@ -124,5 +124,9 @@ def format_artifact(artifact_file):
     #Using q2_extractor, rip the useful bits
     #out of a QIIME artifact and format it for
     #the models
+
+    #QIIME artifacts should have a checksums.md5 , we should look for it....
+    #Or maybe find the metadata.yaml file.
+
     pass
 
