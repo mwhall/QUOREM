@@ -7,5 +7,5 @@ quorem/__pycache__/*
 *.swp
 *.pyc
 upload/*
-test/data/qiime_data
+test/data/qiime_data/
 *.ipynb
