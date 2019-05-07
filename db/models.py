@@ -23,6 +23,8 @@ class UserProfile(models.Model):
 class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
+    file_type = models.CharField(max_length=255)
+    file_size = models.FloatField()
  #  Mike had the below line, but it causes an error on my pc - Alex
 #   UploadInputFile(userprofile, upload_file)
     def save(self, *args, **kwargs):
@@ -32,9 +34,11 @@ class UploadInputFile(models.Model):
         # and attributes, many of which are useful.
 
         file_from_upload = self.upload_file._get_file()
+        self.file_size = file_from_upload.size
         #file_from_upload is now Django File, which wraps a Python File
         infile = file_from_upload.open()
         filetype = guess_filetype(infile)
+        self.file_type = filetype
         #Reset the file seeker to the start of the file so as to be able to read it again for processing
         infile.seek(0)
         react_to_filetype(filetype,infile)
