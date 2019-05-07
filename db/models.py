@@ -2,6 +2,9 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
+import pandas as pd
+
 User = get_user_model()
 
 #We need to wrap the auth model to make it a model the djk will work with
@@ -20,13 +23,38 @@ class UserProfile(models.Model):
 class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
-    UploadInputFile(userprofile, upload_file)
+ #  Mike had the below line, but it causes an error on my pc - Alex
+#   UploadInputFile(userprofile, upload_file)
     def save(self, *args, **kwargs):
         #CHECK THAT ITS VALID HERE
-        
+
+        #Note: upload_file is now a Django object called FieldFile and has access to its methods
+        # and attributes, many of which are useful.
+        file_from_upload = self.upload_file._get_file()
+        #file_from_upload is now Django File, which wraps a Python File.
+        print(file_from_upload)
+        #djangofile.file is just a python file, which out formatter methods can deal with.
+        infile = file_from_upload.open()
+        filetype = guess_filetype(infile)
+        infile.seek(0)
+        react_to_filetype(filetype,infile)
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
+
+def react_to_filetype(filetype, infile):
+    if filetype == 'qz':
+        #Not sure what to do with a QIIME file at this point actually...
+        print("QIIME artifact")
+    if filetype == 'replicate_table':
+        #Launch methods to parse the replicate table and create correspondig models.
+        print("Replicate table...creating stuff!")
+    if filetype == 'protocol_table':
+        #launch methods to parse and save protocol data
+        print("Protocol table. Yup")
+        step_table, param_table = format_protocol_sheet(infile)
+        print(step_table.to_string)
+        print(param_table.to_string)
 
 class Investigation(models.Model):
     """
