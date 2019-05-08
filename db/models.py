@@ -22,6 +22,12 @@ class UserProfile(models.Model):
 
 class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
+    FILE_SELECTION = (
+            ('Sample', 'Sample Data'),
+            ('BiologicalProtocol', 'Protocol Spreadsheet'),
+            ('SampleMetaData', 'Sample Metadata Spreadsheet'),
+    )
+    input_type = models.CharField(max_length=30, choices=FILE_SELECTION)
     upload_file = models.FileField(upload_to="upload/")
     file_type = models.CharField(max_length=255)
     file_size = models.FloatField()
@@ -47,6 +53,7 @@ class UploadInputFile(models.Model):
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
 
+#This method can 'do stuff' to the uploaded file.
 def react_to_filetype(filetype, infile):
     if filetype == 'qz':
         #Not sure what to do with a QIIME file at this point actually...

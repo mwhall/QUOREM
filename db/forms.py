@@ -32,7 +32,7 @@ class UserProfileForm(RendererModelForm):
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = ['upload_file']
+        fields = ['upload_file', 'input_type']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,
