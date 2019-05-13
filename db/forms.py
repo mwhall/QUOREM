@@ -8,7 +8,7 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile
+    UploadInputFile, UserProfile, ExampleModel
 )
 
 from django_jinja_knockout.forms import (
@@ -23,6 +23,11 @@ Django-Jinja-Knockout Forms
 '''
 
 #Base Forms and Display Forms
+
+class ExampleForm(RendererModelForm):
+    class Meta:
+        model = ExampleModel
+        fields = '__all__'
 
 class UserProfileForm(RendererModelForm):
     class Meta:

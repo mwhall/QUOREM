@@ -20,25 +20,26 @@ from landingpage.views import index
 from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, ProtocolStepFkWidgetGrid
 from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
-    InvestigationUpdate, InvestigationMetadataDetail, 
+    InvestigationUpdate, InvestigationMetadataDetail,
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
-    SampleDetail, SampleList, SampleUpdate, UploadCreate
+    SampleDetail, SampleList, SampleUpdate, UploadCreate,
+    ExampleView
 )
 
 urlpatterns = [
     # Main page routing
     path('admin/', admin.site.urls),
-    re_path('upload/', UploadCreate.as_view(), name='upload', 
-        kwargs={'view_title': "Upload Data"} ), 
+    re_path('upload/', UploadCreate.as_view(), name='upload',
+        kwargs={'view_title': "Upload Data"} ),
     path('account/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
-    re_path(r'investigation/all(?P<action>/?\w*)/$', InvestigationList.as_view(), 
+    re_path(r'investigation/all(?P<action>/?\w*)/$', InvestigationList.as_view(),
             name='investigation_all',
             kwargs={'view_title': 'All Investigations'}),
-    re_path(r'investigation/all/$', InvestigationList.as_view(), 
+    re_path(r'investigation/all/$', InvestigationList.as_view(),
             name='investigation_all',
             kwargs={'view_title': 'All Investigations'}),
     re_path(r'investigation/create/$', InvestigationCreate.as_view(),
@@ -98,6 +99,11 @@ urlpatterns = [
     re_path(r'protocol/step/edit/(?P<protocol_step_id>\d+)/$', ProtocolStepUpdate.as_view(),
         name = 'protocol_step_update',
         kwargs = {'view_title': "Protocol Step Update", 'allow_anonymous': False}),
+
+    #Routing for the example empty view i made for learning
+    re_path(r'example/empty/$', ExampleView.as_view(),
+            name='example_tab',
+            kwargs= {'view_title':'Nothing at all', 'allow_anonymous': True}),
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
     re_path(r'protocol-step-grid(?P<action>/?\w*)/$', ProtocolStepFkWidgetGrid.as_view(),

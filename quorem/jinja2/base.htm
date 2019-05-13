@@ -1,5 +1,9 @@
-{% extends 'base_min.htm' %}
+{% extends 'custom_basemin.htm' %}
+
+{% block header %}
+  {% include 'header.htm' %}
+{% endblock header %}
 
 {% block mainmenu %}
-{% include 'mainmenu.htm' %}
+  {% include 'mainmenu.htm' %}
 {% endblock mainmenu %}
