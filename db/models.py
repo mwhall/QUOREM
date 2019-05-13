@@ -2,6 +2,7 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 import pandas as pd
 
@@ -41,10 +42,7 @@ class UploadInputFile(models.Model):
     )
     input_type = models.CharField(max_length=30, choices=FILE_SELECTION)
     upload_file = models.FileField(upload_to="upload/")
-    file_type = models.CharField(max_length=255)
-    file_size = models.FloatField()
- #  Mike had the below line, but it causes an error on my pc - Alex
-#   UploadInputFile(userprofile, upload_file)
+
     def save(self, *args, **kwargs):
         #CHECK THAT ITS VALID HERE
 
@@ -79,6 +77,14 @@ def react_to_filetype(filetype, infile):
         step_table, param_table = format_protocol_sheet(infile)
         print(step_table.to_string)
         print(param_table.to_string)
+        
+    UploadInputFile(userprofile, upload_file)
+    def save(self, *args, **kwargs):
+        #CHECK THAT ITS VALID HERE
+        
+        super().save(*args, **kwargs)
+        #THIS IS WHERE THE FILE CAN BE VALIDATED
+        print(self.upload_file)
 
 class Investigation(models.Model):
     """
