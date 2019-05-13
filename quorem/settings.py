@@ -83,7 +83,8 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.i18n',
                 'django_jinja_knockout.context_processors.template_context_processor'
-            ]
+            ],
+            'environment': 'quorem.jinja2.environment'
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -110,9 +111,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mpdb',
-        'USER': 'mpuser',
-        'PASSWORD': 'abc123',
+        'NAME': 'quoremtest',
+        'USER': 'alex',
+        'PASSWORD': '15fdnigp',
         'HOST': 'localhost',
         'PORT': '5432',
     }

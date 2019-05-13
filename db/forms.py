@@ -8,12 +8,12 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile
+    UploadInputFile, UserProfile, ExampleModel
 )
 
 from django_jinja_knockout.forms import (
     DisplayModelMetaclass, FormWithInlineFormsets, RendererModelForm,
-    ko_inlineformset_factory, WidgetInstancesMixin
+    ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin
 )
 from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
 
@@ -24,15 +24,31 @@ Django-Jinja-Knockout Forms
 
 #Base Forms and Display Forms
 
+class ExampleForm(RendererModelForm):
+    class Meta:
+        model = ExampleModel
+        fields = '__all__'
+
 class UserProfileForm(RendererModelForm):
     class Meta:
         model = UserProfile
         fields = '__all__'
 
+TEST_CHOICES = (
+            ('1', 'Choice 1'),
+            ('2', 'Choice 2'),
+            ('3', 'Choice 3'),
+)
+
+class SillyTestForm(RendererModelForm):
+    entry = forms.CharField(label='The thing')
+    choice = models.CharField(max_length=1,
+                             choices=TEST_CHOICES)
+
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = '__all__'
+        fields = ['upload_file', 'input_type']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,
@@ -40,9 +56,22 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
+inv_queryset = Investigation.objects.all()
+""" I want this, but hoW?????
+class SampleUploadForm(RendererModelForm):
+    name = forms.CharField(max_length=100)
+    investigation = forms.ModelChoiceField(queryset=inv_queryset)
+    """
+class SampleUploadForm(RendererModelForm):
+    class Meta:
+        model = Sample
+        fields = '__all__'
+SampleFormset = ko_inlineformset_factory(Investigation, Sample, form=SampleUploadForm,
+                                                 extra=0, min_num=0)
+
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
-    FormsetClasses = [UserUploadFormset]
+    FormsetClasses = [UserUploadFormset, SampleFormset]
     def get_formset_inline_title(self, formset):
         return "User Uploads"
 
@@ -51,7 +80,7 @@ class InvestigationForm(RendererModelForm):
         model = Investigation
         fields = '__all__'
 
-class InvestigationDisplayForm(RendererModelForm, 
+class InvestigationDisplayForm(RendererModelForm,
                                metaclass=DisplayModelMetaclass):
     class Meta:
         model = Investigation
@@ -136,7 +165,7 @@ class ProtocolStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass
     class Meta:
         model = ProtocolStep
         fields = '__all__'
-        
+
 class ProtocolStepParameterForm(RendererModelForm):
     class Meta:
         model = ProtocolStepParameter
@@ -228,7 +257,7 @@ ProtocolStepParameterDisplayFormset = ko_inlineformset_factory(ProtocolStep,
                                                       ProtocolStepParameter,
                                                       form = ProtocolStepParameterDisplayForm)
 
-ProtocolStepParameterFormset = ko_inlineformset_factory(ProtocolStep, 
+ProtocolStepParameterFormset = ko_inlineformset_factory(ProtocolStep,
                                                         ProtocolStepParameter,
                                                         form = ProtocolStepParameterForm,
                                                         extra=0, min_num=0)

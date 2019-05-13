@@ -7,3 +7,8 @@ quorem/__pycache__/*
 *.swp
 *.pyc
 upload/*
+tests/data/qiime_data/
+*.ipynb
+thoughts.txt
+output.png
+diagrams/

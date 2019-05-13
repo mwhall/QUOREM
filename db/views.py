@@ -19,15 +19,16 @@ import io
 from .formatters import format_sample_metadata, guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
-        ProtocolStep, UploadInputFile
+        ProtocolStep, UploadInputFile, ExampleModel
 )
 
 from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
-    ProtocolForm, ProtocolDisplayWithInlineSteps, 
+    ProtocolForm, ProtocolDisplayWithInlineSteps,
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
     ProtocolWithInlineSteps, SampleDisplayWithInlineMetadata,
-    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads
+    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads,
+    ExampleForm
 )
 
 import pandas as pd
@@ -37,6 +38,25 @@ import numpy as np
 DJK INVESTIGATIONS
 Class-based Django-Jinja-Knockout views
 '''
+""" #This works but doens do anything useful for me.
+class ExampleView(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = ExampleForm
+    def get_bs_form_opts(self):
+        return{
+                'title': "Just an example",
+                'submit_text': 'Create'
+        }
+"""
+class ExampleView(View):
+    form_class = ExampleForm
+    initial = {} #empty works i think
+    #template_name = 'template.html'
+    def get(self, request, *args, **kwargs):
+        form = self.form_class(initial=self.initial)
+        return render(request, self.template_name, {'form':form})
+
+
 
 class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
@@ -84,7 +104,7 @@ class InvestigationList(ListSortingView):
                 reverse('investigation_metadata_detail', kwargs={'investigation_id': obj.pk})
             ))
         return links
-        
+
     def get_display_value(self, obj, field):
         if field == 'name':
             links = self.get_name_links(obj)
@@ -127,7 +147,7 @@ class InvestigationCreate(BsTabsMixin, InlineCreateView):
         }
 
     def get_success_url(self):
-        return reverse('investigation_detail', kwargs={'investigation_id': self.object.pk})    
+        return reverse('investigation_detail', kwargs={'investigation_id': self.object.pk})
 
 class SampleList(ListSortingView):
     model = Sample
@@ -279,7 +299,7 @@ class ProtocolUpdate(BsTabsMixin, InlineCrudView):
         }
 
     def get_success_url(self):
-        return reverse('protocol_detail', kwargs={'protocol_id': self.object.pk})    
+        return reverse('protocol_detail', kwargs={'protocol_id': self.object.pk})
 
 
 class ProtocolStepDetail(InlineDetailView):
@@ -320,4 +340,3 @@ class PipelineList(ListSortingView):
 
 class PipelineStepList(ListSortingView):
     pass
-
