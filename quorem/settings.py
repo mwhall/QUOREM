@@ -83,7 +83,8 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.i18n',
                 'django_jinja_knockout.context_processors.template_context_processor'
-            ]
+            ],
+            'environment': 'quorem.jinja2.environment'
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
