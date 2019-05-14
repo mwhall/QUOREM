@@ -48,7 +48,21 @@ class SillyTestForm(RendererModelForm):
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = ['upload_file', 'input_type']
+        fields = '__all__'
+    def clean(self):
+        print("clean self was called.")
+        file_choice = self.cleaned_data.get('input_type')
+        print("File choice ", file_choice)
+        if file_choice == 'Sample':
+            print('file choice was sample.')
+            investigation = self.cleaned_data['investigation']
+            if not investigation:
+                print("not investigation.")
+                err_msg = forms.ValidationError("Samples cannot be added independant of an investigation.")
+                self.add_error('investigation', err_msg)
+        else:
+            self.cleaned_data['investigation'] = ''
+        return self.cleaned_data
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,
@@ -56,12 +70,6 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
-inv_queryset = Investigation.objects.all()
-""" I want this, but hoW?????
-class SampleUploadForm(RendererModelForm):
-    name = forms.CharField(max_length=100)
-    investigation = forms.ModelChoiceField(queryset=inv_queryset)
-    """
 class SampleUploadForm(RendererModelForm):
     class Meta:
         model = Sample
@@ -71,7 +79,7 @@ SampleFormset = ko_inlineformset_factory(Investigation, Sample, form=SampleUploa
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
-    FormsetClasses = [UserUploadFormset, SampleFormset]
+    FormsetClasses = [UserUploadFormset]
     def get_formset_inline_title(self, formset):
         return "User Uploads"
 

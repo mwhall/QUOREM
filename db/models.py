@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 import pandas as pd
 
+
 User = get_user_model()
 
 #We need to wrap the auth model to make it a model the djk will work with
@@ -23,6 +24,16 @@ class ExampleModel(models.Model):
     def __str__(self):
         return self.name
 ###############################################################################
+class Investigation(models.Model):
+    """
+    Groups of samples, biosamples, and compsamples
+    """
+    name = models.CharField(max_length=255)
+    institution = models.CharField(max_length=255)
+    description = models.TextField()
+    def __str__(self):
+        return self.name
+
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -41,12 +52,19 @@ class UploadInputFile(models.Model):
             ('SampleMetaData', 'Sample Metadata Spreadsheet'),
     )
     input_type = models.CharField(max_length=30, choices=FILE_SELECTION)
+
+    INV_CHOICE = []
+    for e in Investigation.objects.all():
+        INV_CHOICE.append((str(e.pk), e.name))
+
+    investigation = models.CharField(max_length=4, choices=INV_CHOICE,
+                                    blank=True)
     upload_file = models.FileField(upload_to="upload/")
 
     def save(self, *args, **kwargs):
         #CHECK THAT ITS VALID HERE
 
-        #Note: upload_file is now a Django object called FieldFile and has access to its methods
+        #Note: uploa)d_file is now a Django object called FieldFile and has access to its methods
         # and attributes, many of which are useful.
 
         file_from_upload = self.upload_file._get_file()
@@ -57,7 +75,7 @@ class UploadInputFile(models.Model):
         self.file_type = filetype
         #Reset the file seeker to the start of the file so as to be able to read it again for processing
         infile.seek(0)
-        react_to_filetype(filetype,infile)
+        #react_to_filetype(filetype,infile)
 
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
@@ -77,24 +95,16 @@ def react_to_filetype(filetype, infile):
         step_table, param_table = format_protocol_sheet(infile)
         print(step_table.to_string)
         print(param_table.to_string)
-        
+
     UploadInputFile(userprofile, upload_file)
     def save(self, *args, **kwargs):
         #CHECK THAT ITS VALID HERE
-        
+
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
 
-class Investigation(models.Model):
-    """
-    Groups of samples, biosamples, and compsamples
-    """
-    name = models.CharField(max_length=255)
-    institution = models.CharField(max_length=255)
-    description = models.TextField()
-    def __str__(self):
-        return self.name
+
 
 class Sample(models.Model):
     """
