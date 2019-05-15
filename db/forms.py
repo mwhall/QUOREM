@@ -71,7 +71,7 @@ SampleFormset = ko_inlineformset_factory(Investigation, Sample, form=SampleUploa
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
-    FormsetClasses = [UserUploadFormset, SampleFormset]
+    FormsetClasses = [UserUploadFormset]
     def get_formset_inline_title(self, formset):
         return "User Uploads"
 
