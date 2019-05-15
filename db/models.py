@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
+from .tasks import test_task
 import pandas as pd
 
 User = get_user_model()
@@ -52,13 +53,15 @@ class UploadInputFile(models.Model):
         file_from_upload = self.upload_file._get_file()
         self.file_size = file_from_upload.size
         #file_from_upload is now Django File, which wraps a Python File
-        infile = file_from_upload.open()
-        filetype = guess_filetype(infile)
-        self.file_type = filetype
+        #infile = file_from_upload.open()
+        #filetype = guess_filetype(infile)
+        #self.file_type = filetype
         #Reset the file seeker to the start of the file so as to be able to read it again for processing
-        infile.seek(0)
-        react_to_filetype(filetype,infile)
-
+        #infile.seek(0)
+        #react_to_filetype(filetype,infile)
+        import os
+        print(os.getppid())
+        test_task.delay("X") 
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
@@ -78,13 +81,13 @@ def react_to_filetype(filetype, infile):
         print(step_table.to_string)
         print(param_table.to_string)
         
-    UploadInputFile(userprofile, upload_file)
-    def save(self, *args, **kwargs):
-        #CHECK THAT ITS VALID HERE
-        
-        super().save(*args, **kwargs)
-        #THIS IS WHERE THE FILE CAN BE VALIDATED
-        print(self.upload_file)
+#    UploadInputFile(userprofile, upload_file)
+#    def save(self, *args, **kwargs):
+#        #CHECK THAT ITS VALID HERE
+#        
+#        super().save(*args, **kwargs)
+#        #THIS IS WHERE THE FILE CAN BE VALIDATED
+#        print(self.upload_file)
 
 class Investigation(models.Model):
     """
