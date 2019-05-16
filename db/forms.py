@@ -8,7 +8,7 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile, ExampleModel
+    UploadInputFile, UserProfile
 )
 
 from django_jinja_knockout.forms import (
@@ -24,11 +24,6 @@ Django-Jinja-Knockout Forms
 
 #Base Forms and Display Forms
 
-class ExampleForm(RendererModelForm):
-    class Meta:
-        model = ExampleModel
-        fields = '__all__'
-
 class UserProfileForm(RendererModelForm):
     class Meta:
         model = UserProfile
@@ -40,10 +35,6 @@ TEST_CHOICES = (
             ('3', 'Choice 3'),
 )
 
-class SillyTestForm(RendererModelForm):
-    entry = forms.CharField(label='The thing')
-    choice = models.CharField(max_length=1,
-                             choices=TEST_CHOICES)
 
 class UploadForm(RendererModelForm):
     class Meta:
@@ -56,12 +47,6 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
-class SampleUploadForm(RendererModelForm):
-    class Meta:
-        model = Sample
-        fields = '__all__'
-SampleFormset = ko_inlineformset_factory(Investigation, Sample, form=SampleUploadForm,
-                                                 extra=0, min_num=0)
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm

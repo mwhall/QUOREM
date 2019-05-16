@@ -12,3 +12,7 @@ tests/data/qiime_data/
 thoughts.txt
 output.png
 diagrams/
+metadata.Gieg.xls
+TinyExample.csv
+SmallerExample.csv
+imr_biological_replicate_protocol.csv

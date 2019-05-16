@@ -100,11 +100,6 @@ urlpatterns = [
         name = 'protocol_step_update',
         kwargs = {'view_title': "Protocol Step Update", 'allow_anonymous': False}),
 
-    #Routing for the example empty view i made for learning
-    re_path(r'example/empty/$', ExampleView.as_view(),
-            name='example_tab',
-            kwargs= {'view_title':'Nothing at all', 'allow_anonymous': True}),
-
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
     re_path(r'protocol-step-grid(?P<action>/?\w*)/$', ProtocolStepFkWidgetGrid.as_view(),
         name='protocol_step_grid', kwargs={'ajax':True}),

@@ -13,18 +13,7 @@ User = get_user_model()
 #We need to wrap the auth model to make it a model the djk will work with
 #It must be based on models.Model, but User is based on AbstractUser
 #But this allows us to store metadata
-EXAMPLE_CHOICES = (
-            ('1', 'First Choice'),
-            ('2', 'Second Choice'),
-)
 
-#####################Just an exampe ##########################################
-class ExampleModel(models.Model):
-    name = models.CharField(max_length=100)
-    selection = models.CharField(max_length=1, choices=EXAMPLE_CHOICES)
-    def __str__(self):
-        return self.name
-###############################################################################
 class Investigation(models.Model):
     """
     Groups of samples, biosamples, and compsamples
