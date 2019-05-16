@@ -24,8 +24,7 @@ from db.views import (
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
-    SampleDetail, SampleList, SampleUpdate, UploadCreate,
-    ExampleView
+    SampleDetail, SampleList, SampleUpdate, UploadCreate
 )
 
 urlpatterns = [
