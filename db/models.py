@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
+from .tasks import test_task
 import pandas as pd
 
 
@@ -46,12 +47,19 @@ class UploadInputFile(models.Model):
 
         file_from_upload = self.upload_file._get_file()
         #file_from_upload is now Django File, which wraps a Python File
+
         infile = file_from_upload.open()
         filetype = guess_filetype(infile)
+
         #Reset the file seeker to the start of the file so as to be able to read it again for processing
         infile.seek(0)
         react_to_filetype(filetype,infile)
-
+        ######################################################################
+        ### TODO : MAKE THE CELERY TASK MANAGER HANDLE react_to_filetype() ###
+        ######################################################################
+        import os #Maybe move this top level?
+        print(os.getppid())
+        test_task.delay("X") 
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
         print(self.upload_file)
@@ -79,6 +87,7 @@ def react_to_filetype(filetype, infile):
         step_table, param_table = format_protocol_sheet(infile)
         print(step_table.to_string)
         print(param_table.to_string)
+
 
 def create_models_from_investigation_dict(invs):
     #iter investigations. an Investigation object 'has' Samples.

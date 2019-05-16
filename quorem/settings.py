@@ -73,6 +73,12 @@ else:
 
 ROOT_URLCONF = 'quorem.urls'
 
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
 TEMPLATES = [
         {
           "BACKEND": "django_jinja.backend.Jinja2",
@@ -111,9 +117,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'quoremtest',
-        'USER': 'alex',
-        'PASSWORD': '15fdnigp',
+        'NAME': 'mpdb',
+        'USER': 'mpuser',
+        'PASSWORD': 'abc123',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -167,3 +173,5 @@ STATICFILES_DIRS = [
 '''
 
 AUTH_USER_MODEL = 'accounts.User'
+
+

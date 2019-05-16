@@ -1,5 +1,5 @@
 ## Requirements
-Python3 + Postgres
+Python3 + Postgres + Redis + Celery
 
 ## For Local Development
 0) Install requirements:
@@ -25,7 +25,9 @@ Set your NAME, USER and PASSWORD for your database.
 5) Get staticfiles in order:
 `python manage.py collectstatic`
 
+6) Run the Celery task queue in one shell:
+`celery -A quorem worker`
 
-6) Run the application:
+7) Run the application in another:
 `python manage.py runserver`
 
