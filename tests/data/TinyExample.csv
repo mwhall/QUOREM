@@ -1,6 +1,0 @@
-,Investigation_ID,Sample_ID,Sample_Name,Replicate_ID,Replicate_Name,Replicate_Protocol
-0,I001,S001,Sample1,R001,Replicate1,Protocol A
-1,I001,S001,Sample1,R002,Replicate2,Protocol B
-2,I001,S001,Sample1,R003,Replicate3,Protocol C
-3,I001,S002,Sample2,R004,Replicate4,Protocol D
-4,I001,S002,Sample2,R005,Replicate5,Protocol E
