@@ -37,16 +37,24 @@ class UserProfile(models.Model):
         return self.user.email
 
 class UploadInputFile(models.Model):
+    STATUS_CHOICES = (
+        ('P', "Processing"),
+        ('S', "Success"),
+        ('E', "Error")
+    )
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
-
+    upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
     def __str__(self):
         return "UserProfile: {0}, UploadFile: {1}".format(self.userprofile, self.upload_file)
 
     def save(self, *args, **kwargs):
+        self.upload_status = 'P'
         super().save(*args, **kwargs)
         react_to_file.delay(self.pk)
     #    test_task.delay("X")
+    def update(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 
 
 class Sample(models.Model):

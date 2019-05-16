@@ -39,7 +39,7 @@ TEST_CHOICES = (
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = '__all__'
+        fields = ['userprofile', 'upload_file']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,

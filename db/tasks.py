@@ -7,8 +7,6 @@ from celery import shared_task
 from django.db import models
 from django.apps import apps
 from .formatters import guess_filetype, parse_csv_or_tsv
-from django.core import serializers
-from pprint import pprint
 from .parser import Upload_Handler
 
 
@@ -46,15 +44,27 @@ def react_to_file(upload_file_id):
     if filetype == 'replicate_table':
         #Launch methods to parse the replicate table and create correspondig models.
         print("Replicate table...creating stuff!")
-        uploadHandler = Upload_Handler()
-        mapping_dict = {}
-        with open("tests/data/labels.txt", "r") as file:
-            mapping_dict = eval(file.read())
-        data = parse_csv_or_tsv(infile)
-        invs_from_file = uploadHandler.get_models(data, mapping_dict)
-        print(invs_from_file)
-        create_models_from_investigation_dict(invs_from_file)
-        print("WOOHOO")
+        try:
+            uploadHandler = Upload_Handler()
+            mapping_dict = {}
+            with open("tests/data/labels.txt", "r") as file:
+                mapping_dict = eval(file.read())
+            data = parse_csv_or_tsv(infile)
+            invs_from_file = uploadHandler.get_models(data, mapping_dict)
+            create_models_from_investigation_dict(invs_from_file)
+            #################################################################
+            upfile.upload_status = 'S'
+            #update just calls super.save() because vanilla save() has been overridden
+            #to trigger a file upload process.
+            upfile.update()
+            ################################################################
+            print("Success.")
+        except:
+            ###############################################################
+            upfile.upload_status = 'E'
+            upfile.update()
+            ##############################################################
+            print("Fail- Upload Status changed to Error")
     if filetype == 'protocol_table':
         #launch methods to parse and save protocol data
         print("Protocol table. Yup")
@@ -111,7 +121,6 @@ def create_models_from_investigation_dict(invs):
                 except:
                     protocol = BiologicalReplicateProtocol(name="PCR")
                     protocol.save()
-                    print("protocol save worked")
                 #Query for replicate.
                 rep_name = invs[i].samples[j].biol_reps[k].name
                 try:
