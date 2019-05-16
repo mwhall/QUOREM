@@ -19,14 +19,6 @@ def test_task(x):
     print(os.getppid())
     print("I'm a celery task!")
 
-@shared_task
-def nothing_task(ser_model):
-    #just a test to try deserializing a django model objects
-    for obj in serializers.deserialize("json", ser_model):
-        print("sanity check")
-        print(obj)
-        obj.save()
-        print("saved the object.")
 
 @shared_task
 def react_to_file(upload_file_id):

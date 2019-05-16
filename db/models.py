@@ -6,7 +6,7 @@ from django.core import serializers
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
-from .tasks import test_task, nothing_task, react_to_file, create_models_from_investigation_dict
+from .tasks import test_task, react_to_file, create_models_from_investigation_dict
 import pandas as pd
 
 
@@ -45,8 +45,8 @@ class UploadInputFile(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        react_to_file(self.pk)
-        test_task.delay("X")
+        react_to_file.delay(self.pk)
+    #    test_task.delay("X")
 
 
 class Sample(models.Model):
