@@ -49,20 +49,6 @@ class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
         fields = '__all__'
-    def clean(self):
-        print("clean self was called.")
-        file_choice = self.cleaned_data.get('input_type')
-        print("File choice ", file_choice)
-        if file_choice == 'Sample':
-            print('file choice was sample.')
-            investigation = self.cleaned_data['investigation']
-            if not investigation:
-                print("not investigation.")
-                err_msg = forms.ValidationError("Samples cannot be added independant of an investigation.")
-                self.add_error('investigation', err_msg)
-        else:
-            self.cleaned_data['investigation'] = ''
-        return self.cleaned_data
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,

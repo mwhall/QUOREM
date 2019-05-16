@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
+from .parser import Upload_Handler
 import pandas as pd
 
 
@@ -28,7 +29,7 @@ class Investigation(models.Model):
     """
     Groups of samples, biosamples, and compsamples
     """
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
     def __str__(self):
@@ -46,19 +47,6 @@ class UserProfile(models.Model):
 
 class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
-    FILE_SELECTION = (
-            ('Sample', 'Sample Data'),
-            ('BiologicalProtocol', 'Protocol Spreadsheet'),
-            ('SampleMetaData', 'Sample Metadata Spreadsheet'),
-    )
-    input_type = models.CharField(max_length=30, choices=FILE_SELECTION)
-
-    INV_CHOICE = []
-    for e in Investigation.objects.all():
-        INV_CHOICE.append((str(e.pk), e.name))
-
-    investigation = models.CharField(max_length=4, choices=INV_CHOICE,
-                                    blank=True)
     upload_file = models.FileField(upload_to="upload/")
 
     def save(self, *args, **kwargs):
@@ -68,14 +56,12 @@ class UploadInputFile(models.Model):
         # and attributes, many of which are useful.
 
         file_from_upload = self.upload_file._get_file()
-        self.file_size = file_from_upload.size
         #file_from_upload is now Django File, which wraps a Python File
         infile = file_from_upload.open()
         filetype = guess_filetype(infile)
-        self.file_type = filetype
         #Reset the file seeker to the start of the file so as to be able to read it again for processing
         infile.seek(0)
-        #react_to_filetype(filetype,infile)
+        react_to_filetype(filetype,infile)
 
         super().save(*args, **kwargs)
         #THIS IS WHERE THE FILE CAN BE VALIDATED
@@ -89,6 +75,15 @@ def react_to_filetype(filetype, infile):
     if filetype == 'replicate_table':
         #Launch methods to parse the replicate table and create correspondig models.
         print("Replicate table...creating stuff!")
+        uploadHandler = Upload_Handler()
+        mapping_dict = {}
+        with open("tests/data/labels.txt", "r") as file:
+            mapping_dict = eval(file.read())
+        data = parse_csv_or_tsv(infile)
+        invs_from_file = uploadHandler.get_models(data, mapping_dict)
+        print(invs_from_file)
+        create_models_from_investigation_dict(invs_from_file)
+        print("WOOHOO")
     if filetype == 'protocol_table':
         #launch methods to parse and save protocol data
         print("Protocol table. Yup")
@@ -96,13 +91,55 @@ def react_to_filetype(filetype, infile):
         print(step_table.to_string)
         print(param_table.to_string)
 
-    UploadInputFile(userprofile, upload_file)
-    def save(self, *args, **kwargs):
-        #CHECK THAT ITS VALID HERE
-
-        super().save(*args, **kwargs)
-        #THIS IS WHERE THE FILE CAN BE VALIDATED
-        print(self.upload_file)
+def create_models_from_investigation_dict(invs):
+    #iter investigations. an Investigation object 'has' Samples.
+    for i in invs.keys():
+        inv_num = invs[i].name
+        #Check in the DB if the investigation exists.
+        try:
+            #get throws a DoesNotExist exception.
+            inves = Investigation.objects.get(name=inv_num)
+        except:
+            #DNE. Create a new investigation
+            #TODO populate the other investigation fields from file
+            inves = Investigation(name=inv_num)
+            inves.save()
+        #iter samples. Sample objects 'have' replicates and metadata.
+        for j in invs[i].samples.keys():
+            sample_name = invs[i].samples[j].name
+            try:
+                samp = Sample.objects.get(investigation=inves.pk, name=sample_name)
+            except:
+                samp = Sample(investigation=inves, name=sample_name)
+                samp.save()
+            #iter sample metadata
+            for k in invs[i].samples[j].metadata.keys():
+                #no need to check for existing metadata, as far as I can tell.
+                s_metadata = SampleMetadata(sample=samp, key=k, value=invs[i].samples[j].metadata[k])
+                s_metadata.save()
+            #iter biological replicates
+            for k in invs[i].samples[j].biol_reps.keys():
+                #Query for protocol, which is FK
+                try:
+                    #TODO get the protocol. for now just use pcr
+                    protocol = BiologicalReplicateProtocol.objects.get(name="PCR")
+                except:
+                    protocol = BiologicalReplicateProtocol(name="PCR")
+                    protocol.save()
+                    print("protocol save worked")
+                #Query for replicate.
+                rep_name = invs[i].samples[j].biol_reps[k].name
+                try:
+                    rep = BiologicalReplicate.objects.get(name=rep_name)
+                except:
+                    rep = BiologicalReplicate(biological_replicate_protocol=protocol,
+                                                investigation=inves,
+                                                sample=samp, name=rep_name)
+                    rep.save()
+                #Save the replicate metdata.
+                for l in invs[i].samples[j].biol_reps[k].metadata.keys():
+                    r_metadata = BiologicalReplicateMetadata(biological_replicate=rep,
+                                                            key=l, value=invs[i].samples[j].biol_reps[k].metadata[l])
 
 
 
@@ -174,7 +211,7 @@ class BiologicalReplicateProtocol(models.Model):
     """
     A list of the steps that the biological sample was processed with
     """
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     citation = models.TextField() # should we include citations, or just have that in description?
 #    protocol_steps = models.ManyToManyField('ProtocolStep')
