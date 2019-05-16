@@ -2,10 +2,11 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import serializers
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
-from .tasks import test_task
+from .tasks import test_task, nothing_task, react_to_file, create_models_from_investigation_dict
 import pandas as pd
 
 
@@ -39,106 +40,13 @@ class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
 
+    def __str__(self):
+        return "UserProfile: {0}, UploadFile: {1}".format(self.userprofile, self.upload_file)
+
     def save(self, *args, **kwargs):
-        #CHECK THAT ITS VALID HERE
-
-        #Note: uploa)d_file is now a Django object called FieldFile and has access to its methods
-        # and attributes, many of which are useful.
-
-        file_from_upload = self.upload_file._get_file()
-        #file_from_upload is now Django File, which wraps a Python File
-
-        infile = file_from_upload.open()
-        filetype = guess_filetype(infile)
-
-        #Reset the file seeker to the start of the file so as to be able to read it again for processing
-        infile.seek(0)
-        react_to_filetype(filetype,infile)
-        ######################################################################
-        ### TODO : MAKE THE CELERY TASK MANAGER HANDLE react_to_filetype() ###
-        ######################################################################
-        import os #Maybe move this top level?
-        print(os.getppid())
-        test_task.delay("X") 
         super().save(*args, **kwargs)
-        #THIS IS WHERE THE FILE CAN BE VALIDATED
-        print(self.upload_file)
-
-#This method can 'do stuff' to the uploaded file.
-def react_to_filetype(filetype, infile):
-    if filetype == 'qz':
-        #Not sure what to do with a QIIME file at this point actually...
-        print("QIIME artifact")
-    if filetype == 'replicate_table':
-        #Launch methods to parse the replicate table and create correspondig models.
-        print("Replicate table...creating stuff!")
-        uploadHandler = Upload_Handler()
-        mapping_dict = {}
-        with open("tests/data/labels.txt", "r") as file:
-            mapping_dict = eval(file.read())
-        data = parse_csv_or_tsv(infile)
-        invs_from_file = uploadHandler.get_models(data, mapping_dict)
-        print(invs_from_file)
-        create_models_from_investigation_dict(invs_from_file)
-        print("WOOHOO")
-    if filetype == 'protocol_table':
-        #launch methods to parse and save protocol data
-        print("Protocol table. Yup")
-        step_table, param_table = format_protocol_sheet(infile)
-        print(step_table.to_string)
-        print(param_table.to_string)
-
-
-def create_models_from_investigation_dict(invs):
-    #iter investigations. an Investigation object 'has' Samples.
-    for i in invs.keys():
-        inv_num = invs[i].name
-        #Check in the DB if the investigation exists.
-        try:
-            #get throws a DoesNotExist exception.
-            inves = Investigation.objects.get(name=inv_num)
-        except:
-            #DNE. Create a new investigation
-            #TODO populate the other investigation fields from file
-            inves = Investigation(name=inv_num)
-            inves.save()
-        #iter samples. Sample objects 'have' replicates and metadata.
-        for j in invs[i].samples.keys():
-            sample_name = invs[i].samples[j].name
-            try:
-                samp = Sample.objects.get(investigation=inves.pk, name=sample_name)
-            except:
-                samp = Sample(investigation=inves, name=sample_name)
-                samp.save()
-            #iter sample metadata
-            for k in invs[i].samples[j].metadata.keys():
-                #no need to check for existing metadata, as far as I can tell.
-                s_metadata = SampleMetadata(sample=samp, key=k, value=invs[i].samples[j].metadata[k])
-                s_metadata.save()
-            #iter biological replicates
-            for k in invs[i].samples[j].biol_reps.keys():
-                #Query for protocol, which is FK
-                try:
-                    #TODO get the protocol. for now just use pcr
-                    protocol = BiologicalReplicateProtocol.objects.get(name="PCR")
-                except:
-                    protocol = BiologicalReplicateProtocol(name="PCR")
-                    protocol.save()
-                    print("protocol save worked")
-                #Query for replicate.
-                rep_name = invs[i].samples[j].biol_reps[k].name
-                try:
-                    rep = BiologicalReplicate.objects.get(name=rep_name)
-                except:
-                    rep = BiologicalReplicate(biological_replicate_protocol=protocol,
-                                                investigation=inves,
-                                                sample=samp, name=rep_name)
-                    rep.save()
-                #Save the replicate metdata.
-                for l in invs[i].samples[j].biol_reps[k].metadata.keys():
-                    r_metadata = BiologicalReplicateMetadata(biological_replicate=rep,
-                                                            key=l, value=invs[i].samples[j].biol_reps[k].metadata[l])
-
+        react_to_file(self.pk)
+        test_task.delay("X")
 
 
 class Sample(models.Model):
