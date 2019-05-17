@@ -47,6 +47,13 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
+#This form used only for display purposes
+class UploadInputFileDisplayForm(WidgetInstancesMixin,
+                                RendererModelForm,
+                                metaclass=DisplayModelMetaclass):
+        class Meta:
+            model=UploadInputFile
+            fields = '__all__'
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
@@ -167,6 +174,7 @@ InvestigationDisplaySampleFormset = ko_inlineformset_factory(
                                                  Investigation,
                                                  Sample,
                                                  form=SampleDisplayForm)
+
 
 class InvestigationWithInlineSamples(FormWithInlineFormsets):
     FormClass = InvestigationForm

@@ -10,7 +10,8 @@ from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 
 from django_jinja_knockout.views import (
-        BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView
+        BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
+        FormDetailView
 )
 
 import django_tables2 as tables
@@ -27,7 +28,7 @@ from .forms import (
     ProtocolForm, ProtocolDisplayWithInlineSteps,
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
     ProtocolWithInlineSteps, SampleDisplayWithInlineMetadata,
-    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads,
+    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm
 )
 
 import pandas as pd
@@ -50,6 +51,46 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
 #    def get_success_url(self):
 #        return reverse('upload_detail', kwargs={'upload_id': self.object.pk})
 
+class UploadList(ListSortingView):
+    model = UploadInputFile
+    allowed_sort_orders = '__all__'
+    grid_fields = ['upload_file', 'upload_status','userprofile']
+
+    def get_heading(self):
+        return "Upload List"
+
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            ####################################################################
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk}),
+            ####################################################################
+            obj.upload_file
+        )]
+        # is_authenticated is not callable in Django 2.0.
+        return links
+
+    def get_display_value(self, obj, field):
+        if field == 'upload_file':
+            links = self.get_name_links(obj)
+            return mark_safe(''.join(links))
+        else:
+            return super().get_display_value(obj, field)
+
+    def get_bs_form_opts(self):
+        return {
+            'title': "All Uploads",
+            'view_title': "All Uploads2",
+            'submit_text': "Save Uploads????"
+        }
+
+class UploadInputFileDetail(FormDetailView):
+    #TODO: Create Error Detail class for uploads, which in turn will require
+    # Converting this class to something like UploadWithInlineErrors
+    pk_url_kwarg = 'uploadinputfile_id'
+    model = UploadInputFile
+    form_class = UploadInputFileDisplayForm
+    format_view_title = True
 
 class InvestigationList(ListSortingView):
     model = Investigation

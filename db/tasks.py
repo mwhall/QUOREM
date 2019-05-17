@@ -32,19 +32,18 @@ def react_to_file(upload_file_id):
     ############################################################################
 
     upfile = UploadInputFile.objects.get(id=upload_file_id)
+    try:
+        file_from_upload = upfile.upload_file._get_file()
+        infile = file_from_upload.open()
+        filetype = guess_filetype(infile)
+        infile.seek(0)
 
-    file_from_upload = upfile.upload_file._get_file()
-    infile = file_from_upload.open()
-    filetype = guess_filetype(infile)
-    infile.seek(0)
-
-    if filetype == 'qz':
+        if filetype == 'qz':
         #Not sure what to do with a QIIME file at this point actually...
-        print("QIIME artifact")
-    if filetype == 'replicate_table':
+            print("QIIME artifact")
+        elif filetype == 'replicate_table':
         #Launch methods to parse the replicate table and create correspondig models.
-        print("Replicate table...creating stuff!")
-        try:
+            print("Replicate table...creating stuff!")
             uploadHandler = Upload_Handler()
             mapping_dict = {}
             with open("tests/data/labels.txt", "r") as file:
@@ -59,18 +58,25 @@ def react_to_file(upload_file_id):
             upfile.update()
             ################################################################
             print("Success.")
-        except:
-            ###############################################################
+
+        elif filetype == 'protocol_table':
+        #launch methods to parse and save protocol data
+            print("Protocol table. Yup")
+            step_table, param_table = format_protocol_sheet(infile)
+            print(step_table.to_string)
+            print(param_table.to_string)
+        else:
             upfile.upload_status = 'E'
             upfile.update()
-            ##############################################################
+            print("ERROR WITH FILE TYPE")
             print("Fail- Upload Status changed to Error")
-    if filetype == 'protocol_table':
-        #launch methods to parse and save protocol data
-        print("Protocol table. Yup")
-        step_table, param_table = format_protocol_sheet(infile)
-        print(step_table.to_string)
-        print(param_table.to_string)
+    except:
+    ###############################################################
+        upfile.upload_status = 'E'
+        upfile.update()
+        print("EXCEPTION")
+        print("Fail- Upload Status changed to Error")
+    ##############################################################
 
 @shared_task
 def create_models_from_investigation_dict(invs):

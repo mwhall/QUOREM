@@ -23,7 +23,9 @@
     'text': _('View All Protocols')},
     {
     'url': url('protocol_create'),
-    'text': _('Create Protocol')
-  },
+    'text': _('Create Protocol')},
+    {
+      'url':url('upload_all'),
+      'text':_('View Uploaded Files')},
 ] -%}
 {{ bs_nav_items(navs) }}
