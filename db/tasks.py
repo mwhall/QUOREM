@@ -29,6 +29,7 @@ def react_to_file(upload_file_id):
     SampleMetadata = apps.get_model('db.SampleMetadata')
     BiologicalReplicateMetadata = apps.get_model('db.BiologicalReplicateMetadata')
     BiologicalReplicateProtocol = apps.get_model('db.BiologicalReplicateProtocol')
+    ErrorMessage = apps.get_model('db.ErrorMessage')
     ############################################################################
 
     upfile = UploadInputFile.objects.get(id=upload_file_id)
@@ -41,6 +42,7 @@ def react_to_file(upload_file_id):
         if filetype == 'qz':
         #Not sure what to do with a QIIME file at this point actually...
             print("QIIME artifact")
+        #    return('qiime artifact, handling not yet configured')
         elif filetype == 'replicate_table':
         #Launch methods to parse the replicate table and create correspondig models.
             print("Replicate table...creating stuff!")
@@ -58,24 +60,32 @@ def react_to_file(upload_file_id):
             upfile.update()
             ################################################################
             print("Success.")
-
+            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
+            errorMessage.save()
+        #    return('success')
         elif filetype == 'protocol_table':
         #launch methods to parse and save protocol data
             print("Protocol table. Yup")
             step_table, param_table = format_protocol_sheet(infile)
             print(step_table.to_string)
             print(param_table.to_string)
+        #    return('protocol table, handling not yet configured')
         else:
             upfile.upload_status = 'E'
             upfile.update()
             print("ERROR WITH FILE TYPE")
             print("Fail- Upload Status changed to Error")
-    except:
+            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Unidentified error with filetype. Please contact Sys Admin.")
+            errorMessage.save()
+        #    return('error')
+    except Exception as e:
     ###############################################################
         upfile.upload_status = 'E'
         upfile.update()
         print("EXCEPTION")
+        errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=e)
         print("Fail- Upload Status changed to Error")
+    #    return('error')
     ##############################################################
 
 @shared_task

@@ -3,11 +3,15 @@ from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import serializers
+from django.shortcuts import redirect
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
 from .tasks import test_task, react_to_file, create_models_from_investigation_dict
 import pandas as pd
+import time
+
+from celery.result import ResultBase
 
 
 User = get_user_model()
@@ -52,9 +56,19 @@ class UploadInputFile(models.Model):
         self.upload_status = 'P'
         super().save(*args, **kwargs)
         react_to_file.delay(self.pk)
+        #output = result.collect()
+        ##    print(i)
     #    test_task.delay("X")
     def update(self, *args, **kwargs):
         super().save(*args, **kwargs)
+    #    return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
+
+class ErrorMessage(models.Model):
+    """
+    Store error messages for file uploads.
+    """
+    uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
+    error_message = models.CharField(max_length = 1000) #???? Maybe store as a textfile????
 
 
 class Sample(models.Model):

@@ -8,7 +8,7 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile
+    UploadInputFile, UserProfile, ErrorMessage
 )
 
 from django_jinja_knockout.forms import (
@@ -28,12 +28,6 @@ class UserProfileForm(RendererModelForm):
     class Meta:
         model = UserProfile
         fields = '__all__'
-
-TEST_CHOICES = (
-            ('1', 'Choice 1'),
-            ('2', 'Choice 2'),
-            ('3', 'Choice 3'),
-)
 
 
 class UploadForm(RendererModelForm):
@@ -55,11 +49,34 @@ class UploadInputFileDisplayForm(WidgetInstancesMixin,
             model=UploadInputFile
             fields = '__all__'
 
+
+class ErrorDisplayForm(WidgetInstancesMixin, RendererModelForm,
+                        metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = ErrorMessage
+        fields = '__all__'
+
+
+UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(
+                                                UploadInputFile,
+                                                ErrorMessage,
+                                                form=ErrorDisplayForm,
+                                                extra=0,
+                                                min_num=0,
+                                                can_delete=False)
+
+class UploadInputFileDisplayWithInlineErrors(FormWithInlineFormsets):
+    FormClass = UploadInputFileDisplayForm
+    FormsetClasses =[UploadInputFileDisplayErrorFormset]
+    def get_formset_inline_title(self, formset):
+        return "Error Messages"
+
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
     FormsetClasses = [UserUploadFormset]
     def get_formset_inline_title(self, formset):
         return "User Uploads"
+
 
 class InvestigationForm(RendererModelForm):
     class Meta:
@@ -174,6 +191,7 @@ InvestigationDisplaySampleFormset = ko_inlineformset_factory(
                                                  Investigation,
                                                  Sample,
                                                  form=SampleDisplayForm)
+
 
 
 class InvestigationWithInlineSamples(FormWithInlineFormsets):

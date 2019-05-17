@@ -28,7 +28,8 @@ from .forms import (
     ProtocolForm, ProtocolDisplayWithInlineSteps,
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
     ProtocolWithInlineSteps, SampleDisplayWithInlineMetadata,
-    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm
+    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
+    UploadInputFileDisplayWithInlineErrors
 )
 
 import pandas as pd
@@ -49,7 +50,7 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
                 }
 
 #    def get_success_url(self):
-#        return reverse('upload_detail', kwargs={'upload_id': self.object.pk})
+#        return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk})
 
 class UploadList(ListSortingView):
     model = UploadInputFile
@@ -84,13 +85,10 @@ class UploadList(ListSortingView):
             'submit_text': "Save Uploads????"
         }
 
-class UploadInputFileDetail(FormDetailView):
-    #TODO: Create Error Detail class for uploads, which in turn will require
-    # Converting this class to something like UploadWithInlineErrors
+class UploadInputFileDetail(InlineDetailView):
     pk_url_kwarg = 'uploadinputfile_id'
-    model = UploadInputFile
-    form_class = UploadInputFileDisplayForm
-    format_view_title = True
+    form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
+    #format_view_title = True
 
 class InvestigationList(ListSortingView):
     model = Investigation
