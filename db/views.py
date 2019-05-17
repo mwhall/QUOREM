@@ -63,9 +63,7 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            ####################################################################
             reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk}),
-            ####################################################################
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -88,7 +86,9 @@ class UploadList(ListSortingView):
 class UploadInputFileDetail(InlineDetailView):
     pk_url_kwarg = 'uploadinputfile_id'
     form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
-    #format_view_title = True
+    format_view_title = True
+    def get_heading(self):
+        return "Upload File Details"
 
 class InvestigationList(ListSortingView):
     model = Investigation
