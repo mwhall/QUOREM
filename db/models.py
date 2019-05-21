@@ -5,6 +5,11 @@ from django.contrib.auth import get_user_model
 from django.core import serializers
 from django.shortcuts import redirect
 
+#for searching
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVector
+from django.contrib.postgres.indexes import GinIndex
+
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
 from .tasks import test_task, react_to_file, create_models_from_investigation_dict
@@ -27,10 +32,22 @@ class Investigation(models.Model):
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
+
+    #Stuff for searching
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return self.name
+    #override save to update the search vector field
+    def save(self, *args, **kwargs):
+        sv =( SearchVector('name', weight='A') +
+             SearchVector('description', weight='B') +
+             SearchVector('institution', weight='C') )
+        super().save(*args, **kwargs)
+        Investigation.objects.update(search_vector = sv)
+
 
 class UserProfile(models.Model):
+    #userprofile doesnt have a search vector bc it shouldn tbe searched.
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     @classmethod
@@ -49,6 +66,10 @@ class UploadInputFile(models.Model):
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
     upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
+
+    #Should upload files be indexed by the search??
+    #search_vector = SearchVectorField(null=True)
+
     def __str__(self):
         return "UserProfile: {0}, UploadFile: {1}".format(self.userprofile, self.upload_file)
 
@@ -77,8 +98,19 @@ class Sample(models.Model):
     """
     name = models.CharField(max_length=255,unique=True)
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
+
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        Sample.objects.update(
+            search_vector = (SearchVector('name', weight= 'A') #+
+                             # Should be investigation name, not pk.
+                             # SearchVector('investigation', weight = 'B')
+                             )
+        )
 
 class SampleMetadata(models.Model):
     """
@@ -87,6 +119,14 @@ class SampleMetadata(models.Model):
     key = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE)  # fk 3
+
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        SampleMetadata.objects.update(
+            search_vector = (SearchVector('key', weight='A') +
+                              SearchVector('value', weight='B'))
+        )
 
 class BiologicalReplicate(models.Model):
     """
@@ -101,6 +141,17 @@ class BiologicalReplicate(models.Model):
     #Should be locked down to match sample's Investigation field, but I can't
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicate.objects.update(
+            search_vector = (SearchVector('name', weight='A') #+
+                            #  SearchVector('sample', weight='B') +
+                            # SearchVector should use the sample NAME, not id. will need to query it....
+                            # SearchVector('biological_replicate_protocol', weight='D') #+
+                              #SearchVector('investigation', weight='C')
+                              )
+        )
 class BiologicalReplicateMetadata(models.Model):
     """
     Metadata for the biological sample (PCR primers, replicate #, storage method, etc.)
@@ -111,6 +162,15 @@ class BiologicalReplicateMetadata(models.Model):
     value = models.CharField(max_length=255)
     biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE) # fk 14
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicateMetadata.objects.update(
+            search_vector = (SearchVector('key', weight='A') +
+                              SearchVector('value', weight='B')#+
+                             # SearchVector('BiologicalReplicate', weight='C')
+                             )
+        )
 
 class Document(models.Model):  #file
     """
@@ -144,6 +204,14 @@ class BiologicalReplicateProtocol(models.Model):
     citation = models.TextField() # should we include citations, or just have that in description?
 #    protocol_steps = models.ManyToManyField('ProtocolStep')
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicateProtocol.objects.update(
+            search_vector = (SearchVector('name', weight='A') +
+                             SearchVector('citation', weight='B') +
+                             SearchVector('description', weight='C'))
+        )
 class ProtocolStep(models.Model):
     """
     Names and descriptions of the protocol steps and methods, e.g., stepname = 'amplification', method='pcr'

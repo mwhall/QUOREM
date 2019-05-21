@@ -83,6 +83,7 @@ def react_to_file(upload_file_id):
         upfile.upload_status = 'E'
         upfile.update()
         print("EXCEPTION")
+        print(e)
         errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=e)
         errorMessage.save()
         print("Fail- Upload Status changed to Error")

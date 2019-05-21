@@ -356,3 +356,6 @@ class PipelineList(ListSortingView):
 
 class PipelineStepList(ListSortingView):
     pass
+###############################################################################
+### SEARCH AND QUERY BASED VIEWS                                            ####
+###############################################################################

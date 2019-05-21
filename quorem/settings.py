@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'accounts',
     'landingpage',
     'django_tables2',
+    #postgres, needed for search functionality
+    'django.contrib.postgres',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -173,5 +175,3 @@ STATICFILES_DIRS = [
 '''
 
 AUTH_USER_MODEL = 'accounts.User'
-
-
