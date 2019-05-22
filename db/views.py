@@ -470,9 +470,9 @@ def search(request):
         page = paginator.page(page_number)
         #will pass page to the context.
     except PageNotAnInteger:
-        raise Http404
+        raise Http404('not an int')
     except EmptyPage:
-        raise Http404
+        raise Http404('empty page')
 
     # qs now has a list of dicts corresponding to pks of objects in the db,
     # their type, and their search rank. Now, get the actual objects:

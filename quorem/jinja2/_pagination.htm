@@ -4,16 +4,16 @@
         <strong>{{ page_total }} result{{ page_total|pluralize }}</strong>
         {% endif %}
         <span class="step-links">
-            {% if page.has_previous %}
-                <a href="?page=1">&laquo; first</a>
-                <a href="?page={{ page.previous_page_number }}">previous</a>
+            {% if page.has_previous() %}
+                <a href="?q={{ q }}&page=1">&laquo; first</a>
+                <a href="?q={{ q }}&page={{ page.previous_page_number() }}">previous</a>
             {% endif %}
             <span class="current">
                 page {{ page.number }} / {{ page.paginator.num_pages }}
             </span>
-            {% if page.has_next %}
-                <a href="?page={{ page.next_page_number }}">next</a>
-                <a href="?page={{ page.paginator.num_pages }}">last &raquo;</a>
+            {% if page.has_next() %}
+                <a href="?q={{ q }}&page={{ page.next_page_number() }}">next</a>
+                <a href="?q={{ q }}&page={{ page.paginator.num_pages }}">last &raquo;</a>
             {% endif %}
         </span>
     </div>
