@@ -320,3 +320,7 @@ class ConfirmSampleForm(forms.Form):
         for field_name in self.fields:
             if field_name.startswith('new_sample_'):
                 yield self[field_name]
+
+##### Search form
+class SearchBarForm(forms.Form):
+    search = forms.CharField(max_length=100)

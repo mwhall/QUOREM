@@ -24,7 +24,8 @@ from db.views import (
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
-    SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail
+    SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
+    SearchResultList
 )
 
 urlpatterns = [
@@ -111,7 +112,10 @@ urlpatterns = [
     re_path(r'sample-grid(?P<action>/?\w*)/$', SampleFkWidgetGrid.as_view(),
         name='sample_grid', kwargs={'ajax':True}),
     re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
-        name='replicate_grid', kwargs={'ajax':True})
+        name='replicate_grid', kwargs={'ajax':True}),
+
+    #Search Result Routing
+    path('search/<query>', SearchResultList.as_view())
 ]
 
 js_info_dict = {

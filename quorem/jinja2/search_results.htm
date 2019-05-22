@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+    {% endblock head -%}
+  </head>
+  <body>
+    {% include 'header.htm' -%}
+    <div class="container">
+      <h3> Search Results </h3>
+      {% if object_list %}
+        {% for entry in object_list %}
+            <li>{{ entry }}</li>
+        {% endfor %}
+      {% else %}
+          <h2> No results </h2>
+      {% endif %}
+      <!-- stuff -->
+    </div>
+    {% include 'base_bottom_scripts.htm' -%}
+    {% block bottom_scripts -%}
+    {% endblock bottom_scripts -%}
+  </body>
+</html>

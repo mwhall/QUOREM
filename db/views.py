@@ -2,12 +2,14 @@ from django.shortcuts import render, redirect
 from .forms import CreateInvestigationForm, ConfirmSampleForm
 from django.shortcuts import render
 from django.views import View
+from django.views.generic import ListView
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
+from django.db import models
 
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
@@ -34,6 +36,12 @@ from .forms import (
 
 import pandas as pd
 import numpy as np
+
+###Stuff for searching
+from django.contrib.postgres.search import SearchQuery
+from django.contrib.postgres.search import SearchVector
+from django.contrib.postgres.search import SearchRank
+from django.db.models import F
 
 '''
 Class-based Django-Jinja-Knockout views
@@ -359,3 +367,56 @@ class PipelineStepList(ListSortingView):
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
 ###############################################################################
+
+#The url for this should pass a param, i.e. path('search/<query>/')
+class SearchResultList(ListView):
+    template_name = 'search_results.htm'
+
+    #Can I access the GET variables here????
+
+    ############################################################################
+    ### get_queryset() queries the database using search vectors. Each model ###
+    ### class has been given a search vector field. The search vector field  ###
+    ### essentially indexes searching on each of the models' fields. This    ###
+    ### allows fast search and union of objects with different numbers of    ###
+    ### fields: We can union the queryset on pk, though the results will be  ###
+    ### based on search against the search vector.                           ###
+    ############################################################################
+    def get_queryset(self):
+        query = self.kwargs['query']
+        """
+        results = Investigation.objects.filter(search_vector=query).annotate(
+            rank=SearchRank(F('search_vector'), query), type=models.Value('investigation', output_field=models.CharField())).values(
+            'pk','rank').union(
+
+            Sample.objects.filter(search_vector=query).annotate(
+            rank=SearchRank(F('search_vector'), query)).values(
+            'pk','rank')).union(
+
+            SampleMetadata.objects.filter(search_vector=query).annotate(
+            rank=SearchRank(F('search_vector'), query)).values(
+            'pk','rank'))
+        """
+        results = Investigation.objects.annotate(
+            rank=SearchRank(F('search_vector'),query), type=models.Value(
+            'investigation', output_field=models.CharField())).filter(
+            search_vector=query).values('pk','rank','type').union(
+
+            Sample.objects.annotate(rank=SearchRank(F('search_vector'),query),
+            type=models.Value('sample', output_field=models.CharField())).filter(
+            search_vector=query).values('pk','rank','type')).union(
+
+            SampleMetadata.objects.annotate(rank=SearchRank(F('search_vector'),query),
+            type=models.Value('sampleMetaData', output_field=models.CharField())).filter(
+            search_vector=query).values('pk','rank','type'))
+
+
+        return results
+
+#A simple function based view to GET the search bar form
+def search_view(request):
+    print("SEARCH VIEW HEIILLO")
+    if 'search' in request.GET:
+        print(request.GET['search'])
+    if 'search' in request.POST:
+        print("HEHHEJK")
