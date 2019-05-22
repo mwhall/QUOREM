@@ -1,26 +1,22 @@
 {% if page.paginator.num_pages > 1 %}
-    <div class="pagination">
-        {% if page_total %}
-        <strong>{{ page_total }} result{{ page_total|pluralize }}</strong>
-        {% endif %}
-        <span class="step-links">
+
+        <ul class="pagination">
             {% if page.has_previous() %}
-                <a href="?q={{ q }}&page=1">&laquo; first</a>
-                <a href="?q={{ q }}&page={{ page.previous_page_number() }}">previous</a>
+              <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ page.previous_page_number() }}">&laquo;</a></li>
+            {% else %}
+              <li class="page-item diasbled"><a class="page-link text-info">&laquo;</a></li>
             {% endif %}
-            <span class="current">
-                page {{ page.number }} / {{ page.paginator.num_pages }}
-            </span>
+            {% for i in page.paginator.page_range %}
+              {% if page.number == i %}
+              <li class="page-item active bg-info"><a class="page-link bg-info" href="#">{{ i }}</a></li>
+              {% else %}
+              <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ i }}">{{ i }}</a></li>
+              {% endif %}
+            {% endfor %}
             {% if page.has_next() %}
-                <a href="?q={{ q }}&page={{ page.next_page_number() }}">next</a>
-                <a href="?q={{ q }}&page={{ page.paginator.num_pages }}">last &raquo;</a>
+                <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ page.paginator.num_pages }}">&raquo;</a></li>
+            {% else %}
+              <li class="page-item disabled"><a class="page-link">&raquo;</a></li>
             {% endif %}
-        </span>
-    </div>
-{% else %}
-    {% if page_total %}
-        <div class="pagination">
-            <strong>{{ page_total }} result{{ page_total|pluralize }}</strong>
-        </div>
-    {% endif %}
+        </ul>
 {% endif %}

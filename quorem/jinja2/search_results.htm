@@ -4,23 +4,43 @@
     {% include 'base_head.htm' -%}
     {% block head -%}
     {% endblock head -%}
+    <style>
+      /*style stuff */
+    </style>
   </head>
   <body>
     {% include 'header.htm' -%}
     <div class="container">
-      <h3> {{ title }} </h3>
-      {% if page_total %}
-        {% if q %}
-          {% include "_pagination.htm" %}
-          {% include "mixed_object_list.htm" %}
-          {% include "_pagination.htm" %}
-        {% endif %}
-        {% else %}
-          <h3> No results found. </h3>
-      {% endif %}
-
-      <!-- stuff -->
+      <div class="row">
+        <div class="col-8 border-right">
+          <h3> {{ title }} </h3>
+            {% if page_total %}
+              {% if q %}
+                {% if page_total %}
+                  <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
+                {% endif %}
+                {% include "_pagination.htm" %}
+                {% include "mixed_object_list.htm" %}
+                {% include "_pagination.htm" %}
+              {% endif %}
+            {% else %}
+              <h3> No results found. </h3>
+            {% endif %}
+      </div>
+      <div class="col-4">
+        <div class="card">
+          <div class="card-header bg-primary">
+          </div>
+          <div class="card-body">
+            <h5> Search Filters</h5>
+            <p class="card-text">This column of the page is reserved for search filters.
+              At a later iteration, we will be able to filter searches by parameters and more.</p>
+          </div>
+        </div>
+      </div>
+     </div>
     </div>
+  </div> <!--container -->
     {% include 'base_bottom_scripts.htm' -%}
     {% block bottom_scripts -%}
     {% endblock bottom_scripts -%}
