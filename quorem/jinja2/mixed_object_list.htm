@@ -1,0 +1,21 @@
+{% for item in results %}
+<!-- Basically have to render each model type seperately. -->
+<div class="row">
+{% if item.type == 'investigation' %}
+  <h3><a class="primary" href="/investigation/{{ item.obj.pk }}">
+        Investigation {{ item.obj.name }}
+      </a>
+  </h3>
+{% elif item.type == 'sample' %}
+<h3><a class="primary" href="/sample/{{ item.obj.pk }}">
+      Sample {{ item.obj.name }}
+    </a>
+</h3>
+{% elif item.type == 'sampleMetadata' %}
+<h3><a class="primary" href="/sample/{{ item.obj.sample_id }}">
+  Sample Metadata {{ item.obj.key }} : {{ item.obj.value }}
+  </a>
+</h3>
+{% endif %}
+</div>
+{% endfor %}

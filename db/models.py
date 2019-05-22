@@ -305,3 +305,35 @@ class PipelineParameter(models.Model):
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)  # fk 13
     value = models.CharField(max_length=255)
     key = models.CharField(max_length=255)
+
+
+##Function for search.
+##Search returns a list of dicts. Get the models from the dicts.
+def load_mixed_objects(dicts,model_keys):
+    #dicts are expected to have 'pk', 'rank', 'type'
+    to_fetch = {}
+    for d in dicts:
+        to_fetch.setdefault(d['type'], set()).add(d['pk'])
+    fetched = {}
+    #TODO: Refactor this to be the same maping used in views.py
+    """
+    for key, model in(
+        ('investigation', Investigation),
+        ('sample', Sample),
+        ('sampleMetadata', SampleMetadata),
+    ):
+    """
+    for key, model in model_keys:
+        ids = to_fetch.get(key) or []
+        objects = model.objects.filter(pk__in=ids)
+        for obj in objects:
+            fetched[(key, obj.pk)] = obj
+    #return the list in the same otder as dicts arg
+    to_return = []
+    for d in dicts:
+        item = fetched.get((d['type'], d['pk'])) or None
+        if item:
+                item.original_dict = d
+        to_return.append(item)
+
+    return to_return

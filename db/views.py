@@ -11,6 +11,11 @@ from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models
 
+from django.core.paginator import(
+    Paginator,
+    EmptyPage,
+    PageNotAnInteger,
+)
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
         FormDetailView
@@ -22,7 +27,7 @@ import io
 from .formatters import format_sample_metadata, guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
-        ProtocolStep, UploadInputFile
+        ProtocolStep, UploadInputFile, load_mixed_objects
 )
 
 from .forms import (
@@ -369,6 +374,11 @@ class PipelineStepList(ListSortingView):
 ###############################################################################
 
 #The url for this should pass a param, i.e. path('search/<query>/')
+"""
+It seems a function based view might be more appropriate! commenting this out
+for now so that I dont lose it if things go south.
+##
+
 class SearchResultList(ListView):
     template_name = 'search_results.htm'
 
@@ -384,39 +394,106 @@ class SearchResultList(ListView):
     ############################################################################
     def get_queryset(self):
         query = self.kwargs['query']
-        """
-        results = Investigation.objects.filter(search_vector=query).annotate(
-            rank=SearchRank(F('search_vector'), query), type=models.Value('investigation', output_field=models.CharField())).values(
-            'pk','rank').union(
-
-            Sample.objects.filter(search_vector=query).annotate(
-            rank=SearchRank(F('search_vector'), query)).values(
-            'pk','rank')).union(
-
-            SampleMetadata.objects.filter(search_vector=query).annotate(
-            rank=SearchRank(F('search_vector'), query)).values(
-            'pk','rank'))
-        """
+        rank_annotation = SearchRank(F('search_vector'), query)
+        model_types= [('investigation', Investigation), ('sample', Sample),
+                      ('sampleMetadata', SampleMetadata)]
+        #Make an empty QuerySet. arbitrarily use Investigation as the model.
         results = Investigation.objects.annotate(
-            rank=SearchRank(F('search_vector'),query), type=models.Value(
-            'investigation', output_field=models.CharField())).filter(
-            search_vector=query).values('pk','rank','type').union(
+            type=models.Value('empty', output_field=models.CharField()),
+            rank=rank_annotation
+        ).values('pk','type', 'rank').none()
 
-            Sample.objects.annotate(rank=SearchRank(F('search_vector'),query),
-            type=models.Value('sample', output_field=models.CharField())).filter(
-            search_vector=query).values('pk','rank','type')).union(
+        #Now, more models can be added simply by adding to the model_types list.
+        for model_type in model_types:
+                results = results.union(model_type[1].objects.annotate(
+                        rank=rank_annotation,
+                        type = models.Value(model_type[0],output_field=models.CharField())
+                ).filter(search_vector=query).values('pk','type','rank'))
 
-            SampleMetadata.objects.annotate(rank=SearchRank(F('search_vector'),query),
-            type=models.Value('sampleMetaData', output_field=models.CharField())).filter(
-            search_vector=query).values('pk','rank','type'))
 
-
+        #results is now a QuerySet: A list of dicts containing primary key,
+        #search rank as a value from 0.0-1.0,  and type. This list can be used
+        #to load the model objects from the database.
         return results
 
+"""
 #A simple function based view to GET the search bar form
-def search_view(request):
-    print("SEARCH VIEW HEIILLO")
-    if 'search' in request.GET:
-        print(request.GET['search'])
-    if 'search' in request.POST:
-        print("HEHHEJK")
+def search(request):
+    ##MODEL INFO:::
+    model_types= [('investigation', Investigation), ('sample', Sample),
+                  ('sampleMetadata', SampleMetadata)]
+
+    q = request.GET.get('q', '').strip() #user input from search bar
+    query = None
+    rank_annotation = None
+    values = ['pk','type']
+    if q:
+        query = SearchQuery(q)
+        rank_annotation = SearchRank(F('search_vector'), query)
+        values.append('rank')
+
+   #Allows iterative building of queryset.
+    def make_queryset(model_type, type_name):
+        qs = model_type.objects.annotate(
+            type=models.Value(type_name, output_field=models.CharField())
+        )
+        if q:
+            qs = qs.filter(search_vector = query)
+            qs = qs.annotate(rank=rank_annotation)
+        return qs.order_by()
+
+    #Create an empty qs with the right 'shape' to build upon.
+    #Model type is arbitrary.
+    #Django will compile away the empty qs when making the query.
+    qs = Investigation.objects.annotate(
+        type=models.Value('empty', output_field=models.CharField))
+
+    if q:
+        qs = qs.annotate(rank=rank_annotation)
+    qs = qs.values(*values).none() #values for qs results
+
+    for type_name, model_type in model_types:
+        this_qs = make_queryset(model_type, type_name)
+        #TODO add counts for each type here.
+        #type_count = this_qs.count()
+        qs = qs.union(this_qs.values(*values))
+
+    if q:
+        qs = qs.order_by('-rank')
+
+    #use a pagintator.
+    paginator = Paginator(qs, 20) #20 results per page? maybe 20 pages.
+    page_number = request.GET.get('page') or '1'
+    try:
+        page = paginator.page(page_number)
+        #will pass page to the context.
+    except PageNotAnInteger:
+        raise Http404
+    except EmptyPage:
+        raise Http404
+
+    # qs now has a list of dicts corresponding to pks of objects in the db,
+    # their type, and their search rank. Now, get the actual objects:
+    results = []
+    for obj in load_mixed_objects(page.object_list, model_types):
+        results.append({
+            'type': obj.original_dict['type'],
+            'rank': obj.original_dict.get('rank'),
+            'obj': obj,
+        })
+
+    if q:
+        title= "Search Results for %s" % (q)
+    else:
+        title = 'Search'
+
+    return render(request, 'search_results.htm',{
+        'q':q,
+        'title':title,
+        'results':results,
+        'page_total': paginator.count,
+        'page': page,
+    })
+
+#probably have to do something along the lines of
+# A template with extensive conditionals.

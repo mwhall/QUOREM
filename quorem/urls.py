@@ -25,7 +25,8 @@ from db.views import (
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
     SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
-    SearchResultList
+    #SearchResultList
+    search
 )
 
 urlpatterns = [
@@ -115,7 +116,7 @@ urlpatterns = [
         name='replicate_grid', kwargs={'ajax':True}),
 
     #Search Result Routing
-    path('search/<query>', SearchResultList.as_view())
+    path('search/', search)
 ]
 
 js_info_dict = {
