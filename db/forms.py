@@ -30,6 +30,7 @@ class UserProfileForm(RendererModelForm):
         fields = '__all__'
 
 
+
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
@@ -81,13 +82,15 @@ class UserWithInlineUploads(FormWithInlineFormsets):
 class InvestigationForm(RendererModelForm):
     class Meta:
         model = Investigation
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class InvestigationDisplayForm(RendererModelForm,
                                metaclass=DisplayModelMetaclass):
     class Meta:
         model = Investigation
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 
 class NameLabelChoiceField(forms.ModelChoiceField):
@@ -98,7 +101,7 @@ class SampleForm(RendererModelForm):
     investigation = NameLabelChoiceField(queryset = Investigation.objects.all())
     class Meta:
         model = Sample
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
@@ -108,19 +111,19 @@ class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=Displ
             return format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.instance.investigation.pk})}), self.instance.investigation.name)
 
         model = Sample
-        fields = '__all__'
+        exclude = ['search_vector']
         widgets = {'name': DisplayText(get_text_method=get_name),
                    'investigation': DisplayText(get_text_method=get_investigation)}
 
 class ReplicateForm(RendererModelForm):
     class Meta:
         model = BiologicalReplicate
-        fields = '__all__'
-
+        exclude = ['search_vector']
 class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicate
         fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleMetadataForm(RendererModelForm):
     class Meta:
@@ -130,17 +133,17 @@ class SampleMetadataForm(RendererModelForm):
 class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = SampleMetadata
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolForm(RendererModelForm):
     class Meta:
         model = BiologicalReplicateProtocol
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicateProtocol
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class PipelineForm(RendererModelForm):
     class Meta:

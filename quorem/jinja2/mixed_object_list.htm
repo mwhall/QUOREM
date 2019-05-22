@@ -3,17 +3,22 @@
 <div class="row">
 {% if item.type == 'investigation' %}
   <h3><a class="primary" href="/investigation/{{ item.obj.pk }}">
-        Investigation {{ item.obj.name }}
+        Investigation: {{ item.obj.name }}
       </a>
   </h3>
 {% elif item.type == 'sample' %}
 <h3><a class="primary" href="/sample/{{ item.obj.pk }}">
-      Sample {{ item.obj.name }}
+      Sample: {{ item.obj.name }}
     </a>
 </h3>
 {% elif item.type == 'sampleMetadata' %}
 <h3><a class="primary" href="/sample/{{ item.obj.sample_id }}">
-  Sample Metadata {{ item.obj.key }} : {{ item.obj.value }}
+  Sample Metadata: {{ item.obj.key }} : {{ item.obj.value }}
+  </a>
+</h3>
+{% elif item.type == 'protocol' %}
+<h3><a class="primary" href="/protocol/{{ item.obj.pk }}">
+  Protocol: {{ item.obj.name }}
   </a>
 </h3>
 {% endif %}

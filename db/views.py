@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models
+from django.http import Http404
 
 from django.core.paginator import(
     Paginator,
@@ -421,7 +422,8 @@ class SearchResultList(ListView):
 def search(request):
     ##MODEL INFO:::
     model_types= [('investigation', Investigation), ('sample', Sample),
-                  ('sampleMetadata', SampleMetadata)]
+                  ('sampleMetadata', SampleMetadata),
+                  ('protocol', BiologicalReplicateProtocol)]
 
     q = request.GET.get('q', '').strip() #user input from search bar
     query = None
