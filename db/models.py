@@ -2,11 +2,21 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import serializers
+from django.shortcuts import redirect
+
+#for searching
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVector
+from django.contrib.postgres.indexes import GinIndex
 
 from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
 from .parser import Upload_Handler
-from .tasks import test_task
+from .tasks import test_task, react_to_file, create_models_from_investigation_dict
 import pandas as pd
+import time
+
+from celery.result import ResultBase
 
 
 User = get_user_model()
@@ -22,10 +32,22 @@ class Investigation(models.Model):
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
+
+    #Stuff for searching
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return self.name
+    #override save to update the search vector field
+    def save(self, *args, **kwargs):
+        sv =( SearchVector('name', weight='A') +
+             SearchVector('description', weight='B') +
+             SearchVector('institution', weight='C') )
+        super().save(*args, **kwargs)
+        Investigation.objects.update(search_vector = sv)
+
 
 class UserProfile(models.Model):
+    #userprofile doesnt have a search vector bc it shouldn tbe searched.
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     @classmethod
@@ -36,109 +58,38 @@ class UserProfile(models.Model):
         return self.user.email
 
 class UploadInputFile(models.Model):
+    STATUS_CHOICES = (
+        ('P', "Processing"),
+        ('S', "Success"),
+        ('E', "Error")
+    )
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
+    upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
+
+    #Should upload files be indexed by the search??
+    #search_vector = SearchVectorField(null=True)
+
+    def __str__(self):
+        return "UserProfile: {0}, UploadFile: {1}".format(self.userprofile, self.upload_file)
 
     def save(self, *args, **kwargs):
-        #CHECK THAT ITS VALID HERE
-
-        #Note: uploa)d_file is now a Django object called FieldFile and has access to its methods
-        # and attributes, many of which are useful.
-
-        file_from_upload = self.upload_file._get_file()
-        #file_from_upload is now Django File, which wraps a Python File
-
-        infile = file_from_upload.open()
-        filetype = guess_filetype(infile)
-
-        #Reset the file seeker to the start of the file so as to be able to read it again for processing
-        infile.seek(0)
-        react_to_filetype(filetype,infile)
-        ######################################################################
-        ### TODO : MAKE THE CELERY TASK MANAGER HANDLE react_to_filetype() ###
-        ######################################################################
-        import os #Maybe move this top level?
-        print(os.getppid())
-        test_task.delay("X") 
+        self.upload_status = 'P'
         super().save(*args, **kwargs)
-        #THIS IS WHERE THE FILE CAN BE VALIDATED
-        print(self.upload_file)
+        react_to_file.delay(self.pk)
+        #output = result.collect()
+        ##    print(i)
+    #    test_task.delay("X")
+    def update(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+    #    return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
 
-#This method can 'do stuff' to the uploaded file.
-def react_to_filetype(filetype, infile):
-    if filetype == 'qz':
-        #Not sure what to do with a QIIME file at this point actually...
-        print("QIIME artifact")
-    if filetype == 'replicate_table':
-        #Launch methods to parse the replicate table and create correspondig models.
-        print("Replicate table...creating stuff!")
-        uploadHandler = Upload_Handler()
-        mapping_dict = {}
-        with open("tests/data/labels.txt", "r") as file:
-            mapping_dict = eval(file.read())
-        data = parse_csv_or_tsv(infile)
-        invs_from_file = uploadHandler.get_models(data, mapping_dict)
-        print(invs_from_file)
-        create_models_from_investigation_dict(invs_from_file)
-        print("WOOHOO")
-    if filetype == 'protocol_table':
-        #launch methods to parse and save protocol data
-        print("Protocol table. Yup")
-        step_table, param_table = format_protocol_sheet(infile)
-        print(step_table.to_string)
-        print(param_table.to_string)
-
-
-def create_models_from_investigation_dict(invs):
-    #iter investigations. an Investigation object 'has' Samples.
-    for i in invs.keys():
-        inv_num = invs[i].name
-        #Check in the DB if the investigation exists.
-        try:
-            #get throws a DoesNotExist exception.
-            inves = Investigation.objects.get(name=inv_num)
-        except:
-            #DNE. Create a new investigation
-            #TODO populate the other investigation fields from file
-            inves = Investigation(name=inv_num)
-            inves.save()
-        #iter samples. Sample objects 'have' replicates and metadata.
-        for j in invs[i].samples.keys():
-            sample_name = invs[i].samples[j].name
-            try:
-                samp = Sample.objects.get(investigation=inves.pk, name=sample_name)
-            except:
-                samp = Sample(investigation=inves, name=sample_name)
-                samp.save()
-            #iter sample metadata
-            for k in invs[i].samples[j].metadata.keys():
-                #no need to check for existing metadata, as far as I can tell.
-                s_metadata = SampleMetadata(sample=samp, key=k, value=invs[i].samples[j].metadata[k])
-                s_metadata.save()
-            #iter biological replicates
-            for k in invs[i].samples[j].biol_reps.keys():
-                #Query for protocol, which is FK
-                try:
-                    #TODO get the protocol. for now just use pcr
-                    protocol = BiologicalReplicateProtocol.objects.get(name="PCR")
-                except:
-                    protocol = BiologicalReplicateProtocol(name="PCR")
-                    protocol.save()
-                    print("protocol save worked")
-                #Query for replicate.
-                rep_name = invs[i].samples[j].biol_reps[k].name
-                try:
-                    rep = BiologicalReplicate.objects.get(name=rep_name)
-                except:
-                    rep = BiologicalReplicate(biological_replicate_protocol=protocol,
-                                                investigation=inves,
-                                                sample=samp, name=rep_name)
-                    rep.save()
-                #Save the replicate metdata.
-                for l in invs[i].samples[j].biol_reps[k].metadata.keys():
-                    r_metadata = BiologicalReplicateMetadata(biological_replicate=rep,
-                                                            key=l, value=invs[i].samples[j].biol_reps[k].metadata[l])
-
+class ErrorMessage(models.Model):
+    """
+    Store error messages for file uploads.
+    """
+    uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
+    error_message = models.CharField(max_length = 1000) #???? Maybe store as a textfile????
 
 
 class Sample(models.Model):
@@ -147,8 +98,19 @@ class Sample(models.Model):
     """
     name = models.CharField(max_length=255,unique=True)
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
+
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        Sample.objects.update(
+            search_vector = (SearchVector('name', weight= 'A') #+
+                             # Should be investigation name, not pk.
+                             # SearchVector('investigation', weight = 'B')
+                             )
+        )
 
 class SampleMetadata(models.Model):
     """
@@ -157,6 +119,14 @@ class SampleMetadata(models.Model):
     key = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE)  # fk 3
+
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        SampleMetadata.objects.update(
+            search_vector = (SearchVector('key', weight='A') +
+                              SearchVector('value', weight='B'))
+        )
 
 class BiologicalReplicate(models.Model):
     """
@@ -171,6 +141,17 @@ class BiologicalReplicate(models.Model):
     #Should be locked down to match sample's Investigation field, but I can't
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicate.objects.update(
+            search_vector = (SearchVector('name', weight='A') #+
+                            #  SearchVector('sample', weight='B') +
+                            # SearchVector should use the sample NAME, not id. will need to query it....
+                            # SearchVector('biological_replicate_protocol', weight='D') #+
+                              #SearchVector('investigation', weight='C')
+                              )
+        )
 class BiologicalReplicateMetadata(models.Model):
     """
     Metadata for the biological sample (PCR primers, replicate #, storage method, etc.)
@@ -181,6 +162,15 @@ class BiologicalReplicateMetadata(models.Model):
     value = models.CharField(max_length=255)
     biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE) # fk 14
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicateMetadata.objects.update(
+            search_vector = (SearchVector('key', weight='A') +
+                              SearchVector('value', weight='B')#+
+                             # SearchVector('BiologicalReplicate', weight='C')
+                             )
+        )
 
 class Document(models.Model):  #file
     """
@@ -214,6 +204,14 @@ class BiologicalReplicateProtocol(models.Model):
     citation = models.TextField() # should we include citations, or just have that in description?
 #    protocol_steps = models.ManyToManyField('ProtocolStep')
 
+    search_vector = SearchVectorField(null=True)
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        BiologicalReplicateProtocol.objects.update(
+            search_vector = (SearchVector('name', weight='A') +
+                             SearchVector('citation', weight='B') +
+                             SearchVector('description', weight='C'))
+        )
 class ProtocolStep(models.Model):
     """
     Names and descriptions of the protocol steps and methods, e.g., stepname = 'amplification', method='pcr'
@@ -307,3 +305,35 @@ class PipelineParameter(models.Model):
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)  # fk 13
     value = models.CharField(max_length=255)
     key = models.CharField(max_length=255)
+
+
+##Function for search.
+##Search returns a list of dicts. Get the models from the dicts.
+def load_mixed_objects(dicts,model_keys):
+    #dicts are expected to have 'pk', 'rank', 'type'
+    to_fetch = {}
+    for d in dicts:
+        to_fetch.setdefault(d['type'], set()).add(d['pk'])
+    fetched = {}
+    #TODO: Refactor this to be the same maping used in views.py
+    """
+    for key, model in(
+        ('investigation', Investigation),
+        ('sample', Sample),
+        ('sampleMetadata', SampleMetadata),
+    ):
+    """
+    for key, model in model_keys:
+        ids = to_fetch.get(key) or []
+        objects = model.objects.filter(pk__in=ids)
+        for obj in objects:
+            fetched[(key, obj.pk)] = obj
+    #return the list in the same otder as dicts arg
+    to_return = []
+    for d in dicts:
+        item = fetched.get((d['type'], d['pk'])) or None
+        if item:
+                item.original_dict = d
+        to_return.append(item)
+
+    return to_return

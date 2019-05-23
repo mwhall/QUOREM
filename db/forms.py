@@ -8,7 +8,7 @@ from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile
+    UploadInputFile, UserProfile, ErrorMessage
 )
 
 from django_jinja_knockout.forms import (
@@ -29,17 +29,12 @@ class UserProfileForm(RendererModelForm):
         model = UserProfile
         fields = '__all__'
 
-TEST_CHOICES = (
-            ('1', 'Choice 1'),
-            ('2', 'Choice 2'),
-            ('3', 'Choice 3'),
-)
 
 
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = '__all__'
+        fields = ['userprofile', 'upload_file']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,
@@ -47,6 +42,35 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
+#This form used only for display purposes
+class UploadInputFileDisplayForm(WidgetInstancesMixin,
+                                RendererModelForm,
+                                metaclass=DisplayModelMetaclass):
+        class Meta:
+            model=UploadInputFile
+            fields = '__all__'
+
+
+class ErrorDisplayForm(WidgetInstancesMixin, RendererModelForm,
+                        metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = ErrorMessage
+        fields = '__all__'
+
+
+UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(
+                                                UploadInputFile,
+                                                ErrorMessage,
+                                                form=ErrorDisplayForm,
+                                                extra=0,
+                                                min_num=0,
+                                                can_delete=False)
+
+class UploadInputFileDisplayWithInlineErrors(FormWithInlineFormsets):
+    FormClass = UploadInputFileDisplayForm
+    FormsetClasses =[UploadInputFileDisplayErrorFormset]
+    def get_formset_inline_title(self, formset):
+        return "Error Messages"
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm
@@ -54,16 +78,19 @@ class UserWithInlineUploads(FormWithInlineFormsets):
     def get_formset_inline_title(self, formset):
         return "User Uploads"
 
+
 class InvestigationForm(RendererModelForm):
     class Meta:
         model = Investigation
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class InvestigationDisplayForm(RendererModelForm,
                                metaclass=DisplayModelMetaclass):
     class Meta:
         model = Investigation
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 
 class NameLabelChoiceField(forms.ModelChoiceField):
@@ -74,7 +101,7 @@ class SampleForm(RendererModelForm):
     investigation = NameLabelChoiceField(queryset = Investigation.objects.all())
     class Meta:
         model = Sample
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
@@ -84,19 +111,19 @@ class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=Displ
             return format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.instance.investigation.pk})}), self.instance.investigation.name)
 
         model = Sample
-        fields = '__all__'
+        exclude = ['search_vector']
         widgets = {'name': DisplayText(get_text_method=get_name),
                    'investigation': DisplayText(get_text_method=get_investigation)}
 
 class ReplicateForm(RendererModelForm):
     class Meta:
         model = BiologicalReplicate
-        fields = '__all__'
-
+        exclude = ['search_vector']
 class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicate
         fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleMetadataForm(RendererModelForm):
     class Meta:
@@ -106,17 +133,17 @@ class SampleMetadataForm(RendererModelForm):
 class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = SampleMetadata
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolForm(RendererModelForm):
     class Meta:
         model = BiologicalReplicateProtocol
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicateProtocol
-        fields = '__all__'
+        exclude = ['search_vector']
 
 class PipelineForm(RendererModelForm):
     class Meta:
@@ -167,6 +194,8 @@ InvestigationDisplaySampleFormset = ko_inlineformset_factory(
                                                  Investigation,
                                                  Sample,
                                                  form=SampleDisplayForm)
+
+
 
 class InvestigationWithInlineSamples(FormWithInlineFormsets):
     FormClass = InvestigationForm
@@ -294,3 +323,7 @@ class ConfirmSampleForm(forms.Form):
         for field_name in self.fields:
             if field_name.startswith('new_sample_'):
                 yield self[field_name]
+
+##### Search form
+class SearchBarForm(forms.Form):
+    search = forms.CharField(max_length=100)

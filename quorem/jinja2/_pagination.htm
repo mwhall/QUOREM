@@ -1,0 +1,22 @@
+{% if page.paginator.num_pages > 1 %}
+
+        <ul class="pagination">
+            {% if page.has_previous() %}
+              <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ page.previous_page_number() }}">&laquo;</a></li>
+            {% else %}
+              <li class="page-item diasbled"><a class="page-link text-info">&laquo;</a></li>
+            {% endif %}
+            {% for i in page.paginator.page_range %}
+              {% if page.number == i %}
+              <li class="page-item active bg-info"><a class="page-link bg-info" href="#">{{ i }}</a></li>
+              {% else %}
+              <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ i }}">{{ i }}</a></li>
+              {% endif %}
+            {% endfor %}
+            {% if page.has_next() %}
+                <li class="page-item"><a class="page-link text-info" href="?q={{ q }}&page={{ page.paginator.num_pages }}">&raquo;</a></li>
+            {% else %}
+              <li class="page-item disabled"><a class="page-link">&raquo;</a></li>
+            {% endif %}
+        </ul>
+{% endif %}

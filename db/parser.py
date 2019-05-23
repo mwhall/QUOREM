@@ -46,7 +46,6 @@ class Upload_Handler():
         #
         invs_seen = {}
         samples_seen = {}
-        print(table.head())
         for i in range(len(table.index)):
             datum = table.iloc[i]
             investigations, sample_info, sample_metadata, replicates, replicate_metadata = self.partition_datum(datum, key_map)

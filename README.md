@@ -31,3 +31,8 @@ Set your NAME, USER and PASSWORD for your database.
 7) Run the application in another:
 `python manage.py runserver`
 
+*A note on database dependancies:
+If you recieve an error during migration "cannot create extension pg_trgm", run the script
+extenddb.sh with the usage:
+$ extenddb.sh your_dbName.
+

@@ -24,14 +24,22 @@ from db.views import (
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
-    SampleDetail, SampleList, SampleUpdate, UploadCreate
+    SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
+    #SearchResultList
+    search
 )
 
 urlpatterns = [
     # Main page routing
     path('admin/', admin.site.urls),
-    re_path('upload/', UploadCreate.as_view(), name='upload',
+    re_path('upload/new', UploadCreate.as_view(), name='upload',
         kwargs={'view_title': "Upload Data"} ),
+    #Upload list.
+    re_path('upload/all', UploadList.as_view(), name='upload_all',
+        kwargs={'view_title':"All Uploads"}),
+    re_path(r'upload/(?P<uploadinputfile_id>\d+)/$', UploadInputFileDetail.as_view(),
+            name='uploadinputfile_detail',
+            kwargs={'view_title': "Upload Details", "allow_anonymous": True}),
     path('account/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
@@ -105,7 +113,10 @@ urlpatterns = [
     re_path(r'sample-grid(?P<action>/?\w*)/$', SampleFkWidgetGrid.as_view(),
         name='sample_grid', kwargs={'ajax':True}),
     re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
-        name='replicate_grid', kwargs={'ajax':True})
+        name='replicate_grid', kwargs={'ajax':True}),
+
+    #Search Result Routing
+    path('search/', search)
 ]
 
 js_info_dict = {

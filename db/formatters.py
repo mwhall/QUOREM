@@ -85,7 +85,6 @@ def guess_filetype(unknown_file):
         try:
             unknown_file.seek(0)
             table = parse_csv_or_tsv(unknown_file)
-            print(table.head())
         except:
             raise
         #temporary method is here configured to accept the input file that i have
