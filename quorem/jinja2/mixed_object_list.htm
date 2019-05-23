@@ -43,13 +43,14 @@
         <div class="d-flex w-100 justify-content-between">
           <h5 class="mb-1">Sample {{ item.obj.name }}</h5>
         </div>
+      <p class="mb-1">Investigation: {{ item.obj.investigation }}</p>
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>
     {% elif item.type == 'sampleMetadata' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/sample/{{ item.obj.sample_id }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Sample Metadata for Sample {{ item.obj.sample_id }}</h5>
+        <h5 class="mb-1">Sample Metadata for Sample {{ item.obj.sample }}</h5>
       </div>
       <p class="mb-1">Description: {{ item.obj.key }}</p>
       <p class="mb-1">Value: {{ item.obj.value }}</p>
