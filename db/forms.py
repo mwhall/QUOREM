@@ -122,7 +122,7 @@ class ReplicateForm(RendererModelForm):
 class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicate
-        fields = '__all__'
+        #fields = '__all__'
         exclude = ['search_vector']
 
 class SampleMetadataForm(RendererModelForm):
@@ -238,6 +238,8 @@ class SampleDisplayWithInlineMetadata(FormWithInlineFormsets):
     FormsetClasses = [SampleDisplayReplicateFormset, \
                       SampleDisplayMetadataFormset]
     def get_formset_inline_title(self, formset):
+        if formset.model == BiologicalReplicate:
+            return "Biological Replicates"
         return "Sample Metadata"
 
 ProtocolStepDisplayFormset = ko_inlineformset_factory(BiologicalReplicateProtocol,
