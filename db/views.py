@@ -426,6 +426,8 @@ def search(request):
                   ('protocol', BiologicalReplicateProtocol)]
 
     q = request.GET.get('q', '').strip() #user input from search bar
+    if not q:
+        q = request.GET.get('q2', '').strip()
     query = None
     rank_annotation = None
     values = ['pk','type']

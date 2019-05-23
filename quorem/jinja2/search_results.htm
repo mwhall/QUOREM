@@ -11,9 +11,19 @@
   <body>
     {% include 'header.htm' -%}
     <div class="container">
+      <div row>
+
+      </div>
       <div class="row">
         <div class="col-8 border-right">
           <h3> {{ title }} </h3>
+          <form action="/search"/ method="GET">
+            <div class="form-group">
+              <label for="largesearchbar">Putting the Q in QUOREM.</label>
+              <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
+            </div>
+            <button type="submit" class="btn btn-success">Search</button>
+          </form>
             {% if page_total %}
               {% if q %}
                 {% if page_total %}
