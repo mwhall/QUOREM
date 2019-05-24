@@ -44,9 +44,9 @@ import pandas as pd
 import numpy as np
 
 ###Stuff for searching
-from django.contrib.postgres.search import SearchQuery
-from django.contrib.postgres.search import SearchVector
-from django.contrib.postgres.search import SearchRank
+from django.contrib.postgres.search import(
+    SearchQuery, SearchRank, SearchVector)
+
 from django.db.models import F
 
 '''

@@ -1,68 +1,40 @@
-<!--
-{% for item in results %}
-<!-- Basically have to render each model type seperately.
-<div class="row">
-{% if item.type == 'investigation' %}
-  <h3><a class="primary" href="/investigation/{{ item.obj.pk }}">
-        Investigation: {{ item.obj.name }}
-      </a>
-  </h3>
-{% elif item.type == 'sample' %}
-<h3><a class="primary" href="/sample/{{ item.obj.pk }}">
-      Sample: {{ item.obj.name }}
-    </a>
-</h3>
-{% elif item.type == 'sampleMetadata' %}
-<h3><a class="primary" href="/sample/{{ item.obj.sample_id }}">
-  Sample Metadata: {{ item.obj.key }} : {{ item.obj.value }}
-  </a>
-</h3>
-{% elif item.type == 'protocol' %}
-<h3><a class="primary" href="/protocol/{{ item.obj.pk }}">
-  Protocol: {{ item.obj.name }}
-  </a>
-</h3>
-{% endif %}
-</div>
-{% endfor %}
--->
 <div class="list-group">
   {% for item in results %}
     {% if item.type == 'investigation' %}
       <a class="list-group-item list-group-item-action flex-column align-items-start"
       href="/investigation/{{ item.obj.pk }}">
         <div class="d-flex w-100 justify-content-between">
-          <h5 class="mb-1">Investigation {{ item.obj.name }}</h5>
+          <h5 class="mb-1">Investigation {{ item.obj.name|highlight(q) }}</h5>
         </div>
-        <p class="mb-1">Description: {{ item.obj.description }}</p>
-        <p class="mb-1">Institution: {{ item.obj.institution }}</p>
+        <p class="mb-1">Description: {{ item.obj.description|highlight(q) }}</p>
+        <p class="mb-1">Institution: {{ item.obj.institution|highlight(q) }}</p>
       </a>
     {% elif item.type == 'sample' %}
       <a class="list-group-item list-group-item-action flex-column align-items-start"
       href="/sample/{{ item.obj.pk }}">
         <div class="d-flex w-100 justify-content-between">
-          <h5 class="mb-1">Sample {{ item.obj.name }}</h5>
+          <h5 class="mb-1">Sample {{ item.obj.name|highlight(q) }}</h5>
         </div>
-      <p class="mb-1">Investigation: {{ item.obj.investigation }}</p>
+      <p class="mb-1">Investigation: {{ item.obj.investigation.name|highlight(q) }}</p>
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>
     {% elif item.type == 'sampleMetadata' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/sample/{{ item.obj.sample_id }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Sample Metadata for Sample {{ item.obj.sample }}</h5>
+        <h5 class="mb-1">Sample Metadata for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
       </div>
-      <p class="mb-1">Description: {{ item.obj.key }}</p>
-      <p class="mb-1">Value: {{ item.obj.value }}</p>
+      <p class="mb-1">Description: {{ item.obj.key|highlight(q) }}</p>
+      <p class="mb-1">Value: {{ item.obj.value|highlight(q) }}</p>
     </a>
     {% elif item.type == 'protocol' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/protocol/{{ item.obj.pk }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Protocol: {{ item.obj.name }}</h5>
+        <h5 class="mb-1">Protocol: {{ item.obj.name|highlight(q) }}</h5>
       </div>
-      <p class="mb-1">Citation: {{ item.obj.citation }}</p>
-      <p class="mb-1">Description: {{ item.obj.description }}</p>
+      <p class="mb-1">Citation: {{ item.obj.citation|highlight(q) }}</p>
+      <p class="mb-1">Description: {{ item.obj.description|highlight(q) }}</p>
     </a>
     {% endif %}
   {% endfor %}

@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django_jinja.contrib._humanize',
     'django_jinja_knockout',
     'djk_ui',
+
 ] + DJK_APPS
 
 DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'
@@ -92,7 +93,8 @@ TEMPLATES = [
                 'django.template.context_processors.i18n',
                 'django_jinja_knockout.context_processors.template_context_processor'
             ],
-            'environment': 'quorem.jinja2.environment'
+            'environment': 'quorem.jinja2.environment',
+            
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',

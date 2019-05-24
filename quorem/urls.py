@@ -116,7 +116,8 @@ urlpatterns = [
         name='replicate_grid', kwargs={'ajax':True}),
 
     #Search Result Routing
-    path('search/', search)
+    path('search/', search),
+
 ]
 
 js_info_dict = {
