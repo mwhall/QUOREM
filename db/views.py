@@ -77,7 +77,8 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk}),
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,
+                                                      }),
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -146,7 +147,7 @@ class InvestigationList(ListSortingView):
         return {
             'title': "All Investigations",
             'view_title': "All Investigations2",
-            'submit_text': "Save Investigation"
+            'submit_text': "Save Investigation",
         }
 
 
@@ -497,6 +498,7 @@ def search(request):
         'results':results,
         'page_total': paginator.count,
         'page': page,
+        #'search_page': "active",
     })
 
 #probably have to do something along the lines of
