@@ -28,7 +28,8 @@ import io
 from .formatters import format_sample_metadata, guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
-        ProtocolStep, UploadInputFile, load_mixed_objects
+        ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
+        UploadInputFile, load_mixed_objects
 )
 
 from .forms import (
@@ -422,9 +423,12 @@ class SearchResultList(ListView):
 #A simple function based view to GET the search bar form
 def search(request):
     ##MODEL INFO:::
-    model_types= [('investigation', Investigation), ('sample', Sample),
+    model_types= [('investigation', Investigation),
+                  ('sample', Sample),
                   ('sampleMetadata', SampleMetadata),
-                  ('protocol', BiologicalReplicateProtocol)]
+                  ('biologicalReplicate', BiologicalReplicate),
+                  ('biologicalReplicateMetadata', BiologicalReplicateMetadata),
+                  ('protocol', BiologicalReplicateProtocol),]
 
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:

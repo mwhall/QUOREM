@@ -36,6 +36,15 @@
       <p class="mb-1">Citation: {{ item.obj.citation|highlight(q) }}</p>
       <p class="mb-1">Description: {{ item.obj.description|highlight(q) }}</p>
     </a>
+    {% elif item.type == 'biologicalReplicate' %}
+    <a class="list-group-item list-group-item-action flex-column align-items-start"
+    href="/sample/{{ item.obj.sample.pk }}">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">Biological Replicate {{ item.obj.name|highlight(q) }} for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
+      </div>
+      <p class="mb-1">Currently, BioRep info is all foreign key models. Search result
+                      formatting does not currently account for this, but will soon. </p>
+    </a>
     {% endif %}
   {% endfor %}
 </div>
