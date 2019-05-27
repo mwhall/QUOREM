@@ -46,6 +46,10 @@ class Upload_Handler():
         #
         invs_seen = {}
         samples_seen = {}
+        #A list for new information
+        new_invs = {}
+        new_samples = {}
+
         for i in range(len(table.index)):
             datum = table.iloc[i]
             investigations, sample_info, sample_metadata, replicates, replicate_metadata = self.partition_datum(datum, key_map)
@@ -66,6 +70,7 @@ class Upload_Handler():
                     inv = invs_seen[investigations['name']]
                 else:
                     inv = Investigation(name=investigations['name'])
+                    new_invs[inv.name] = inv
             except:
                 continue
         #validate investigation.
@@ -78,6 +83,7 @@ class Upload_Handler():
                     samp = samples_seen[sample_info['name']]
                 else:
                     samp = Sample(name = sample_info['name'])
+                    new_samples[samp.name] = samp
             except:
                 continue
 
@@ -96,7 +102,7 @@ class Upload_Handler():
         #Keep track by storing samples and investigations in the dict.
             invs_seen[inv.name] = inv
             samples_seen[samp.name] = samp
-        return invs_seen
+        return invs_seen, new_invs, new_samples
 
     def partition_datum(self, datum, dic):
         sample_stuff = {}

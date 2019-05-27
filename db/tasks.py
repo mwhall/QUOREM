@@ -51,16 +51,25 @@ def react_to_file(upload_file_id):
             with open("tests/data/labels.txt", "r") as file:
                 mapping_dict = eval(file.read())
             data = parse_csv_or_tsv(infile)
-            invs_from_file = uploadHandler.get_models(data, mapping_dict)
+            invs_from_file, new_invs, new_samples = uploadHandler.get_models(data, mapping_dict)
             create_models_from_investigation_dict(invs_from_file)
-            #################################################################
             upfile.upload_status = 'S'
             #update just calls super.save() because vanilla save() has been overridden
             #to trigger a file upload process.
             upfile.update()
-            ################################################################
             print("Success.")
-            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
+            message = 'Uploaded Successfully.\n'
+            if new_invs:
+                message += "Created the following new Investigations: \n"
+                for key in new_invs.keys():
+                    message += key
+                    message += "\n"
+            if new_samples:
+                message += "Created the following new Samples: \n"
+                for key in new_samples.keys():
+                    message += key
+                    message += "\n"
+            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=message)
             errorMessage.save()
         #    return('success')
         elif filetype == 'protocol_table':

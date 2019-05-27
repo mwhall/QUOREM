@@ -25,16 +25,18 @@ Django-Jinja-Knockout Forms
 #Base Forms and Display Forms
 
 class UserProfileForm(RendererModelForm):
+    #ModelForm will auto-generate fields which dont already exist
+    #Therefore, creating fields prevents auto-generation.
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['user']
 
 
 
 class UploadForm(RendererModelForm):
     class Meta:
         model = UploadInputFile
-        fields = ['userprofile', 'upload_file']
+        fields = ['upload_file']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              UploadInputFile,
@@ -50,12 +52,12 @@ class UploadInputFileDisplayForm(WidgetInstancesMixin,
             model=UploadInputFile
             fields = '__all__'
 
-
 class ErrorDisplayForm(WidgetInstancesMixin, RendererModelForm,
                         metaclass=DisplayModelMetaclass):
     class Meta:
         model = ErrorMessage
         fields = '__all__'
+
 
 
 UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(

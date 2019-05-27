@@ -437,6 +437,10 @@ def search(request):
         rank_annotation = SearchRank(F('search_vector'), query)
         values.append('rank')
 
+    #put stuff here as you build filters
+    selected_type = request.GET.get('type', '')
+
+
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
         qs = model_type.objects.annotate(
@@ -457,15 +461,30 @@ def search(request):
         qs = qs.annotate(rank=rank_annotation)
     qs = qs.values(*values).none() #values for qs results
 
+    #stuff for faceted search
+    type_counts_raw = {}
+
     for type_name, model_type in model_types:
         this_qs = make_queryset(model_type, type_name)
+        type_count = this_qs.count()
+        if type_count:
+            type_counts_raw[type_name] = type_count
         #TODO add counts for each type here.
         #type_count = this_qs.count()
         qs = qs.union(this_qs.values(*values))
 
+        this_qs.annotate(n=models.Count('pk'))
+
     if q:
         qs = qs.order_by('-rank')
 
+    type_counts = sorted(
+        [
+            {'type': type_name, 'n': value}
+            for type_name, value in type_counts_raw.items()
+        ],
+        key=lambda t: t['n'], reverse=True
+    )
     #use a pagintator.
     paginator = Paginator(qs, 20) #20 results per page? maybe 20 pages.
     page_number = request.GET.get('page') or '1'
@@ -492,12 +511,24 @@ def search(request):
     else:
         title = 'Search'
 
+    #selected Filters
+    selected = {
+        'type': selected_type,
+    }
+    #remove empty keys if there are any
+    selected = {
+        key: value
+        for key, value in selected.items()
+        if value
+    }
     return render(request, 'search_results.htm',{
         'q':q,
         'title':title,
         'results':results,
         'page_total': paginator.count,
         'page': page,
+        'type_counts': type_counts,
+        'selected': selected,
         #'search_page': "active",
     })
 
