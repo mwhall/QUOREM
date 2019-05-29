@@ -26,6 +26,17 @@
             </div>
             <button type="submit" class="btn btn-success">Search</button>
           </form>
+          {% if selected %}
+          <p>Filters:</p>
+            {% if selected.type %}
+              {% if q %}
+              <a href="?q={{ q }}" class="btn btn-outline-primary">
+              {% else %}
+              <a href="#" class="btn btn-outline-primary">
+              {% endif %}
+                {{ selected.type }}  <span>&times;</span></a><br>
+            {% endif %}
+          {% endif %}
             {% if page_total %}
               {% if q %}
                 {% if page_total %}
@@ -54,7 +65,7 @@
                     {% else %}
                       <a href="?type={{ t.name }}">
                     {% endif %}
-                      {{ t.type }}  <span class="badge">{{ t.n }}</span></a></li>
+                      {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span></a></li>
                 {% endfor %}
               {% endif %}
               </ul>
