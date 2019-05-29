@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect
 from .forms import CreateInvestigationForm, ConfirmSampleForm
-from django.shortcuts import render
 from django.views import View
 from django.views.generic import ListView
 from django.contrib.auth.decorators import login_required
@@ -423,12 +422,13 @@ class SearchResultList(ListView):
 #A simple function based view to GET the search bar form
 def search(request):
     ##MODEL INFO:::
-    model_types= [('investigation', Investigation),
-                  ('sample', Sample),
-                  ('sampleMetadata', SampleMetadata),
-                  ('biologicalReplicate', BiologicalReplicate),
-                  ('biologicalReplicateMetadata', BiologicalReplicateMetadata),
-                  ('protocol', BiologicalReplicateProtocol),]
+    ## (logic_model_type, db_model_type, user_facing_model_string)
+    model_types= [('investigation', Investigation, 'Investigations'),
+                  ('sample', Sample, 'Samples'),
+                  ('sampleMetadata', SampleMetadata, 'Sample Metadata'),
+                  ('biologicalReplicate', BiologicalReplicate, 'Biological Replicates'),
+                  ('biologicalReplicateMetadata', BiologicalReplicateMetadata, 'Biological Replicate Metadata'),
+                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),]
 
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
@@ -443,7 +443,6 @@ def search(request):
 
     #put stuff here as you build filters
     selected_type = request.GET.get('type', '')
-
 
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
@@ -468,11 +467,14 @@ def search(request):
     #stuff for faceted search
     type_counts_raw = {}
 
-    for type_name, model_type in model_types:
+    for type_name, model_type, frontend_string in model_types:
+        if selected_type and selected_type != type_name:
+            continue
         this_qs = make_queryset(model_type, type_name)
         type_count = this_qs.count()
         if type_count:
-            type_counts_raw[type_name] = type_count
+            type_counts_raw[frontend_string] = {'count': type_count,
+                                                'name': type_name}
         #TODO add counts for each type here.
         #type_count = this_qs.count()
         qs = qs.union(this_qs.values(*values))
@@ -484,7 +486,7 @@ def search(request):
 
     type_counts = sorted(
         [
-            {'type': type_name, 'n': value}
+            {'type': type_name, 'n': value['count'], 'name': value['name']}
             for type_name, value in type_counts_raw.items()
         ],
         key=lambda t: t['n'], reverse=True
@@ -533,7 +535,8 @@ def search(request):
         'page': page,
         'type_counts': type_counts,
         'selected': selected,
-        #'search_page': "active",
+        'type': selected_type,
+            #'search_page': "active",
     })
 
 #probably have to do something along the lines of

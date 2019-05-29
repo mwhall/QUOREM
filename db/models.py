@@ -348,7 +348,8 @@ def load_mixed_objects(dicts,model_keys):
         ('sampleMetadata', SampleMetadata),
     ):
     """
-    for key, model in model_keys:
+    for key, model, ui_string in model_keys:
+        #disregard the ui_string variable. It's for frontend convenience.
         ids = to_fetch.get(key) or []
         objects = model.objects.filter(pk__in=ids)
         for obj in objects:
