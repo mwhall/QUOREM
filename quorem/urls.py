@@ -26,7 +26,9 @@ from db.views import (
     ProtocolStepList, ProtocolStepUpdate,
     SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
     #SearchResultList
-    search
+    search,
+    #analysis page
+    analyze
 )
 
 urlpatterns = [
@@ -117,7 +119,8 @@ urlpatterns = [
 
     #Search Result Routing
     path('search/', search, name='search-results'),
-
+    #analysis routing
+    path('analyze/', analyze, name='analysis')
 ]
 
 js_info_dict = {

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+    {% endblock head -%}
+    <style>
+      /*style stuff */
+    </style>
+  </head>
+  <body>
+    {% set active_page = "analyze" %}
+    {% include 'header.htm' -%}
+    <div class="container">
+      <div class="row">
+        <h2>Coming Soon!</h2>
+      </div>
+      <div class="row">
+        <p>Upload QIIME2 artifacts and let out servers do the leg work.</p>
+        <p>Run analyses in the cloud and get the results sent to you.<p>
+        <p>Or, use QIIME visualization tools right from this webpage.</p>
+      </div>
+    </div>
+    {% include 'base_bottom_scripts.htm' -%}
+    {% block bottom_scripts -%}
+    {% endblock bottom_scripts -%}
+  </body>
+</html>

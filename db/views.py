@@ -539,5 +539,6 @@ def search(request):
             #'search_page': "active",
     })
 
-#probably have to do something along the lines of
-# A template with extensive conditionals.
+#Analysis portal view. Just a place holder for now
+def analyze(request):
+    return render(request, 'analyze.htm')
