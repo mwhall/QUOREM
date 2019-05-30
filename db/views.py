@@ -371,54 +371,11 @@ class PipelineList(ListSortingView):
 
 class PipelineStepList(ListSortingView):
     pass
+
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
 ###############################################################################
 
-#The url for this should pass a param, i.e. path('search/<query>/')
-"""
-It seems a function based view might be more appropriate! commenting this out
-for now so that I dont lose it if things go south.
-##
-
-class SearchResultList(ListView):
-    template_name = 'search_results.htm'
-
-    #Can I access the GET variables here????
-
-    ############################################################################
-    ### get_queryset() queries the database using search vectors. Each model ###
-    ### class has been given a search vector field. The search vector field  ###
-    ### essentially indexes searching on each of the models' fields. This    ###
-    ### allows fast search and union of objects with different numbers of    ###
-    ### fields: We can union the queryset on pk, though the results will be  ###
-    ### based on search against the search vector.                           ###
-    ############################################################################
-    def get_queryset(self):
-        query = self.kwargs['query']
-        rank_annotation = SearchRank(F('search_vector'), query)
-        model_types= [('investigation', Investigation), ('sample', Sample),
-                      ('sampleMetadata', SampleMetadata)]
-        #Make an empty QuerySet. arbitrarily use Investigation as the model.
-        results = Investigation.objects.annotate(
-            type=models.Value('empty', output_field=models.CharField()),
-            rank=rank_annotation
-        ).values('pk','type', 'rank').none()
-
-        #Now, more models can be added simply by adding to the model_types list.
-        for model_type in model_types:
-                results = results.union(model_type[1].objects.annotate(
-                        rank=rank_annotation,
-                        type = models.Value(model_type[0],output_field=models.CharField())
-                ).filter(search_vector=query).values('pk','type','rank'))
-
-
-        #results is now a QuerySet: A list of dicts containing primary key,
-        #search rank as a value from 0.0-1.0,  and type. This list can be used
-        #to load the model objects from the database.
-        return results
-
-"""
 #A simple function based view to GET the search bar form
 def search(request):
     ##MODEL INFO:::
@@ -539,6 +496,14 @@ def search(request):
             #'search_page': "active",
     })
 
+###############################################################################
+###            ANALYSIS VIEWS                                             #####
+###############################################################################
+
 #Analysis portal view. Just a place holder for now
 def analyze(request):
     return render(request, 'analyze.htm')
+
+#for testing purposes, trying to render qiime viz via our app
+def q2(request):
+    return render(request, 'qiime_viz_test.htm')

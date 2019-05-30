@@ -42,6 +42,10 @@ def react_to_file(upload_file_id):
         if filetype == 'qz':
         #Not sure what to do with a QIIME file at this point actually...
             print("QIIME artifact")
+            upfile.upload_status = 'S'
+            upfile.update()
+            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Successfully saved a QIIME artifact.")
+            errorMessage.save()
         #    return('qiime artifact, handling not yet configured')
         elif filetype == 'replicate_table':
         #Launch methods to parse the replicate table and create correspondig models.

@@ -94,7 +94,7 @@ TEMPLATES = [
                 'django_jinja_knockout.context_processors.template_context_processor'
             ],
             'environment': 'quorem.jinja2.environment',
-            
+
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -170,10 +170,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-'''
+
 STATICFILES_DIRS = [
-    "vendors",
+    ("qiime", "staticfiles/q2templateassets"),
 ]
-'''
+
 
 AUTH_USER_MODEL = 'accounts.User'

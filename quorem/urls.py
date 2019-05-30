@@ -28,7 +28,8 @@ from db.views import (
     #SearchResultList
     search,
     #analysis page
-    analyze
+    analyze,
+    q2,
 )
 
 urlpatterns = [
@@ -120,7 +121,9 @@ urlpatterns = [
     #Search Result Routing
     path('search/', search, name='search-results'),
     #analysis routing
-    path('analyze/', analyze, name='analysis')
+    path('analyze/', analyze, name='analysis'),
+    #q2 viz test
+    path('q2test/', q2, name='q2test')
 ]
 
 js_info_dict = {
