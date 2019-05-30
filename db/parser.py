@@ -118,11 +118,8 @@ class Upload_Handler():
             try:
                 mapped = dic[i]
                 if mapped[1] == 'Date' or mapped[1] == 'Extraction Date':
-                    print("date extraction should be happening")
-                    print(datum[i])
                     formatted_date = self.format_date(datum[i])
                     info = (mapped[1], formatted_date)
-                    print(info)
                 else:
                     info = (mapped[1], datum[i])
                 if self.isNaN(info[1]):
