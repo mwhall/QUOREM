@@ -117,7 +117,7 @@ class Upload_Handler():
         for i in datum.index:
             try:
                 mapped = dic[i]
-                if mapped[1] == 'date' or mapped[1] == 'extraction_date':
+                if mapped[1] == 'Date' or mapped[1] == 'Extraction Date':
                     print("date extraction should be happening")
                     print(datum[i])
                     formatted_date = self.format_date(datum[i])

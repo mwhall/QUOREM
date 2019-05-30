@@ -1,33 +1,33 @@
-{"seq_date" : ("bio_replicate_metadata","date"),
-"consecutive_unique_sample_identifier" : ("sample_metadata","consecutive_sequencer_identifier"),
+{"seq_date" : ("bio_replicate_metadata","Date"),
+"consecutive_unique_sample_identifier" : ("sample_metadata","Consecutive Sequencer Identifier"),
 "sample_name": ("sample","name"),
-"replicate": ("bio_replicate","name"), #maybe name, maybe something else. 
-"sequencer_sample_name":("bio_replicate_metadata","sequencer_reference"),
-"batch" : ("bio_replicate_metadata", "batch_no"),
+"replicate": ("bio_replicate","name"), #maybe name, maybe something else.
+"sequencer_sample_name":("bio_replicate_metadata","Sequencer Reference"),
+"batch" : ("bio_replicate_metadata", "Batch Number"),
 "project_code" : ("investigation", "name"),
-"collection_date" : ("sample_metadata", "date"),
-"geo_loc_name" : ("sample_metadata","location_name"), 
-"alt_elev_meters" : ("sample_metadata", "elevation"),
-"samp_collect_device": ("sample_metadata" , "collection_device"),
-#"storage_temperature_before_shipping_celcius" : ("protocol_parameter", "storage_temp_pre_shipping"),
-#"temperature_during_transportation_celcius" : ("protocol_parameter" , "storage_temp_shipping"),
-#"storage_temperature_before_processing_celsius" : ("protocol_parameter", "storage_temp_pre_processing"),
+"collection_date" : ("sample_metadata", "Date"),
+"geo_loc_name" : ("sample_metadata","Location Name"),
+"alt_elev_meters" : ("sample_metadata", "Elevation"),
+"samp_collect_device": ("sample_metadata" , "Collection Device"),
+#"storage_temperature_before_shipping_celcius" : ("protocol_parameter", "Storage Temp pre-shipping"),
+#"temperature_during_transportation_celcius" : ("protocol_parameter" , "Storage Temp Shipping"),
+#"storage_temperature_before_processing_celsius" : ("protocol_parameter", "Storage Temp pre-processing"),
 
 # "experiment" : {"????????????????????????"}
 # "redox" : {"bio_replicate_metadata": "redox_conditions"},
 # "experimental_temperature_celsius"
 # experimental_salinity_grams_liter
 # experimental_sulfate_mM
-# 
+#
 # I'm not clear on how these fit into the ontology atm. They correspond to different investigations, each
 # is a paramter from an experiment performed on the sampe prior to sequencing? maybe sample metadata?
 
-"nucl_acid_ext" : ("sample_metadata", "extraction_method"),
-"nucl_acid_ext_date" : ("sample_metadata", "extraction_date"),
-"nucl_acid_ext_storage_condition_celsius" : ("sample_metadata", "extraction_storage_condition_temp"),
-"nucl_acid_ext_storage_time_until_use_days" : ("sample_metadata", "extraction_storage_condition_days_stored"),
-"target_gene" : ("bio_replicate_metadata", "target_gene"),
-"target_subfragment": ("bio_replicate_metadata", "target_subfragment"),
+"nucl_acid_ext" : ("sample_metadata", "Extraction Method"),
+"nucl_acid_ext_date" : ("sample_metadata", "Extraction Date"),
+"nucl_acid_ext_storage_condition_celsius" : ("sample_metadata", "Extraction Storage Condition: Temp"),
+"nucl_acid_ext_storage_time_until_use_days" : ("sample_metadata", "Extraction Storage Condition: Days Stored"),
+"target_gene" : ("bio_replicate_metadata", "Target Gene"),
+"target_subfragment": ("bio_replicate_metadata", "Target Sub-Fragment"),
 
 # PCR info... I don't understand the logic behind our current Schema in terms of protocol description.
 # Therefore, I'm not sure how this fits....
@@ -40,11 +40,11 @@
 #number_of_cycles
 
 #### Replicate Metadata? Sample metadata?
-"DNA_concentration_after_extraction_ng/uL" : ("bio_replicate_metadata", "dna_conc_post_extraction"),
-"DNA_concentration_after_first_PCR_ng/uL" : ("bio_replicate_metadata", "dna_conc_post_initial_pcr"),
-"final_DNA_concentration_ng/uL" : ("bio_replicate_metadata" , "dna_conc_post_final_pcr"),
+"DNA_concentration_after_extraction_ng/uL" : ("bio_replicate_metadata", "DNA Concentration Post Extraction"),
+"DNA_concentration_after_first_PCR_ng/uL" : ("bio_replicate_metadata", "DNA Concentration Post Initial PCR"),
+"final_DNA_concentration_ng/uL" : ("bio_replicate_metadata" , "DNA Concentration Post Final PCR"),
 
-# This one seems to be  SOP so it might need to be tucked away in a particular spot. call it metadata for 
+# This one seems to be  SOP so it might need to be tucked away in a particular spot. call it metadata for
 # now
 
 
@@ -55,8 +55,8 @@
 # "DNA_extraction_protocol" : {"sample_metadata": "dna_extraction_protocol"},
 # "amount_of_liquid_material_used_for_nucleic_acid_extraction_mL" : {"
 
-"sample_description" : ("sample_metadata" , "description"),
-"seq_center" : ("bio_replicate_metadata" , "sequencing_lab"),
+"sample_description" : ("sample_metadata" , "Description"),
+"seq_center" : ("bio_replicate_metadata" , "Sequencing Lab"),
 
 #Just gonna ignore these for now so that I can get moving with the code.
 
@@ -67,5 +67,5 @@
 
 #this will need to end up being protocol data, but im throwing everything into metadata for now.
 
-"seq_method" : ("bio_replicate_metadata", "seq_method")
+"seq_method" : ("bio_replicate_metadata", "Sequencing Method")
 }
