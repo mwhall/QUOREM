@@ -1,3 +1,5 @@
+from datetime import datetime
+
 class Input_Model():
     def __init__(self, name=''):
         #self._id = _id
@@ -115,7 +117,14 @@ class Upload_Handler():
         for i in datum.index:
             try:
                 mapped = dic[i]
-                info = (mapped[1], datum[i])
+                if mapped[1] == 'date' or mapped[1] == 'extraction_date':
+                    print("date extraction should be happening")
+                    print(datum[i])
+                    formatted_date = self.format_date(datum[i])
+                    info = (mapped[1], formatted_date)
+                    print(info)
+                else:
+                    info = (mapped[1], datum[i])
                 if self.isNaN(info[1]):
                     NaNs.append(info)
                     continue
@@ -132,11 +141,20 @@ class Upload_Handler():
                 else:
                     print("ERROR: " ,mapped[0], "Not Identified Correctly")
                     errors[info[0]] = info[1]
-            except:
+            except Exception as e:
                 print("ERROR: No mapping for value ", i)
+                print(e)
                 errors[i] = datum[i]
         return inv_stuff, sample_stuff, sample_metadata, replicate_stuff, replicate_metadata
 
     def isNaN(self, arg):
         #for some reason, NaN does not equal itself in Python. This allows tye agnostic NaN checking
         return arg != arg
+
+    def format_date(self, date):
+    #currently dates are sent to us as yyyymmdd.0
+    #just format them for now i guess?
+        if self.isNaN(date):
+            return date
+        d = str(date)
+        return d[:4] + "-" + d[4:6] + "-" + d[6:8]
