@@ -1,59 +1,45 @@
-<!--nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand">QUOREM</a>
-  <div id="navbarNav">
-    <ul class="navbar-nav justify-content-center">
-      <li class="nav-item">
-        <a class="nav-link" href="/">Home</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="/investigation/all">Data Base</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="{{ url('accounts:logout') }}">Logout</a>
-      </li>
-    </ul>
-  </div>
-</nav-->
-
-
-<!--nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand">QUOREM</a>
-  <div id="navbarNav">
-    <div class="collapse navbar-collapse">
-      <div class="navbar-nav justify-content-end">
-        <a class="nav-item nav-link" href="/">Home</a>
-        <a class="nav-item nav-link"  href="/investigation/all">Database</a>
-        <a class="nav-item nav-link" href="{{ url('accounts:logout') }}">Logout</a>
-      </div>
-    </div>
-  </div>
-</nav>
--->
-
+{% set navigation_bar = [
+  ('/', 'home', "Home"),
+  ('/investigation/all', 'database', "Data Base"),
+  ('/search/', 'search', "Search"),
+  ] -%}
+{% set active_page = active_page|default('database') -%}
 <nav class="navbar navbar-expand-lg navbar-dark bg-info">
   <a class="navbar-brand" href="#">QUOREM</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+  <button class="navbar-toggler" type="button" data-toggle="collapse"
+  data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+  aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
-
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav mr-auto">
-      <li class="nav-item">
-        <a class="nav-link" href="/">Home</a>
+    {% for href, id, caption in navigation_bar %}
+      {% if id == 'database' %}
+      <li id="{{ id|e }}", class="nav-item dropdown {% if id == active_page %} active {% endif %}">
+         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
+         role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         {{ caption|e }}</a>
+         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+           <a class="dropdown-item" href="/upload/new">Upload Data</a>
+           <div class="dropdown-divider"></div>
+           <a class="dropdown-item" href="/investigation/all">Investigations</a>
+           <a class="dropdown-item" href="/sample/all">Samples</a>
+           <a class="dropdown-item" href="/protocol/all">Protocols</a>
+         </div>
       </li>
-      <li class="nav-item">
-        <a class="nav-link" href="/investigation/all">Data Base</a>
+      {% else %}
+      <li id="{{ id|e }}", class="nav-item {% if id == active_page %} active {% endif %}">
+        <a class="nav-link " href="{{ href|e }}">{{ caption|e }}</a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link" href="/search/">Search</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="{{ url('accounts:logout') }}">Logout</a>
-      </li>
-    </ul>
-    <form class="form-inline my-2 my-lg-0" action="/search/" method="GET">
-      <input name="q" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" value="">
-      <input class="btn btn-success my-2 my-sm-0" type="submit" name="search"></input>
-    </form>
+      {% endif %}
+    {% endfor %}
+    <li class="nav-item">
+      <a class="nav-link" href="{{ url('accounts:logout') }}">Logout</a>
+    </li>
+  </ul>
+  <form class="form-inline my-2 my-lg-0" action="/search/" method="GET">
+    <input name="q" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" value="">
+    <input class="btn btn-success my-2 my-sm-0" type="submit" name="search"></input>
+  </form>
   </div>
 </nav>
