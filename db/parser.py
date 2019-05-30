@@ -113,24 +113,28 @@ class Upload_Handler():
         errors = {}
         NaNs = []
         for i in datum.index:
-            mapped = dic[i]
-            info = (mapped[1], datum[i])
-            if self.isNaN(info[1]):
-                NaNs.append(info)
-                continue
-            if mapped[0] == 'sample':
-                sample_stuff[info[0]] = info[1]
-            elif mapped[0] == 'bio_replicate':
-                replicate_stuff[info[0]] = info[1]
-            elif mapped[0] == 'investigation':
-                inv_stuff[info[0]] = info[1]
-            elif mapped[0] == 'bio_replicate_metadata':
-                replicate_metadata[info[0]] = info[1]
-            elif mapped[0] == 'sample_metadata':
-                sample_metadata[info[0]] = info[1]
-            else:
-                print("ERROR: " ,mapped[0], "Not Identified Correctly")
-                errors[info[0]] = info[1]
+            try:
+                mapped = dic[i]
+                info = (mapped[1], datum[i])
+                if self.isNaN(info[1]):
+                    NaNs.append(info)
+                    continue
+                if mapped[0] == 'sample':
+                    sample_stuff[info[0]] = info[1]
+                elif mapped[0] == 'bio_replicate':
+                    replicate_stuff[info[0]] = info[1]
+                elif mapped[0] == 'investigation':
+                    inv_stuff[info[0]] = info[1]
+                elif mapped[0] == 'bio_replicate_metadata':
+                    replicate_metadata[info[0]] = info[1]
+                elif mapped[0] == 'sample_metadata':
+                    sample_metadata[info[0]] = info[1]
+                else:
+                    print("ERROR: " ,mapped[0], "Not Identified Correctly")
+                    errors[info[0]] = info[1]
+            except:
+                print("ERROR: No mapping for value ", i)
+                errors[i] = datum[i]
         return inv_stuff, sample_stuff, sample_metadata, replicate_stuff, replicate_metadata
 
     def isNaN(self, arg):
