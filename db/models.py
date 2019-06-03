@@ -16,6 +16,7 @@ User = get_user_model()
 #But this allows us to store metadata
 
 class Investigation(models.Model):
+
     """
     Groups of samples, biosamples, and compsamples
     """
@@ -25,6 +26,10 @@ class Investigation(models.Model):
 
     #Stuff for searching
     search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
     def __str__(self):
         return self.name
     #override save to update the search vector field
@@ -90,6 +95,10 @@ class Sample(models.Model):
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
 
     search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
     def __str__(self):
         return self.name
 
@@ -114,6 +123,9 @@ class SampleMetadata(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['sample', 'key'], name='One entry per sample-metadata key pair')
+            ]
+        indexes = [
+            GinIndex(fields=['search_vector'])
         ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -137,6 +149,10 @@ class BiologicalReplicate(models.Model):
     #investigation = sample.investigation
 
     search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         BiologicalReplicate.objects.update(
@@ -158,6 +174,10 @@ class BiologicalReplicateMetadata(models.Model):
     biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE) # fk 14
 
     search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         BiologicalReplicateMetadata.objects.update(
@@ -200,6 +220,10 @@ class BiologicalReplicateProtocol(models.Model):
 #    protocol_steps = models.ManyToManyField('ProtocolStep')
 
     search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         BiologicalReplicateProtocol.objects.update(
@@ -300,7 +324,8 @@ def load_mixed_objects(dicts,model_keys):
         ('sampleMetadata', SampleMetadata),
     ):
     """
-    for key, model in model_keys:
+    for key, model, ui_string in model_keys:
+        #disregard the ui_string variable. It's for frontend convenience.
         ids = to_fetch.get(key) or []
         objects = model.objects.filter(pk__in=ids)
         for obj in objects:

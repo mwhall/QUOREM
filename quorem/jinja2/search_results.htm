@@ -9,11 +9,34 @@
     </style>
   </head>
   <body>
+    {% set active_page = "search" %}
     {% include 'header.htm' -%}
+
     <div class="container">
+      <div row>
+
+      </div>
       <div class="row">
         <div class="col-8 border-right">
           <h3> {{ title }} </h3>
+          <form action="/search"/ method="GET">
+            <div class="form-group">
+              <label for="largesearchbar">Putting the Q in QUOREM.</label>
+              <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
+            </div>
+            <button type="submit" class="btn btn-success">Search</button>
+          </form>
+          {% if selected %}
+          <p>Filters:</p>
+            {% if selected.type %}
+              {% if q %}
+              <a href="?q={{ q }}" class="btn btn-outline-primary">
+              {% else %}
+              <a href="/search/" class="btn btn-outline-primary">
+              {% endif %}
+                {{ selected.type }}  <span>&times;</span></a><br>
+            {% endif %}
+          {% endif %}
             {% if page_total %}
               {% if q %}
                 {% if page_total %}
@@ -32,12 +55,22 @@
           <div class="card-header bg-primary">
           </div>
           <div class="card-body">
-            <h5> Search Filters</h5>
-            <p class="card-text">This column of the page is reserved for search filters.
-              At a later iteration, we will be able to filter searches by parameters and more.</p>
+            <h5>Search Filters</h5>
+              <ul class="list-group list-group-flush">
+              {% if type_counts %}
+                {% for t in type_counts %}
+                  <li class='list-group-item'>
+                    {% if q %}
+                      <a href="?q={{ q }}&type={{ t.name }}">
+                    {% else %}
+                      <a href="?type={{ t.name }}">
+                    {% endif %}
+                      {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span></a></li>
+                {% endfor %}
+              {% endif %}
+              </ul>
           </div>
         </div>
-      </div>
      </div>
     </div>
   </div> <!--container -->

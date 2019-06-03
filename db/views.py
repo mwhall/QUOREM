@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect
 from .forms import CreateInvestigationForm, ConfirmSampleForm
-from django.shortcuts import render
 from django.views import View
 from django.views.generic import ListView
 from django.contrib.auth.decorators import login_required
@@ -28,7 +27,8 @@ import io
 from .formatters import format_sample_metadata, guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
-        ProtocolStep, UploadInputFile, load_mixed_objects
+        ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
+        UploadInputFile, load_mixed_objects
 )
 
 from .forms import (
@@ -44,9 +44,9 @@ import pandas as pd
 import numpy as np
 
 ###Stuff for searching
-from django.contrib.postgres.search import SearchQuery
-from django.contrib.postgres.search import SearchVector
-from django.contrib.postgres.search import SearchRank
+from django.contrib.postgres.search import(
+    SearchQuery, SearchRank, SearchVector)
+
 from django.db.models import F
 
 '''
@@ -77,7 +77,8 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk}),
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,
+                                                      }),
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -146,7 +147,7 @@ class InvestigationList(ListSortingView):
         return {
             'title': "All Investigations",
             'view_title': "All Investigations2",
-            'submit_text': "Save Investigation"
+            'submit_text': "Save Investigation",
         }
 
 
@@ -421,11 +422,17 @@ class SearchResultList(ListView):
 #A simple function based view to GET the search bar form
 def search(request):
     ##MODEL INFO:::
-    model_types= [('investigation', Investigation), ('sample', Sample),
-                  ('sampleMetadata', SampleMetadata),
-                  ('protocol', BiologicalReplicateProtocol)]
+    ## (logic_model_type, db_model_type, user_facing_model_string)
+    model_types= [('investigation', Investigation, 'Investigations'),
+                  ('sample', Sample, 'Samples'),
+                  ('sampleMetadata', SampleMetadata, 'Sample Metadata'),
+                  ('biologicalReplicate', BiologicalReplicate, 'Biological Replicates'),
+                  ('biologicalReplicateMetadata', BiologicalReplicateMetadata, 'Biological Replicate Metadata'),
+                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),]
 
     q = request.GET.get('q', '').strip() #user input from search bar
+    if not q:
+        q = request.GET.get('q2', '').strip()
     query = None
     rank_annotation = None
     values = ['pk','type']
@@ -433,6 +440,9 @@ def search(request):
         query = SearchQuery(q)
         rank_annotation = SearchRank(F('search_vector'), query)
         values.append('rank')
+
+    #put stuff here as you build filters
+    selected_type = request.GET.get('type', '')
 
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
@@ -454,15 +464,33 @@ def search(request):
         qs = qs.annotate(rank=rank_annotation)
     qs = qs.values(*values).none() #values for qs results
 
-    for type_name, model_type in model_types:
+    #stuff for faceted search
+    type_counts_raw = {}
+
+    for type_name, model_type, frontend_string in model_types:
+        if selected_type and selected_type != type_name:
+            continue
         this_qs = make_queryset(model_type, type_name)
+        type_count = this_qs.count()
+        if type_count:
+            type_counts_raw[frontend_string] = {'count': type_count,
+                                                'name': type_name}
         #TODO add counts for each type here.
         #type_count = this_qs.count()
         qs = qs.union(this_qs.values(*values))
 
+        this_qs.annotate(n=models.Count('pk'))
+
     if q:
         qs = qs.order_by('-rank')
 
+    type_counts = sorted(
+        [
+            {'type': type_name, 'n': value['count'], 'name': value['name']}
+            for type_name, value in type_counts_raw.items()
+        ],
+        key=lambda t: t['n'], reverse=True
+    )
     #use a pagintator.
     paginator = Paginator(qs, 20) #20 results per page? maybe 20 pages.
     page_number = request.GET.get('page') or '1'
@@ -489,12 +517,26 @@ def search(request):
     else:
         title = 'Search'
 
+    #selected Filters
+    selected = {
+        'type': selected_type,
+    }
+    #remove empty keys if there are any
+    selected = {
+        key: value
+        for key, value in selected.items()
+        if value
+    }
     return render(request, 'search_results.htm',{
         'q':q,
         'title':title,
         'results':results,
         'page_total': paginator.count,
         'page': page,
+        'type_counts': type_counts,
+        'selected': selected,
+        'type': selected_type,
+            #'search_page': "active",
     })
 
 #probably have to do something along the lines of
