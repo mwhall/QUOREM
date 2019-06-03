@@ -67,7 +67,7 @@ class Validator():
                 print("Missing columns")
                 raise MissingFieldError("Columns " + \
                         ", ".join(missing_fields) + " missing and required")
-        #if in database, make sure all their available data matches ours, 
+        #if in database, make sure all their available data matches ours,
         #if not it's mistaken identity
         else:
             try:
@@ -77,10 +77,10 @@ class Validator():
                 raise InconsistentWithDatabaseError("%s id %s found in database, \
                     but other %s fields do not exactly match database values.\
                     If you know the id is correct, remove the other %s fields\
-                    and it will submit to that %s." % (self.model_name, 
-                                                       self.id_field, 
-                                                       self.model_name, 
-                                                       self.model_name, 
+                    and it will submit to that %s." % (self.model_name,
+                                                       self.id_field,
+                                                       self.model_name,
+                                                       self.model_name,
                                                        self.model_name))
         return True
 
@@ -88,7 +88,7 @@ class Validator():
         """Does an exact fetch on all kwargs
            If kwargs[self.id_field] is an int then it queries that as pk"""
         identifier = self.data[self.id_field]
-        found_fields = [ x for x in 
+        found_fields = [ x for x in
             self.required_if_new + self.optional_fields if x in self.data ]
         kwargs = { self.django_mapping[x] + "__exact": self.data[x] for x in found_fields if x not in id_fields }
         if identifier.isdigit():
@@ -106,7 +106,7 @@ class Validator():
         identifier = self.data[self.id_field]
         in_db = self.in_db()
         if (not in_db):
-            found_fields = [ x for x in 
+            found_fields = [ x for x in
                   self.required_if_new + self.optional_fields if x in self.data ]
             kwargs = {}
             for field in found_fields:
@@ -132,12 +132,12 @@ class InvestigationValidator(Validator):
         self.model_name = "Investigation"
         self.model = Investigation
         self.id_field = "investigation_id"
-        self.required_if_new = ["investigation_institution", 
+        self.required_if_new = ["investigation_institution",
                                 "investigation_description"]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "institution",
                                self.required_if_new[1]: "description"}
-    
+
 class SampleValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -186,7 +186,7 @@ class ProtocolStepParameterValidator(Validator):
         self.model_name = "ProtocolStepParameter"
         self.model = ProtocolStepParameter
         self.id_field = "protocol_step_parameter_id"
-        self.required_if_new = ["protocol_step_id", 
+        self.required_if_new = ["protocol_step_id",
                                 "protocol_step_parameter_value"]
         self.optional_fields = ["protocol_step_parameter_description"]
         self.django_mapping = {self.id_field: "name",
@@ -244,12 +244,12 @@ class SampleMetadataValidator(Validator):
     def save(self):
         #First, get the sample
         samp = Sample.objects.get(name__exact=self.data["sample_id"])
-        mdl = self.model(sample = samp, 
+        mdl = self.model(sample = samp,
                          key = self.id_field,
                          value = self.value_field)
         mdl.save()
 
-        
+
 
 class BiologicalReplicateMetadataValidator(Validator):
     def __init__(self, key, *args, **kwargs):
@@ -286,7 +286,7 @@ class BiologicalReplicateMetadataValidator(Validator):
     def save(self):
         #First, get the replicate
         biorep = BiologicalReplicate.objects.get(name__exact=self.data["replicate_id"])
-        mdl = self.model(biological_replicate = biorep, 
+        mdl = self.model(biological_replicate = biorep,
                          key = self.id_field,
                          value = self.value_field)
         mdl.save()
@@ -294,14 +294,14 @@ class BiologicalReplicateMetadataValidator(Validator):
 
 
 Validators = [InvestigationValidator, BiologicalReplicateValidator,
-              BiologicalReplicateMetadataValidator, 
+              BiologicalReplicateMetadataValidator,
               BiologicalReplicateProtocolValidator,
               ProtocolStepValidator,
               ProtocolStepParameterValidator,
               SampleValidator, SampleMetadataValidator,
               ProtocolDeviationValidator]
 
-id_fields = ["investigation_id", "protocol_id", "protocol_step_id", 
+id_fields = ["investigation_id", "protocol_id", "protocol_step_id",
              "protocol_step_parameter_id", "sample_id", "replicate_id"]
 reserved_fields = id_fields + ["protocol_description", "protocol_citation", \
                                "protocol_step_name", "protocol_step_method", \
@@ -319,14 +319,14 @@ validator_mapper = {"investigation_id": InvestigationValidator,
 
 
 def resolve_input_row(row):
-    #row: an object s.t. row['sample_id'] gets a single sample id 
+    #row: an object s.t. row['sample_id'] gets a single sample id
     # from e.g. a spreadsheet
     #We resolve the objects in order that they would need to be created if a
-    # record were to be inserted from scratch, and if every detail were to be 
+    # record were to be inserted from scratch, and if every detail were to be
     # included in a single line for some insane reason
     #Once all objects in the row are resolved and found not to conflict, then we will save all objects in the row
     validators = []
-    #This progressive validation ensures that absolutely everything present in 
+    #This progressive validation ensures that absolutely everything present in
     #the Spreadsheet is compatible with the database
     #It will throw an error if:
     # - An _id column exists in the input, but not in the database, and other required data is missing (MissingColumnError)
@@ -345,7 +345,7 @@ def resolve_input_row(row):
                 raise e
     print("All ids in row validated")
     metadata_validators = []
-    # - Once we've shown that the whole row is consistent, we can save it to the database 
+    # - Once we've shown that the whole row is consistent, we can save it to the database
     if ("replicate_id" in row) and ("sample_id" in row):
         #We need to validate SampleMetadata and BiologicalReplicate
         metadata_validators = [SampleMetadataValidator, BiologicalReplicateMetadataValidator]
@@ -364,8 +364,7 @@ def resolve_input_row(row):
                 vldr.validate()
                 print("Saving metadata %s" % (field,))
                 vldr.save()
- 
-=======
+            try:
                 if sample_info['name'] in samples_seen:
                     samp = samples_seen[sample_info['name']]
                 else:

@@ -130,7 +130,8 @@ class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
 class SampleMetadataForm(RendererModelForm):
     class Meta:
         model = SampleMetadata
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
@@ -162,7 +163,8 @@ class ProtocolStepForm(RendererModelForm):
     protocolstep.label = "Protocol Step"
     class Meta:
         model = ProtocolStep
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
     def __init__(self, *args, **kwargs):
         super(ProtocolStepForm, self).__init__(*args, **kwargs)
         if 'biological_replicate_protocols' in self.fields:
@@ -172,17 +174,20 @@ class ProtocolStepForm(RendererModelForm):
 class ProtocolStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = ProtocolStep
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolStepParameterForm(RendererModelForm):
     class Meta:
         model = ProtocolStepParameter
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = ProtocolStepParameter
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 
 # Inline/Compound Forms
@@ -291,7 +296,8 @@ class ProtocolStepDisplayWithInlineParameters(FormWithInlineFormsets):
 class CreateInvestigationForm(forms.ModelForm):
     class Meta:
         model = Investigation
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class ConfirmSampleForm(forms.Form):
     """ A manually generated form that outputs BooleanFields for

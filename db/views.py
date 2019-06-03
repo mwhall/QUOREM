@@ -24,7 +24,7 @@ from django_jinja_knockout.views import (
 import django_tables2 as tables
 import io
 
-from .formatters import format_sample_metadata, guess_filetype
+from .formatters import guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
         ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
