@@ -1,8 +1,5 @@
 from django.db import models
-from django.urls import reverse
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core import serializers
 from django.shortcuts import redirect
 
 #for searching
@@ -10,14 +7,7 @@ from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.search import SearchVector
 from django.contrib.postgres.indexes import GinIndex
 
-from .formatters import guess_filetype, parse_csv_or_tsv, format_sample_metadata, format_protocol_sheet, format_artifact
-from .parser import Upload_Handler
-from .tasks import test_task, react_to_file, create_models_from_investigation_dict
-import pandas as pd
-import time
-
-from celery.result import ResultBase
-
+from celery import current_app
 
 User = get_user_model()
 
@@ -81,10 +71,10 @@ class UploadInputFile(models.Model):
     def save(self, *args, **kwargs):
         self.upload_status = 'P'
         super().save(*args, **kwargs)
-        react_to_file.delay(self.pk)
+        #Call to celery, without importing from tasks.py (avoids circular import)
+        current_app.send_task('db.tasks.react_to_file', (self.pk,))
         #output = result.collect()
         ##    print(i)
-    #    test_task.delay("X")
     def update(self, *args, **kwargs):
         super().save(*args, **kwargs)
     #    return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
@@ -131,6 +121,9 @@ class SampleMetadata(models.Model):
 
     search_vector = SearchVectorField(null=True)
     class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['sample', 'key'], name='One entry per sample-metadata key pair')
+            ]
         indexes = [
             GinIndex(fields=['search_vector'])
         ]
@@ -149,10 +142,11 @@ class BiologicalReplicate(models.Model):
     """
     name = models.CharField(max_length=255,unique=True)
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='sample')  # fk 1
-    sequence_file = models.ManyToManyField('Document') # store the location of the sequence file(s)
+    #sequence_file = models.ManyToManyField('Document') # store the location of the sequence file(s)
     biological_replicate_protocol = models.ForeignKey('BiologicalReplicateProtocol', on_delete=models.CASCADE)  # fk 5
     #Should be locked down to match sample's Investigation field, but I can't
-    investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)
+    #Ok, let's try the simple approach, where we fetch it through .sample.invesigation whenever we have a replicate
+    #investigation = sample.investigation
 
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -247,17 +241,6 @@ class ProtocolStep(models.Model):
     def __str__(self):
         return '%s -> %s' % (self.name, self.method)
 
-"""
-def protocol_step_from_table(intable):
-    count = 0
-    pks = [] #keys of created protocols
-    for index, row in intable.iterrows():
-        #table should have columns 'step' and 'method'
-        protocolStep = ProtocolStep(name=row['step'], method=row['method'])
-        protocolStep.save()
-        count += 1
-    print("Added ", count, " entries to table ProtocolStep")
-"""
 class ProtocolStepParameter(models.Model):
     """
     The default parameters for each protocol step
@@ -267,16 +250,6 @@ class ProtocolStepParameter(models.Model):
     name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-
-#####TODO Ensure ProtocolStep and ProtocolStepParameter are made at the same time, share keys where needed
-"""
-def protocol_step_parameter_from_table(intable):
-    count = 0
-
-    for index, row in intable.iterrows():
-        #table should have 'step', 'method', 'description', 'parameter_name', and 'parameter_default'
-        protocolStepParameter = ProtocolStepParameter(protocol_step=fks[count], name='
-"""
 
 class ProtocolStepParameterDeviation(models.Model):
     """
@@ -291,7 +264,9 @@ class PipelineResult(models.Model):
     """
     Some kind of result from a ComputationalPipeline
     """
-    document = models.ManyToManyField('Document')
+    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE)
+    source_software = models.CharField(max_length=255)
+    result_type = models.CharField(max_length=255)
     computational_pipeline = models.ForeignKey('ComputationalPipeline', on_delete=models.CASCADE)
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)
     replicates = models.ManyToManyField('BiologicalReplicate')
@@ -310,6 +285,7 @@ class ComputationalPipeline(models.Model):
     """
     Stores the steps and default parameters for a pipeline
     """
+    name = models.CharField(max_length=255)
     pipeline_step = models.ManyToManyField('PipelineStep') # fk 12
 
 
@@ -319,8 +295,8 @@ class PipelineStep(models.Model):
     These can be programatically defined by QIIME's transformations.
     """
     # many to many
-    name = models.CharField(max_length=255)
-
+    method = models.CharField(max_length=255)
+    action = models.CharField(max_length=255)
 
 class PipelineParameter(models.Model):
     """

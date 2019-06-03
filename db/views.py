@@ -506,4 +506,4 @@ def analyze(request):
 
 #for testing purposes, trying to render qiime viz via our app
 def q2(request):
-    return render(request, 'qiime_viz_test.htm')
+    return render(request, 'q2_viz.htm')
