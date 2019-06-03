@@ -187,6 +187,7 @@ class BiologicalReplicateMetadata(models.Model):
                              )
         )
 
+#UNUSED, tagged for removal
 class Document(models.Model):  #file
     """
     Store information to locate arbitrary files
@@ -246,10 +247,15 @@ class ProtocolStepParameter(models.Model):
     The default parameters for each protocol step
     """
     protocol_step = models.ForeignKey('ProtocolStep',
-                                             on_delete=models.CASCADE, verbose_name="Protocol Step") # fk ??
+                                             on_delete=models.CASCADE, verbose_name="Protocol Step")
     name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    class Meta:
+        constraints = [
+                models.UniqueConstraint(fields=['protocol_step', 'name'], 
+                    name='One entry per protocol step, parameter name pair')
+            ]
 
 class ProtocolStepParameterDeviation(models.Model):
     """
@@ -268,6 +274,7 @@ class PipelineResult(models.Model):
     source_software = models.CharField(max_length=255)
     result_type = models.CharField(max_length=255)
     computational_pipeline = models.ForeignKey('ComputationalPipeline', on_delete=models.CASCADE)
+    # This pipeline result is 
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)
     replicates = models.ManyToManyField('BiologicalReplicate')
 

@@ -24,6 +24,7 @@ from db.views import (
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
+    ReplicateDetail, ReplicateUpdate, ReplicateList,
     SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
     #SearchResultList
     search
@@ -69,6 +70,19 @@ urlpatterns = [
     re_path(r'sample/edit/(?P<sample_id>\d+)/$', SampleUpdate.as_view(),
         name='sample_update',
         kwargs={'view_title': 'Sample Update', 'allow_anonymous': False}),
+
+# Replicate Routing
+    re_path(r'replicate/all/$', ReplicateList.as_view(),
+            name = 'replicate_all',
+            kwargs = {'view_title': 'All Replicates', 'allow_anonymous': True}),
+    re_path(r'replicate/(?P<replicate_id>\d+)/$', ReplicateDetail.as_view(),
+        name='replicate_detail',
+        kwargs={'view_title': 'Replicate Detail', 'allow_anonymous': True}),
+    re_path(r'replicate/edit/(?P<replicate_id>\d+)/$', ReplicateUpdate.as_view(),
+        name='replicate_update',
+        kwargs={'view_title': 'Replicate Update', 'allow_anonymous': False}),
+
+
 
     # Investigation Metadata Routing
     re_path(r'investigation/metadata/(?P<investigation_id>\d+)/$', InvestigationMetadataDetail.as_view(),

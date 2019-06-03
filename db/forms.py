@@ -6,7 +6,7 @@ from django.forms.utils import flatatt
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    BiologicalReplicate, BiologicalReplicateProtocol, ComputationalPipeline,
+    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol, ComputationalPipeline,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
     UploadInputFile, UserProfile, ErrorMessage
 )
@@ -121,6 +121,7 @@ class ReplicateForm(RendererModelForm):
     class Meta:
         model = BiologicalReplicate
         exclude = ['search_vector']
+
 class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = BiologicalReplicate
@@ -136,6 +137,17 @@ class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetacla
     class Meta:
         model = SampleMetadata
         exclude = ['search_vector']
+
+class ReplicateMetadataForm(RendererModelForm):
+    class Meta:
+        model = BiologicalReplicateMetadata
+        fields = '__all__'
+
+class ReplicateMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = BiologicalReplicateMetadata
+        exclude = ['search_vector']
+
 
 class ProtocolForm(RendererModelForm):
     class Meta:
@@ -239,6 +251,29 @@ class SampleDisplayWithInlineMetadata(FormWithInlineFormsets):
     FormClass = SampleDisplayForm
     FormsetClasses = [SampleDisplayReplicateFormset, \
                       SampleDisplayMetadataFormset]
+    def get_formset_inline_title(self, formset):
+        if formset.model == BiologicalReplicate:
+            return "Biological Replicates"
+        return "Sample Metadata"
+
+ReplicateDisplayMetadataFormset = ko_inlineformset_factory(BiologicalReplicate,
+                                                 BiologicalReplicateMetadata,
+                                                 form=ReplicateMetadataDisplayForm)
+
+ReplicateMetadataFormset = ko_inlineformset_factory(BiologicalReplicate, BiologicalReplicateMetadata,
+                                                 form=ReplicateMetadataForm,
+                                                 extra=0,
+                                                 min_num=0)
+
+class ReplicateWithInlineMetadata(FormWithInlineFormsets):
+    FormClass = ReplicateForm
+    FormsetClasses = [ReplicateMetadataFormset]
+    def get_formset_inline_title(self, formset):
+        return "Replicate Metadata"
+
+class ReplicateDisplayWithInlineMetadata(FormWithInlineFormsets):
+    FormClass = ReplicateDisplayForm
+    FormsetClasses = [ReplicateDisplayMetadataFormset]
     def get_formset_inline_title(self, formset):
         if formset.model == BiologicalReplicate:
             return "Biological Replicates"
