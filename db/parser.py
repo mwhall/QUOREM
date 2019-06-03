@@ -18,6 +18,9 @@ class InconsistentWithDatabaseError(Exception):
     what is in the database"""
     pass
 
+class NotFoundError(Exception):
+    pass
+
 #Generic Validator functions go here
 class Validator():
     def __init__(self, data={}):
@@ -28,14 +31,11 @@ class Validator():
 
     def in_db(self):
         """Base Validator in database check
-           id_field is the value in the id_field for this model"""
+           id_field is the value in the id_field for this model
+           But has to check all metadata, since some models have joint keys"""
         identifier = self.data[self.id_field]
         try:
-            if identifier.isdigit():
-                obj = self.model.objects.get(pk=int(identifier))
-            else:
-                kwargs = {self.django_mapping[self.id_field]+"__exact":identifier}
-                obj = self.model.objects.get(**kwargs)
+            self.fetch(required_only=True)
             return True
         except self.model.DoesNotExist:
             return False
@@ -51,45 +51,47 @@ class Validator():
         in_db = self.in_db()
         #Can't have integers as names to avoid confusion
         if (not in_db) & identifier.isdigit():
-            print("Not in database, and identifier is digit")
             raise InvalidNameError("To avoid confusion with database \
                                    indexes, %s names cannot be integers. \
                                    Add a prefix to the %s column." % \
                                    (self.model_name, self.id_field))
         #If not in database, make sure we have all the fields to save it
         if (not in_db):
-            print("Not in database")
             #If the investigation can't be found, we need to create it, and
             #that requires an institution and description
             missing_fields = [ x for x in self.required_if_new \
                                                    if x not in self.data ]
             if len(missing_fields) > 0:
-                print("Missing columns")
-                raise MissingFieldError("Columns " + \
+                raise MissingColumnError("Columns " + \
                         ", ".join(missing_fields) + " missing and required")
         #if in database, make sure all their available data matches ours, 
         #if not it's mistaken identity
         else:
+            #TODO This raises mistakenly on ProtocolStepParameters when there are parameters with the same name, but derive from different protocol_steps
+            #We need to be able to handle cases where the id_field is possibly jointly unique on another field
             try:
-                self.fetch()
+                self.fetch(required_only=False)
             except self.model.DoesNotExist:
-                print("Inconsistent with database")
                 raise InconsistentWithDatabaseError("%s id %s found in database, \
                     but other %s fields do not exactly match database values.\
-                    If you know the id is correct, remove the other %s fields\
+                    Value: %s. If you know the id is correct, remove the other %s fields\
                     and it will submit to that %s." % (self.model_name, 
                                                        self.id_field, 
-                                                       self.model_name, 
+                                                       self.model_name,
+                                                       self.data[id_field],
                                                        self.model_name, 
                                                        self.model_name))
         return True
 
-    def fetch(self):
+    def fetch(self, required_only=False):
         """Does an exact fetch on all kwargs
            If kwargs[self.id_field] is an int then it queries that as pk"""
         identifier = self.data[self.id_field]
-        found_fields = [ x for x in 
-            self.required_if_new + self.optional_fields if x in self.data ]
+        if required_only:
+            fields = self.required_if_new
+        else:
+            fields = self.required_if_new + self.optional_fields
+        found_fields = [ x for x in fields if x in self.data ]
         kwargs = { self.django_mapping[x] + "__exact": self.data[x] for x in found_fields if x not in id_fields }
         if identifier.isdigit():
             name = int(identifier)
@@ -98,7 +100,6 @@ class Validator():
             name = self.data[self.id_field]
             name_field = self.django_mapping[self.id_field] + "__exact"
         kwargs[name_field] = name
-        print("Fetching with parameters %s" % (kwargs,))
         return self.model.objects.get(**kwargs)
 
     def save(self):
@@ -119,7 +120,6 @@ class Validator():
                     datum = self.data[field]
                 kwargs[self.django_mapping[field]] = datum
             kwargs[self.django_mapping[self.id_field]] = identifier
-            print("Saving an %s model with parameters %s" % (self.model_name, str(kwargs)))
             try:
                 new_model = self.model(**kwargs)
                 new_model.save()
@@ -207,17 +207,35 @@ class ProtocolDeviationValidator(Validator):
         self.django_mapping = {}
 
 class SampleMetadataValidator(Validator):
+    model_name = "SampleMetadata"
+    model = SampleMetadata
+
     def __init__(self, key, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model_name = "SampleMetadata"
-        self.model = SampleMetadata
         #In the case of SampleMetadata, id_field is the metadata field name
         self.id_field = key
-        print(self.id_field)
         self.value_field = self.data[self.id_field]
         self.required_if_new = ["sample_id"]
         self.django_mapping = {self.id_field: "key",
                                self.required_if_new[0]: "sample"}
+
+    def in_db(self):
+        identifier = self.data[self.id_field]
+        sample_identifier = self.data["sample_id"]
+        try:
+            #This will need to check for index pk TODO
+            samp = Sample.objects.get(name__exact=sample_identifier)
+            kwargs = {"key__exact": self.id_field, 
+                      "value__exact": self.value_field,
+                      "sample": samp}
+            obj = self.model.objects.get(**kwargs)
+            return True
+        except Sample.DoesNotExist:
+            raise NotFoundError("sample_id %s not found in database, failed to find associated metadata entry")
+            return False
+        except self.model.DoesNotExist:
+            return False
+
 
     def validate(self):
         #First, get the sample
@@ -235,35 +253,54 @@ class SampleMetadataValidator(Validator):
             except self.model.DoesNotExist:
                 #Cleared for writing
                 return True
-            print("Inconsistent with database")
             raise InconsistentWithDatabaseError("SampleMetadata is \
                         inconsistent with the database for field %s. Not \
                         overwriting." % (self.id_field,))
         return True
 
     def save(self):
-        #First, get the sample
-        samp = Sample.objects.get(name__exact=self.data["sample_id"])
-        mdl = self.model(sample = samp, 
-                         key = self.id_field,
-                         value = self.value_field)
-        mdl.save()
+        if (not self.in_db()):
+            #First, get the sample
+            samp = Sample.objects.get(name__exact=self.data["sample_id"])
+            mdl = self.model(sample = samp, 
+                             key = self.id_field,
+                             value = self.value_field)
+            mdl.save()
 
         
 
 class BiologicalReplicateMetadataValidator(Validator):
+    model_name = "BiologicalReplicateMetadata"
+    model = BiologicalReplicateMetadata
+    
     def __init__(self, key, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model_name = "BiologicalReplicateMetadata"
-        self.model = BiologicalReplicateMetadata
         self.id_field = key
+        self.value_field = self.data[self.id_field]
         self.required_if_new = ["replicate_id"]
         self.django_mapping = {self.id_field: "key",
-                               self.required_if_new[0]: "biological_repliacte"}
+                               self.required_if_new[0]: "biological_replicate"}
+
+    def in_db(self):
+        identifier = self.data[self.id_field]
+        rep_identifier = self.data["replicate_id"]
+        try:
+            #This will need to check for index pk TODO
+            biorep = BiologicalReplicate.objects.get(name__exact=rep_identifier)
+            kwargs = {"key__exact": self.id_field, 
+                      "value__exact": self.value_field,
+                      "biological_replicate": biorep}
+            obj = self.model.objects.get(**kwargs)
+            return True
+        except BiologicalReplicate.DoesNotExist:
+            raise NotFoundError("replicate_id %s not found in database, failed to find associated metadata entry")
+            return False
+        except self.model.DoesNotExist:
+            return False
 
     def validate(self):
         #First, get the sample
-        biorep = BiologicalReplicate.objects.get(name__exact=self.data["sample_id"])
+        biorep = BiologicalReplicate.objects.get(name__exact=self.data["replicate_id"])
         #Check if in database
         try:
             self.model.objects.get(biological_replicate = biorep,
@@ -277,7 +314,6 @@ class BiologicalReplicateMetadataValidator(Validator):
             except self.model.DoesNotExist:
                 #Cleared for writing
                 return True
-            print("Inconsistent with database")
             raise InconsistentWithDatabaseError("BiologicalReplicateMetadata is \
                         inconsistent with the database for field %s. Not \
                         overwriting." % (self.id_field,))
@@ -285,11 +321,12 @@ class BiologicalReplicateMetadataValidator(Validator):
 
     def save(self):
         #First, get the replicate
-        biorep = BiologicalReplicate.objects.get(name__exact=self.data["replicate_id"])
-        mdl = self.model(biological_replicate = biorep, 
-                         key = self.id_field,
-                         value = self.value_field)
-        mdl.save()
+        if (not self.in_db()):
+            biorep = BiologicalReplicate.objects.get(name__exact=self.data["replicate_id"])
+            mdl = self.model(biological_replicate = biorep, 
+                             key = self.id_field,
+                             value = self.value_field)
+            mdl.save()
 
 
 
@@ -303,7 +340,10 @@ Validators = [InvestigationValidator, BiologicalReplicateValidator,
 
 id_fields = ["investigation_id", "protocol_id", "protocol_step_id", 
              "protocol_step_parameter_id", "sample_id", "replicate_id"]
-reserved_fields = id_fields + ["protocol_description", "protocol_citation", \
+reserved_fields = id_fields + ["investigation_description", \
+                               "investigation_citation", \
+                               "investigation_institution", \
+                               "protocol_description", "protocol_citation", \
                                "protocol_step_name", "protocol_step_method", \
                                "protocol_step_parameter_name", \
                                "protocol_step_parameter_value", \
@@ -337,13 +377,10 @@ def resolve_input_row(row):
         if field in row:
             validator = validator_mapper[field](data=row)
             try:
-                print("Validating the %s" % (field,))
                 validator.validate()
-                print("Validated the %s" % (field,))
                 validators.append(validator)
             except Exception as e:
                 raise e
-    print("All ids in row validated")
     metadata_validators = []
     # - Once we've shown that the whole row is consistent, we can save it to the database 
     if ("replicate_id" in row) and ("sample_id" in row):
@@ -354,89 +391,10 @@ def resolve_input_row(row):
     elif "sample_id" in row:
         metadata_validators = [SampleMetadataValidator]
     for validator in validators:
-        print("Saving the %s" % (validator.model_name,))
         validator.save()
     for validator in metadata_validators:
         for field in row.index:
             if field not in reserved_fields:
-                print("Validating metadata %s" % (field,))
                 vldr = validator(field, data=row)
                 vldr.validate()
-                print("Saving metadata %s" % (field,))
                 vldr.save()
- 
-=======
-                if sample_info['name'] in samples_seen:
-                    samp = samples_seen[sample_info['name']]
-                else:
-                    samp = Sample(name = sample_info['name'])
-                    new_samples[samp.name] = samp
-            except:
-                continue
-
-            if not samp.validate():
-                continue
-
-            rep = Replicate(replicates['name'])
-            rep.metadata = replicate_metadata
-
-        #Assign the replicate to the sample.
-            samp.biol_reps[rep.name] = rep
-        #Assign the sample metadata to the sample.
-            samp.metadata = sample_metadata
-        #Assign the sample to the investigation.
-            inv.samples[samp.name] = samp
-        #Keep track by storing samples and investigations in the dict.
-            invs_seen[inv.name] = inv
-            samples_seen[samp.name] = samp
-        return invs_seen, new_invs, new_samples
-
-    def partition_datum(self, datum, dic):
-        sample_stuff = {}
-        replicate_stuff = {}
-        inv_stuff = {}
-        sample_metadata = {}
-        replicate_metadata = {}
-        errors = {}
-        NaNs = []
-        for i in datum.index:
-            try:
-                mapped = dic[i]
-                if mapped[1] == 'Date' or mapped[1] == 'Extraction Date':
-                    formatted_date = self.format_date(datum[i])
-                    info = (mapped[1], formatted_date)
-                else:
-                    info = (mapped[1], datum[i])
-                if self.isNaN(info[1]):
-                    NaNs.append(info)
-                    continue
-                if mapped[0] == 'sample':
-                    sample_stuff[info[0]] = info[1]
-                elif mapped[0] == 'bio_replicate':
-                    replicate_stuff[info[0]] = info[1]
-                elif mapped[0] == 'investigation':
-                    inv_stuff[info[0]] = info[1]
-                elif mapped[0] == 'bio_replicate_metadata':
-                    replicate_metadata[info[0]] = info[1]
-                elif mapped[0] == 'sample_metadata':
-                    sample_metadata[info[0]] = info[1]
-                else:
-                    print("ERROR: " ,mapped[0], "Not Identified Correctly")
-                    errors[info[0]] = info[1]
-            except Exception as e:
-                print("ERROR: No mapping for value ", i)
-                print(e)
-                errors[i] = datum[i]
-        return inv_stuff, sample_stuff, sample_metadata, replicate_stuff, replicate_metadata
-
-    def isNaN(self, arg):
-        #for some reason, NaN does not equal itself in Python. This allows tye agnostic NaN checking
-        return arg != arg
-
-    def format_date(self, date):
-    #currently dates are sent to us as yyyymmdd.0
-    #just format them for now i guess?
-        if self.isNaN(date):
-            return date
-        d = str(date)
-        return d[:4] + "-" + d[4:6] + "-" + d[6:8]

@@ -41,23 +41,21 @@ def react_to_file(upload_file_id):
 
 @shared_task
 def process_table(infile):
+    #TODO instead of having it stop, let it process all rows
+    #and return all errors from all bad rows
     for index, row in parse_csv_or_tsv(infile).iterrows():
         try:
-            print("Resolving row %d" % (index,))
             resolve_input_row(row)
-            print("Resolved")
         except Exception as e:
             print(e)
+            raise e
     return "Success"
 
 @shared_task
 def report_success(upfile):
-    #################################################################
     upfile.upload_status = 'S'
     #update just calls super.save() because vanilla save() has been overridden
     #to trigger a file upload process.
     upfile.update()
-    ################################################################
-    print("Success.")
     errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
     errorMessage.save()
