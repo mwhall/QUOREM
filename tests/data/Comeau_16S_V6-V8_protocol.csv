@@ -1,0 +1,16 @@
+protocol_id	protocol_description	protocol_citation	protocol_step_id	protocol_step_method	protocol_step_parameter_id	protocol_step_parameter_value	protocol_step_parameter_description
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	indexing	Indexing of reads for multiplexing.	pcr_n_steps	1	One-step PCR is used for indexing
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	indexing	Indexing of reads for multiplexing.	adaptors	Nextera v2 set A to D	16 forward × 24 reverse indices means that, with only 40 different fusion primers, all 384 combinations can be achieved
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	pcr	DNA amplification by polymerase chain reaction	replicates	duplicate	Duplicates using separate template dilutions (1:1 and 1:10)
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	pcr	DNA amplification by polymerase chain reaction	controls	four negative	Four negative controls, occasionally a positive control
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	pcr	DNA amplification by polymerase chain reaction	validation	Invitrogen E-gel	The duplicate PCRs are combined in one plate and then verified visually by running a high-throughput Invitrogen 96-well E-gel. Any samples with failed PCRs (or spurious bands) are reamplified by optimizing PCR conditions to produce correct bands in order to complete the sample plate(s) before continuing. 
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	cleanup	Removal of non-template product and non-DNA molecules	kit	SequalPrep	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	normalization	Equalization of DNA content across samples	kit	SequalPrep	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	concentration	Measurement of the DNA concentration	instrument	Invitrogen Qubit	Invitrogen Qubit double-stranded DNA high-sensitivity (dsDNA HS) fluorescence-based method before sequencing
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	primer	DNA sequences used as anchors to amplify a region.	forward_sequence	ACGCGHNRAACCTTACC	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	primer	DNA sequences used as anchors to amplify a region.	reverse_sequence	ACGGGCRGTGWGTRCAA	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	primer	DNA sequences used as anchors to amplify a region.	forward_name	B969F	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	primer	DNA sequences used as anchors to amplify a region.	reverse_name	BA1406R	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	dna_sequencing	DNA sequencing	instrument	Illumina MiSeq	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	dna_sequencing	DNA sequencing	kit	V3	
+Comeau_16S_V6-V8	16S rRNA gene sequencing on MiSeq (CGEB IMR), V6-V8	Comeau et al., 2017	dna_sequencing	DNA sequencing	demultiplex	Custom script	See manuscript Text S1
