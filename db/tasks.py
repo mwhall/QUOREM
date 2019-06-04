@@ -51,6 +51,11 @@ def process_table(infile):
     return "Success"
 
 @shared_task
+def process_qiime_artifact(infile):
+    ## TODO:
+    return 'Success'
+
+@shared_task
 def report_success(upfile):
     #################################################################
     upfile.upload_status = 'S'

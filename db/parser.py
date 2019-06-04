@@ -18,6 +18,12 @@ class InconsistentWithDatabaseError(Exception):
     what is in the database"""
     pass
 
+class MissingFieldError(Exception):
+    """Error when a datum is not in the db and does not have all of the fields
+       Required to create a new model instance.
+    """
+    pass
+
 #Generic Validator functions go here
 class Validator():
     def __init__(self, data={}):
@@ -356,6 +362,11 @@ def resolve_input_row(row):
     for validator in validators:
         print("Saving the %s" % (validator.model_name,))
         validator.save()
+
+    invs_seen= {}
+    samples_seen = {}
+
+
     for validator in metadata_validators:
         for field in row.index:
             if field not in reserved_fields:
@@ -379,6 +390,7 @@ def resolve_input_row(row):
             rep = Replicate(replicates['name'])
             rep.metadata = replicate_metadata
 
+
         #Assign the replicate to the sample.
             samp.biol_reps[rep.name] = rep
         #Assign the sample metadata to the sample.
@@ -388,7 +400,8 @@ def resolve_input_row(row):
         #Keep track by storing samples and investigations in the dict.
             invs_seen[inv.name] = inv
             samples_seen[samp.name] = samp
-        return invs_seen, new_invs, new_samples
+    #this was one more ident deep
+    return invs_seen, new_invs, new_samples
 
     def partition_datum(self, datum, dic):
         sample_stuff = {}
