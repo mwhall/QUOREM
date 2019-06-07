@@ -26,6 +26,9 @@ from db.views import (
     ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
+    PipelineCreate, PipelineDetail, PipelineList, PipelineUpdate,
+    PipelineStepCreate, PipelineStepDetail,
+    PipelineStepList, PipelineStepUpdate,
     ReplicateDetail, ReplicateUpdate, ReplicateList,
     SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
     #SearchResultList
@@ -125,6 +128,35 @@ urlpatterns = [
     re_path(r'protocol/step/edit/(?P<protocol_step_id>\d+)/$', ProtocolStepUpdate.as_view(),
         name = 'protocol_step_update',
         kwargs = {'view_title': "Protocol Step Update", 'allow_anonymous': False}),
+
+    # Pipeline Routing
+    re_path(r'pipeline/(?P<pipeline_id>\d+)/$', PipelineDetail.as_view(),
+        name='pipeline_detail',
+        kwargs={'view_title': "Pipeline Detail", 'allow_anonymous': True}),
+    re_path(r'pipeline/all/$', PipelineList.as_view(),
+        name='pipeline_all',
+        kwargs={'view_title': "All Pipelines", 'allow_anonymous': True}),
+    re_path(r'pipeline/create/$', PipelineCreate.as_view(),
+        name = 'pipeline_create',
+        kwargs={'view_title': "Create New Pipeline", 'allow_anonymous': False}),
+    re_path(r'pipeline/edit/(?P<pipeline_id>\d+)/$', PipelineUpdate.as_view(),
+        name = 'pipeline_update',
+        kwargs={'view_title': "Pipeline Update", 'allow_anonymous': False}),
+
+    # Protocol Step Routing
+    re_path(r'pipeline/step/all/$', PipelineStepList.as_view(),
+            name='pipeline_step_all',
+            kwargs={'view_title': "All Pipeline Steps", 'allow_anonymous': True}),
+    re_path(r'pipeline/step/create/$', PipelineStepCreate.as_view(),
+        name = 'pipeline_step_create',
+        kwargs={'view_title': "Create New Pipeline Step", 'allow_anonymous': False}),
+    re_path(r'pipeline/step/(?P<pipeline_step_id>\d+)/$', PipelineStepDetail.as_view(),
+        name = 'pipeline_step_detail',
+        kwargs={'view_title': "Pipeline Step Detail", 'allow_anonymous': True}),
+    re_path(r'pipeline/step/edit/(?P<pipeline_step_id>\d+)/$', PipelineStepUpdate.as_view(),
+        name = 'pipeline_step_update',
+        kwargs = {'view_title': "Pipeline Step Update", 'allow_anonymous': False}),
+
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
     re_path(r'protocol-step-grid(?P<action>/?\w*)/$', ProtocolStepFkWidgetGrid.as_view(),

@@ -1,5 +1,4 @@
 from django.shortcuts import render, redirect
-from .forms import CreateInvestigationForm, ConfirmSampleForm
 from django.views import View
 from django.views.generic import ListView
 from django.contrib.auth.decorators import login_required
@@ -28,6 +27,7 @@ from .formatters import guess_filetype
 from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
         ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
+        ComputationalPipeline, PipelineStep, PipelineStepParameter,
         UploadInputFile, load_mixed_objects
 )
 
@@ -35,7 +35,10 @@ from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
     ProtocolForm, ProtocolDisplayWithInlineSteps,
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
-    ProtocolWithInlineSteps, ReplicateDisplayWithInlineMetadata,
+    ProtocolWithInlineSteps,
+    PipelineForm, PipelineDisplayWithInlineSteps,
+    PipelineStepWithInlineParameters, PipelineStepDisplayWithInlineParameters,
+    PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors
@@ -62,11 +65,11 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
     def get_bs_form_opts(self):
         return {
                 'title': 'Upload Files',
-                'submit_text': 'Upload',
+               'submit_text': 'Upload',
                 }
 
-#    def get_success_url(self):
-#        return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk})
+ #   def get_success_url(self):
+ #       return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk})
 
 class UploadList(ListSortingView):
     model = UploadInputFile
@@ -421,11 +424,132 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
     def get_success_url(self):
         return reverse('protocol_step_detail', kwargs={'protocol_step_id': self.object.pk})
 
+
 class PipelineList(ListSortingView):
-    pass
+    model = ComputationalPipeline
+    allowed_sort_orders = '__all__'
+    grid_fields = ['name']
+    def get_heading(self):
+        return "Pipeline List"
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('pipeline_detail', kwargs={'pipeline_id': obj.pk}),
+            obj.name
+        )]
+        # is_authenticated is not callable in Django 2.0.
+        if self.request.user.is_authenticated:
+            links.append(format_html(
+                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+                reverse('pipeline_update', kwargs={'pipeline_id': obj.pk})
+            ))
+        return links
+
+    def get_display_value(self, obj, field):
+        if field == 'name':
+            links = self.get_name_links(obj)
+            return mark_safe(''.join(links))
+        else:
+            return super().get_display_value(obj, field)
+
 
 class PipelineStepList(ListSortingView):
-    pass
+    model = PipelineStep
+    allowed_sort_orders = '__all__'
+    grid_fields = ['method', 'action']
+    def get_heading(self):
+        return "Pipeline Step List"
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('pipeline_step_detail', kwargs={'pipeline_step_id': obj.pk}),
+            obj.method
+        )]
+        # is_authenticated is not callable in Django 2.0.
+        if self.request.user.is_authenticated:
+            links.append(format_html(
+                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+                reverse('pipeline_step_update', kwargs={'pipeline_step_id': obj.pk})
+            ))
+        return links
+
+    def get_display_value(self, obj, field):
+        if field == 'method':
+            links = self.get_name_links(obj)
+            return mark_safe(''.join(links))
+        else:
+            return super().get_display_value(obj, field)
+
+
+
+class PipelineDetail(InlineDetailView):
+    pk_url_kwarg = 'pipeline_id'
+    form_with_inline_formsets = PipelineDisplayWithInlineSteps
+
+class PipelineCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    pk_url_kwarg = 'pipeline_id'
+    form_with_inline_formsets = PipelineWithInlineSteps
+    def get_heading(self):
+        return "Create New Pipeline"
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Create Pipeline',
+            'submit_text': 'Save Pipeline',
+            'inline_title': 'Pipeline Steps'
+        }
+
+    def get_success_url(self):
+        return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
+
+class PipelineUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'pipeline_id'
+    form_with_inline_formsets = PipelineWithInlineSteps
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Update Pipeline',
+            'submit_text': 'Save Pipeline',
+        }
+
+    def get_success_url(self):
+        return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
+
+
+class PipelineStepDetail(InlineDetailView):
+    pk_url_kwarg = 'pipeline_step_id'
+    form_with_inline_formsets = PipelineStepDisplayWithInlineParameters
+
+class PipelineStepCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    pk_url_kwarg = 'pipeline_step_id'
+    form_with_inline_formsets = PipelineStepWithInlineParameters
+    def get_heading(self):
+        return "Create New Pipeline Step"
+    def get_bs_form_opts(self):
+        return {
+                'title': 'Create Pipeline Step',
+                'submit_text': 'Save Pipeline Step'
+                }
+
+    def get_success_url(self):
+        return reverse('pipeline_step_detail', kwargs={'pipeline_step_id': self.object.pk})
+
+class PipelineStepUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'pipeline_step_id'
+    form_with_inline_formsets = PipelineStepWithInlineParameters
+    def get_bs_form_opts(self):
+        return {
+                'class': 'pipelinestep',
+                'title': 'Update Pipeline Step',
+                'submit_text': 'Save Pipeline Step'
+                }
+
+    def get_success_url(self):
+        return reverse('pipeline_step_detail', kwargs={'pipeline_step_id': self.object.pk})
+
+
 
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
