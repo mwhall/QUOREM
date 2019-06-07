@@ -385,10 +385,14 @@ def resolve_input_row(row):
     # - Once we've shown that the whole row is consistent, we can save it to the database
     if ("replicate_id" in row) and ("sample_id" in row):
         #We need to validate SampleMetadata and BiologicalReplicate
+        print("rep: ", row['replicate_id'])
+        print("samp: ", row["sample_id"])
         metadata_validators = [SampleMetadataValidator, BiologicalReplicateMetadataValidator]
     elif "replicate_id" in row:
+        print("2")
         metadata_validators = [BiologicalReplicateMetadataValidator]
     elif "sample_id" in row:
+        print("3")
         metadata_validators = [SampleMetadataValidator]
     for validator in validators:
         validator.save()

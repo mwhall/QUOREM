@@ -16,6 +16,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from django.conf.urls import url
+from django.conf.urls.static import static
+from django.conf import settings
 from landingpage.views import index
 from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, ProtocolStepFkWidgetGrid
 from db.views import (
@@ -30,7 +32,7 @@ from db.views import (
     search,
     #analysis page
     analyze,
-    q2,
+    q2, test_page,
 )
 
 urlpatterns = [
@@ -137,8 +139,10 @@ urlpatterns = [
     #analysis routing
     path('analyze/', analyze, name='analysis'),
     #q2 viz test
-    path('q2test/', q2, name='q2test')
-]
+    path('q2test/', q2, name='q2test'),
+    #placeholder page for testing new features and code
+    path('placeholder/', test_page, name='placeholder' ),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {
             'domain': 'djangojs',
