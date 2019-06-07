@@ -125,7 +125,7 @@ class Validator():
                     else:
                         name = f_id
                         name_field = self.django_mapping[field] + "__exact"
-                else:  
+                else:
                     vldtr = validator_mapper[field](data=self.data)
                     name = vldtr.fetch()
                     if str(f_id).isdigit():
@@ -173,7 +173,7 @@ class Validator():
 class InvestigationValidator(Validator):
     model_name = "Investigation"
     model = Investigation
-  
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "investigation_id"
@@ -186,7 +186,7 @@ class InvestigationValidator(Validator):
 class SampleValidator(Validator):
    model_name = "Sample"
    model = Sample
- 
+
    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "sample_id"
@@ -197,7 +197,7 @@ class SampleValidator(Validator):
 class BiologicalReplicateValidator(Validator):
    model_name = "BiologicalReplicate"
    model = BiologicalReplicate
-   
+
    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "replicate_id"
@@ -209,7 +209,7 @@ class BiologicalReplicateValidator(Validator):
 class BiologicalReplicateProtocolValidator(Validator):
     model_name = "BiologicalReplicateProtocol"
     model = BiologicalReplicateProtocol
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "protocol_id"
@@ -221,7 +221,7 @@ class BiologicalReplicateProtocolValidator(Validator):
 class ProtocolStepValidator(Validator):
     model_name = "ProtocolStep"
     model = ProtocolStep
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "protocol_step_id"
@@ -278,7 +278,7 @@ class PipelineStepParameterValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "pipeline_step_parameter_id"
-        self.required_if_new = ["pipeline_step_id", 
+        self.required_if_new = ["pipeline_step_id",
                                 "pipeline_step_parameter_value"]
         self.jointly_unique = [(self.id_field, "pipeline_step_id")]
         self.django_mapping = {self.id_field: "name",
@@ -291,7 +291,7 @@ class PipelineStepParameterValidator(Validator):
 class ProtocolDeviationValidator(Validator):
     model_name = "ProtocolStepParameterDeviation"
     model = ProtocolStepParameterDeviation
- 
+
     def __init__(self, *args, **kwargs):
         self.id_field = None
         self.required_if_new = []
@@ -359,10 +359,6 @@ class SampleMetadataValidator(Validator):
                              value = self.value_field)
             mdl.save()
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 947277ea0745f165437f88858f2de1ccd2355359
 
 class BiologicalReplicateMetadataValidator(Validator):
     model_name = "BiologicalReplicateMetadata"
@@ -435,14 +431,10 @@ Validators = [InvestigationValidator, BiologicalReplicateValidator,
               PipelineValidator, PipelineStepValidator,
               PipelineStepParameterValidator]
 
-<<<<<<< HEAD
-id_fields = ["investigation_id", "protocol_id", "protocol_step_id",
-             "protocol_step_parameter_id", "sample_id", "replicate_id"]
-=======
 id_fields = ["investigation_id", "protocol_id", "protocol_step_id", \
              "protocol_step_parameter_id", "sample_id", "replicate_id", \
              "pipeline_id", "pipeline_step_id", "pipeline_step_parameter_id"]
->>>>>>> 947277ea0745f165437f88858f2de1ccd2355359
+
 reserved_fields = id_fields + ["investigation_description", \
                                "investigation_citation", \
                                "investigation_institution", \
