@@ -64,16 +64,15 @@ def process_table(infile):
 @shared_task
 def process_qiime_artifact(infile, upfile):
     ## TODO: Integrate Q2 extractor for pipeline info etc.
-
+    return "Nothing happened but all the stubs were called correctly."
     """
         A note on the below code:
         This is some basic, valid code which converts any uploaded QIIME
         artifact into a a zipfile containing the artifact as well as a template
         generated text file. This could be used to generate shell scripts that
         correspond to the qiime artifact.
-   """
-   #####
-   """
+
+   ###############################################
     try:
         #an artifact is either qzv or qza.
         name = upfile.upload_file.name
@@ -91,9 +90,8 @@ def process_qiime_artifact(infile, upfile):
         print(upfile.upload_file.url)
         return 'Success'
     except Exception as e:
-        return e
-   """
-  return "Nothing happened but all the stubs were called correctly."
+        return e """
+
 @shared_task
 def report_success(upfile):
     upfile.upload_status = 'S'
