@@ -32,7 +32,7 @@ def account_signup(request):
 def account_signin(request):
     form = SignInForm(request.POST or None)
     action = 'SignIn'
-
+    login_failed = False
     if request.method == 'POST' and form.is_valid():
         email = form.cleaned_data['email']
         password = form.cleaned_data['password']
@@ -40,8 +40,11 @@ def account_signin(request):
         if user:
             login(request, user)
             return redirect('landing')
-
-    return render(request, 'accounts/signin.html', context={'form': form, 'action': action})
+        else:
+            login_failed = True
+    return render(request, 'accounts/signin.html', context={'form': form,
+                                                            'action': action,
+                                                            'failed': login_failed})
 
 
 def account_logout(request):
