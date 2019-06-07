@@ -1,19 +1,41 @@
 {% extends 'landingpage/base.html' %}
-
+<!-- todo: abstract error style into a class. Can't figure out where the correct
+style sheet is. -->
 {% block content %}
     <div class = "auth-form">
       <form method="POST">{% csrf_token %}
         <p class="form-label"><em>{{ action }}</em></p>
       <ul>
         <li>Email</li>
+        {% if taken %}
+          <p style="color: red; font-size: 0.75rem">
+            This email is already taken by another user.
+          </p>
+        {% endif %}
         <li>{{ form.email }}</li>
         <li>Password</li>
         <li>{{ form.password }}</li>
         <li>Confirm Password</li>
+
         <li>{{ form.confirm_password }}</li>
       </ul>
         <div class= "center"><button>SignUp</button></div>
         <p class = "small" >Already Registered? <a href="{% url 'accounts:signin' %}">Sign-In</a></p>
       </form>
     </div>
+    <!-- js for client side password validation. -->
+    <script>
+      var password = document.getElementById("id_password"),
+        confirm_password = document.getElementById("id_confirm_password");
+
+      function validateMatch(){
+        if(password.value != confirm_password.value){
+          confirm_password.setCustomValidity("Passwords must match.");
+        } else {
+          confirm_password.setCustomValidity('');
+        }
+      }
+      password.onchange = validateMatch;
+      confirm_password.onkeyup = validateMatch;
+    </script>
 {% endblock %}
