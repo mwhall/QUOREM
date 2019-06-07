@@ -35,7 +35,6 @@ from db.views import (
     search,
     #analysis page
     analyze,
-    q2, test_page,
 )
 
 urlpatterns = [
@@ -170,10 +169,7 @@ urlpatterns = [
     path('search/', search, name='search-results'),
     #analysis routing
     path('analyze/', analyze, name='analysis'),
-    #q2 viz test
-    path('q2test/', q2, name='q2test'),
-    #placeholder page for testing new features and code
-    path('placeholder/', test_page, name='placeholder' ),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

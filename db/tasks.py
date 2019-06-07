@@ -72,6 +72,8 @@ def process_qiime_artifact(infile, upfile):
         generated text file. This could be used to generate shell scripts that
         correspond to the qiime artifact.
    """
+   #####
+   """
     try:
         #an artifact is either qzv or qza.
         name = upfile.upload_file.name
@@ -90,8 +92,8 @@ def process_qiime_artifact(infile, upfile):
         return 'Success'
     except Exception as e:
         return e
-
- # return "Ok"
+   """
+  return "Nothing happened but all the stubs were called correctly."
 @shared_task
 def report_success(upfile):
     upfile.upload_status = 'S'

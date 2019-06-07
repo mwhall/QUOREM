@@ -682,12 +682,3 @@ def search(request):
 #Analysis portal view. Just a place holder for now
 def analyze(request):
     return render(request, 'analyze.htm')
-
-#for testing purposes, trying to render qiime viz via our app
-def q2(request):
-    return render(request, 'q2_viz.htm', {"viz_html":"/home/alex/Documents/QUOREM/tests/data/qiime_data/6d5e1798-b947-48a4-88e6-744792dce975/data/index.html"})
-
-#placeholder page
-def test_page(request):
-    qs = UploadInputFile.objects.filter(upload_status = 'S')
-    return render(request, 'placeholder.htm', {'qs':qs})
