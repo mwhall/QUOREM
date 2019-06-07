@@ -68,8 +68,8 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
                'submit_text': 'Upload',
                 }
 
- #   def get_success_url(self):
- #       return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk})
+    def get_success_url(self):
+        return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk -1})
 
 class UploadList(ListSortingView):
     model = UploadInputFile
