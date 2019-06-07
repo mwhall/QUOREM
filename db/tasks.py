@@ -3,6 +3,7 @@
 # process
 from __future__ import absolute_import, unicode_literals
 import zipfile
+import time
 from django.template import loader
 from celery import shared_task
 from django.db import models
@@ -15,7 +16,19 @@ from .models import BiologicalReplicate, BiologicalReplicateMetadata, \
 
 @shared_task
 def react_to_file(upload_file_id):
-    upfile = UploadInputFile.objects.get(id=upload_file_id)
+    #something weird happens sometimes in which uploading a file doens't work.
+    #it throws an ID not found error. Trying again and changing nothing seems to work
+    #So, make it try twice, then throw an error if it still doesn't work.
+    try:
+        upfile = UploadInputFile.objects.get(id=upload_file_id)
+    except:
+        try:
+        #rarely it doesn't work for no apparent reason. Sleep and try again.
+            time.sleep(1)
+            upfile = UploadInputFile.objects.get(id=upload_file_id)
+        except Exception as e:
+            print("error with upfile. Cannot find the file. Sys Admin should remove.")
+            print(e)
     try:
         file_from_upload = upfile.upload_file._get_file()
         infile = file_from_upload.open()
