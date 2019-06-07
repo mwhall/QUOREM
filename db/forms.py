@@ -6,7 +6,8 @@ from django.forms.utils import flatatt
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol, ComputationalPipeline,
+    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol, 
+    ComputationalPipeline, PipelineStep, PipelineStepParameter,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
     UploadInputFile, UserProfile, ErrorMessage
 )
@@ -196,6 +197,32 @@ class ProtocolStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModel
         model = ProtocolStepParameter
         fields = '__all__'
 
+class PipelineStepForm(RendererModelForm):
+    pipelinestep = NameLabelChoiceField(queryset=PipelineStep.objects.all())
+    pipelinestep.label = "Pipeline Step"
+    class Meta:
+        model = PipelineStep
+        fields = '__all__'
+    def __init__(self, *args, **kwargs):
+        super(PipelineStepForm, self).__init__(*args, **kwargs)
+        if 'pipelines' in self.fields:
+            self.fields.pop('pipelines')
+            self.fields.pop('pipelinestep')
+
+class PipelineStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = PipelineStep
+        fields = '__all__'
+
+class PipelineStepParameterForm(RendererModelForm):
+    class Meta:
+        model = PipelineStepParameter
+        fields = '__all__'
+
+class PipelineStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = PipelineStepParameter
+        fields = '__all__'
 
 # Inline/Compound Forms
 
@@ -321,47 +348,48 @@ class ProtocolStepDisplayWithInlineParameters(FormWithInlineFormsets):
     def get_formset_inline_title(self, formset):
         return "Protocol Step Parameters"
 
-''' Django Forms '''
 
-class CreateInvestigationForm(forms.ModelForm):
-    class Meta:
-        model = Investigation
-        fields = '__all__'
+PipelineStepDisplayFormset = ko_inlineformset_factory(ComputationalPipeline,
+                                                      PipelineStep.pipelines.through,
+                                                      form=PipelineStepDisplayForm)
 
-class ConfirmSampleForm(forms.Form):
-    """ A manually generated form that outputs BooleanFields for
-    each new sample that is being added, and asks the user to confirm that
-    they wish them to be added """
-    def __init__(self, new_samples, request=None,
-                       *args, **kwargs):
-        super().__init__(request, *args, **kwargs)
-        for i in range(len(new_samples)):
-            field_name = 'new_sample_%d' % (i,)
-            self.fields[field_name] = forms.BooleanField(label=new_samples[i], required=False)
-            self.initial[field_name] = True
+PipelineStepFormset = ko_inlineformset_factory(ComputationalPipeline,
+                                               PipelineStep.pipelines.through,
+                                               form=ProtocolStepForm,
+                                               extra=0, min_num=0)
 
-    def clean(self):
-        samples = set()
-        i = 0
-        field_name = 'new_sample_%d' % (i,)
-        while self.cleaned_data.get(field_name):
-           sample = self.cleaned_data[field_name]
-           samples.add(sample)
-           i += 1
-           field_name = 'new_sample_%d' % (i,)
-        self.cleaned_data["samples"] = samples
+class PipelineDisplayWithInlineSteps(FormWithInlineFormsets):
+    FormClass = PipelineDisplayForm
+    FormsetClasses = [PipelineStepDisplayFormset]
+    def get_formset_inline_title(self, formset):
+        return "Pipeline Step"
 
-    def save(self):
-        #TODO: get investigation and assign it properly here
-        vsi = self.instance
-        vsi.new_sample_set.all().delete()
-        for sample in self.cleaned_data["samples"]:
-           Sample.objects.create(name=sample, investigation=0)
+class PipelineWithInlineSteps(FormWithInlineFormsets):
+    FormClass = PipelineForm
+    FormsetClasses = [PipelineStepFormset]
+    def get_formset_inline_title(self, formset):
+        return "Pipeline Steps"
 
-    def get_sample_checklist(self):
-        for field_name in self.fields:
-            if field_name.startswith('new_sample_'):
-                yield self[field_name]
+PipelineStepParameterDisplayFormset = ko_inlineformset_factory(PipelineStep,
+                                                      PipelineStepParameter,
+                                                      form = PipelineStepParameterDisplayForm)
+
+PipelineStepParameterFormset = ko_inlineformset_factory(PipelineStep,
+                                                        PipelineStepParameter,
+                                                        form = PipelineStepParameterForm,
+                                                        extra=0, min_num=0)
+
+class PipelineStepWithInlineParameters(FormWithInlineFormsets):
+    FormClass = PipelineStepForm
+    FormsetClasses = [PipelineStepParameterFormset]
+    def get_formset_inline_title(self, formset):
+        return "Pipeline Step Parameter"
+
+class PipelineStepDisplayWithInlineParameters(FormWithInlineFormsets):
+    FormClass = PipelineStepDisplayForm
+    FormsetClasses = [PipelineStepParameterDisplayFormset]
+    def get_formset_inline_title(self, formset):
+        return "Pipeline Step Parameters"
 
 ##### Search form
 class SearchBarForm(forms.Form):

@@ -77,7 +77,7 @@ class UploadInputFile(models.Model):
         ##    print(i)
     def update(self, *args, **kwargs):
         super().save(*args, **kwargs)
-    #    return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
+        #return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
 
 class ErrorMessage(models.Model):
     """
@@ -218,9 +218,10 @@ class BiologicalReplicateProtocol(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     citation = models.TextField() # should we include citations, or just have that in description?
-#    protocol_steps = models.ManyToManyField('ProtocolStep')
 
     search_vector = SearchVectorField(null=True)
+    def __str__(self):
+        return "%s (%s)" % (self.name, self.citation)
     class Meta:
         indexes = [
             GinIndex(fields=['search_vector'])
@@ -236,11 +237,15 @@ class ProtocolStep(models.Model):
     """
     Names and descriptions of the protocol steps and methods, e.g., stepname = 'amplification', method='pcr'
     """
-    biological_replicate_protocols = models.ManyToManyField('BiologicalReplicateProtocol', blank=True)
+    biological_replicate_protocols = models.ManyToManyField('BiologicalReplicateProtocol', related_name="steps")
     name = models.CharField(max_length=255)
     method = models.CharField(max_length=255)
     def __str__(self):
         return '%s -> %s' % (self.name, self.method)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'method'], name='One entry per name-method pair')
+            ]
 
 class ProtocolStepParameter(models.Model):
     """
@@ -284,7 +289,7 @@ class PipelineDeviation(models.Model):
     Keep track of when an object's provenance involves deviations in the listed SOP
     """
     pipeline_result = models.ForeignKey('PipelineResult', on_delete=models.CASCADE)  # fk 11
-    pipeline_parameter = models.ForeignKey('PipelineParameter', on_delete=models.CASCADE) # fk ??
+    pipeline_parameter = models.ForeignKey('PipelineStepParameter', on_delete=models.CASCADE) # fk ??
     value = models.CharField(max_length=255)
 
 
@@ -293,7 +298,16 @@ class ComputationalPipeline(models.Model):
     Stores the steps and default parameters for a pipeline
     """
     name = models.CharField(max_length=255)
-    pipeline_step = models.ManyToManyField('PipelineStep') # fk 12
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        ComputationalPipeline.objects.update(
+            search_vector = (SearchVector('name', weight='A'))
+        )
 
 
 class PipelineStep(models.Model):
@@ -302,17 +316,30 @@ class PipelineStep(models.Model):
     These can be programatically defined by QIIME's transformations.
     """
     # many to many
+    pipelines = models.ManyToManyField('ComputationalPipeline', related_name="steps")
     method = models.CharField(max_length=255)
     action = models.CharField(max_length=255)
+    def __str__(self):
+        return '%s -> %s' % (self.method, self.action)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['method', 'action'], name='One entry per action-method pair')
+            ]
 
-class PipelineParameter(models.Model):
+
+class PipelineStepParameter(models.Model):
     """
     The default parameters for each step, for this pipeline
     """
-    computational_pipeline = models.ForeignKey('ComputationalPipeline', on_delete=models.CASCADE) # fk ??
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)  # fk 13
+    name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
-    key = models.CharField(max_length=255)
+    class Meta:
+        constraints = [
+                models.UniqueConstraint(fields=['pipeline_step', 'name'], 
+                    name='One entry per pipeline step, parameter name pair')
+            ]
+
 
 
 ##Function for search.
