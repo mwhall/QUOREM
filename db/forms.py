@@ -7,7 +7,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
     BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
-    ComputationalPipeline, PipelineStep, PipelineStepParameter,
+    ComputationalPipeline, PipelineStep, PipelineStepParameter, PipelineResult,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
     UploadInputFile, UserProfile, ErrorMessage
 )
@@ -175,6 +175,11 @@ class PipelineForm(RendererModelForm):
 class PipelineDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = ComputationalPipeline
+        fields = '__all__'
+
+class PipelineResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = PipelineResult
         fields = '__all__'
 
 class ProtocolStepForm(RendererModelForm):

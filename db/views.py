@@ -38,7 +38,7 @@ from .forms import (
     ProtocolForm, ProtocolDisplayWithInlineSteps,
     ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
     ProtocolWithInlineSteps,
-    PipelineForm, PipelineDisplayWithInlineSteps,
+    PipelineForm, PipelineDisplayWithInlineSteps, PipelineResult,
     PipelineStepWithInlineParameters, PipelineStepDisplayWithInlineParameters,
     PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
@@ -178,7 +178,6 @@ class InvestigationList(ListSortingView):
             'view_title': "All Investigations2",
             'submit_text': "Save Investigation",
         }
-
 
 class InvestigationDetail(InlineDetailView):
     pk_url_kwarg = 'investigation_id'
@@ -448,6 +447,22 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
     def get_success_url(self):
         return reverse('protocol_step_detail', kwargs={'protocol_step_id': self.object.pk})
 
+class PipelineResultList(ListSortingView):
+    model = PipelineResult
+    allowed_sort_orders = '__all__'
+    grid_fields = ['source_software', 'result_type', 'replicates', 'pipeline_step']
+    list_display = ["Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
+    def get_heading(self):
+        return "Pipeline Result List"
+
+    def get_replicates_text(self, obj):
+        return "Number matched: %d" % (len(obj.replicates.all()),)
+
+    def get_display_value(self, obj, field):
+        if field == 'replicates':
+            return self.get_replicates_text(obj)
+        else:
+            return super().get_display_value(obj, field)
 
 class PipelineList(ListSortingView):
     model = ComputationalPipeline
@@ -504,8 +519,6 @@ class PipelineStepList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
-
-
 class PipelineDetail(InlineDetailView):
     pk_url_kwarg = 'pipeline_id'
     form_with_inline_formsets = PipelineDisplayWithInlineSteps
@@ -539,6 +552,8 @@ class PipelineUpdate(BsTabsMixin, InlineCrudView):
     def get_success_url(self):
         return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
 
+class PipelineResultDetail(InlineDetailView):
+    pk_url_kwargs = 'pipeline_result_id'
 
 class PipelineStepDetail(InlineDetailView):
     pk_url_kwarg = 'pipeline_step_id'

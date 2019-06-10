@@ -307,25 +307,15 @@ class PipelineResult(models.Model):
     """
     Some kind of result from a ComputationalPipeline
     """
-    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE)
-    source_software = models.CharField(max_length=255)
-    result_type = models.CharField(max_length=255)
-    computational_pipeline = models.ForeignKey('ComputationalPipeline', on_delete=models.CASCADE)
+    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name")
+    source_software = models.CharField(max_length=255, verbose_name="Source Software")
+    result_type = models.CharField(max_length=255, verbose_name="Result Type")
+    computational_pipelines = models.ManyToManyField('ComputationalPipeline', related_name='pipelines')
     # This pipeline result is
-    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)
-    replicates = models.ManyToManyField('BiologicalReplicate')
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        PipelineResult.objects.update(
-            search_vector = (SearchVector('input_file', weight='A')+
-                             SearchVector('result_type', weight='B')+
-                             SearchVector('source_software', weight='C'))
-        )
+    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE, verbose_name="Pipeline Step")
+    replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicates', verbose_name="Replicates")
+
+
 class PipelineDeviation(models.Model):
     """
     Keep track of when an object's provenance involves deviations in the listed SOP
