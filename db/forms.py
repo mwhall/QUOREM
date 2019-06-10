@@ -18,6 +18,8 @@ from django_jinja_knockout.forms import (
 )
 from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
 
+from django.forms import inlineformset_factory
+
 
 '''
 Django-Jinja-Knockout Forms
@@ -44,6 +46,10 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              form=UploadForm,
                                              extra=0,
                                              min_num=1)
+################Experiment
+
+##########################
+
 
 #This form used only for display purposes
 class UploadInputFileDisplayForm(WidgetInstancesMixin,

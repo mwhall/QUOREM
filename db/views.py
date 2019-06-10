@@ -10,6 +10,8 @@ from django.utils.html import format_html, mark_safe
 from django.db import models
 from django.http import Http404
 
+from django.contrib.auth import get_user_model
+
 from django.core.paginator import(
     Paginator,
     EmptyPage,
@@ -28,7 +30,7 @@ from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
         ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
         ComputationalPipeline, PipelineStep, PipelineStepParameter,
-        UploadInputFile, load_mixed_objects
+        UploadInputFile, load_mixed_objects, UserProfile
 )
 
 from .forms import (
@@ -61,6 +63,13 @@ Class-based Django-Jinja-Knockout views
 class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     pk_url_kwarg = 'userprofile_id'
+
+    def get_user(self):
+        user = UserProfile.objects.filter(user=self.request.user)[0]
+        return user
+
+    user = get_user(self)
+
     form_with_inline_formsets = UserWithInlineUploads
     def get_bs_form_opts(self):
         return {
@@ -119,7 +128,6 @@ class UploadInputFileDetail(InlineDetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         if(self.is_new):
-            print("HELLO!")
             context['new_upload'] = True
         return context
 
