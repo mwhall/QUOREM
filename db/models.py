@@ -275,13 +275,13 @@ class PipelineResult(models.Model):
     """
     Some kind of result from a ComputationalPipeline
     """
-    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE)
-    source_software = models.CharField(max_length=255)
-    result_type = models.CharField(max_length=255)
-    computational_pipeline = models.ForeignKey('ComputationalPipeline', on_delete=models.CASCADE)
-    # This pipeline result is 
-    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)
-    replicates = models.ManyToManyField('BiologicalReplicate')
+    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name")
+    source_software = models.CharField(max_length=255, verbose_name="Source Software")
+    result_type = models.CharField(max_length=255, verbose_name="Result Type")
+    computational_pipelines = models.ManyToManyField('ComputationalPipeline', related_name='pipelines')
+    # This pipeline result is
+    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE, verbose_name="Pipeline Step")
+    replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicates', verbose_name="Replicates")
 
 
 class PipelineDeviation(models.Model):
