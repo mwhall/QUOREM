@@ -67,9 +67,17 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
                 'title': 'Upload Files',
                'submit_text': 'Upload',
                 }
-
+    #InLineCreateView extends TemplateView.
+    #use get_context_data tp display modal.
+    """
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['new_upload'] = True
+        return context
+    """
     def get_success_url(self):
-        return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk -1})
+        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
+                                                            'new':"new"})
 
 class UploadList(ListSortingView):
     model = UploadInputFile
@@ -82,8 +90,7 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,
-                                                      }),
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,}),
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -104,9 +111,18 @@ class UploadList(ListSortingView):
         }
 
 class UploadInputFileDetail(InlineDetailView):
+    is_new = False
     pk_url_kwarg = 'uploadinputfile_id'
     form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
     format_view_title = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if(self.is_new):
+            print("HELLO!")
+            context['new_upload'] = True
+        return context
+
     def get_heading(self):
         return "Upload File Details"
 

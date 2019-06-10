@@ -48,6 +48,9 @@ urlpatterns = [
     re_path(r'upload/(?P<uploadinputfile_id>\d+)/$', UploadInputFileDetail.as_view(),
             name='uploadinputfile_detail',
             kwargs={'view_title': "Upload Details", "allow_anonymous": True}),
+    path('upload/<int:uploadinputfile_id>/<new>/', UploadInputFileDetail.as_view(is_new=True),
+            name='uploadinputfile_detail_new',
+            kwargs={'view_title':"Upload Details", "allow_anonymous": True,}),
     path('account/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
