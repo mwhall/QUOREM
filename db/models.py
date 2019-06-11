@@ -84,7 +84,7 @@ class ErrorMessage(models.Model):
     Store error messages for file uploads.
     """
     uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
-    error_message = models.CharField(max_length = 1000) #???? Maybe store as a textfile????
+    error_message = models.CharField(max_length = 1000, null=True) #???? Maybe store as a textfile????
 
 
 class Sample(models.Model):
@@ -240,12 +240,22 @@ class ProtocolStep(models.Model):
     biological_replicate_protocols = models.ManyToManyField('BiologicalReplicateProtocol', related_name="steps")
     name = models.CharField(max_length=255)
     method = models.CharField(max_length=255)
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return '%s -> %s' % (self.name, self.method)
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['name', 'method'], name='One entry per name-method pair')
             ]
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        ProtocolStep.objects.update(
+            search_vector= (SearchVector('name', weight='A') +
+                            SearchVector('method', weight='B'))
+        )
 
 class ProtocolStepParameter(models.Model):
     """
@@ -256,11 +266,22 @@ class ProtocolStepParameter(models.Model):
     name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    search_vector = SearchVectorField(null=True)
     class Meta:
         constraints = [
-                models.UniqueConstraint(fields=['protocol_step', 'name'], 
+                models.UniqueConstraint(fields=['protocol_step', 'name'],
                     name='One entry per protocol step, parameter name pair')
             ]
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        ProtocolStepParameter.objects.update(
+            search_vector = (SearchVector('name', weight='A') +
+                              SearchVector('description', weight='B') +
+                              SearchVector('value', weight='C'))
+        )
 
 class ProtocolStepParameterDeviation(models.Model):
     """
@@ -270,7 +291,18 @@ class ProtocolStepParameterDeviation(models.Model):
     biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE)
     new_value = models.CharField(max_length=255)
     comment = models.TextField(blank=True)
-
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        ProtocolStepParameterDeviation.objects.update(
+            search_vector = (SearchVector('protocol_step_parameter', weight='A')+
+                             SearchVector('new_value', weight='B')+
+                             SearchVector('comment', weight='C'))
+        )
 class PipelineResult(models.Model):
     """
     Some kind of result from a ComputationalPipeline
@@ -291,6 +323,9 @@ class PipelineDeviation(models.Model):
     pipeline_result = models.ForeignKey('PipelineResult', on_delete=models.CASCADE)  # fk 11
     pipeline_parameter = models.ForeignKey('PipelineStepParameter', on_delete=models.CASCADE) # fk ??
     value = models.CharField(max_length=255)
+    #TODO: Search Vectors that incorporate FK values.
+    #Doing this directly will yield search results on the FK integer value, need
+    #to implement queryset optimization to allow reference to FK model properties.
 
 
 class ComputationalPipeline(models.Model):
@@ -319,13 +354,22 @@ class PipelineStep(models.Model):
     pipelines = models.ManyToManyField('ComputationalPipeline', related_name="steps")
     method = models.CharField(max_length=255)
     action = models.CharField(max_length=255)
+    search_vector = SearchVectorField(null=True)
     def __str__(self):
         return '%s -> %s' % (self.method, self.action)
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['method', 'action'], name='One entry per action-method pair')
             ]
-
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        PipelineStep.objects.update(
+            search_vector = (SearchVector('method', weight='A') +
+                             SearchVector('action', weight='B'))
+        )
 
 class PipelineStepParameter(models.Model):
     """
@@ -336,7 +380,7 @@ class PipelineStepParameter(models.Model):
     value = models.CharField(max_length=255)
     class Meta:
         constraints = [
-                models.UniqueConstraint(fields=['pipeline_step', 'name'], 
+                models.UniqueConstraint(fields=['pipeline_step', 'name'],
                     name='One entry per pipeline step, parameter name pair')
             ]
 
@@ -350,14 +394,7 @@ def load_mixed_objects(dicts,model_keys):
     for d in dicts:
         to_fetch.setdefault(d['type'], set()).add(d['pk'])
     fetched = {}
-    #TODO: Refactor this to be the same maping used in views.py
-    """
-    for key, model in(
-        ('investigation', Investigation),
-        ('sample', Sample),
-        ('sampleMetadata', SampleMetadata),
-    ):
-    """
+
     for key, model, ui_string in model_keys:
         #disregard the ui_string variable. It's for frontend convenience.
         ids = to_fetch.get(key) or []

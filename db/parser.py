@@ -82,7 +82,7 @@ class Validator():
             if len(missing_fields) > 0:
                 raise MissingColumnError("Columns " + \
                         ", ".join(missing_fields) + " missing and required")
-        #if in database, make sure all their available data matches ours, 
+        #if in database, make sure all their available data matches ours,
         #if not it's mistaken identity
         else:
             #TODO This raises mistakenly on ProtocolStepParameters when there are parameters with the same name, but derive from different protocol_steps
@@ -93,11 +93,11 @@ class Validator():
                 raise InconsistentWithDatabaseError("%s id %s found in database, \
                     but other %s fields do not exactly match database values.\
                     Value: %s. If you know the id is correct, remove the other %s fields\
-                    and it will submit to that %s." % (self.model_name, 
-                                                       self.id_field, 
+                    and it will submit to that %s." % (self.model_name,
+                                                       self.id_field,
                                                        self.model_name,
                                                        self.data[id_field],
-                                                       self.model_name, 
+                                                       self.model_name,
                                                        self.model_name))
         return True
 
@@ -125,7 +125,7 @@ class Validator():
                     else:
                         name = f_id
                         name_field = self.django_mapping[field] + "__exact"
-                else:  
+                else:
                     vldtr = validator_mapper[field](data=self.data)
                     name = vldtr.fetch()
                     if str(f_id).isdigit():
@@ -144,7 +144,7 @@ class Validator():
         identifier = self.data[self.id_field]
         in_db = self.in_db()
         if (not in_db):
-            found_fields = [ x for x in 
+            found_fields = [ x for x in
                   self.required_if_new + self.optional_fields if x in self.data ]
             kwargs = {}
             m2m_links = []
@@ -173,20 +173,20 @@ class Validator():
 class InvestigationValidator(Validator):
     model_name = "Investigation"
     model = Investigation
-  
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "investigation_id"
-        self.required_if_new = ["investigation_institution", 
+        self.required_if_new = ["investigation_institution",
                                 "investigation_description"]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "institution",
                                self.required_if_new[1]: "description"}
-    
+
 class SampleValidator(Validator):
    model_name = "Sample"
    model = Sample
- 
+
    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "sample_id"
@@ -197,7 +197,7 @@ class SampleValidator(Validator):
 class BiologicalReplicateValidator(Validator):
    model_name = "BiologicalReplicate"
    model = BiologicalReplicate
-   
+
    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "replicate_id"
@@ -209,7 +209,7 @@ class BiologicalReplicateValidator(Validator):
 class BiologicalReplicateProtocolValidator(Validator):
     model_name = "BiologicalReplicateProtocol"
     model = BiologicalReplicateProtocol
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "protocol_id"
@@ -221,7 +221,7 @@ class BiologicalReplicateProtocolValidator(Validator):
 class ProtocolStepValidator(Validator):
     model_name = "ProtocolStep"
     model = ProtocolStep
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "protocol_step_id"
@@ -239,7 +239,7 @@ class ProtocolStepParameterValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "protocol_step_parameter_id"
-        self.required_if_new = ["protocol_step_id", 
+        self.required_if_new = ["protocol_step_id",
                                 "protocol_step_parameter_value"]
         self.optional_fields = ["protocol_step_parameter_description"]
         #We can have multiple protocol step parameters with the same name
@@ -278,7 +278,7 @@ class PipelineStepParameterValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = "pipeline_step_parameter_id"
-        self.required_if_new = ["pipeline_step_id", 
+        self.required_if_new = ["pipeline_step_id",
                                 "pipeline_step_parameter_value"]
         self.jointly_unique = [(self.id_field, "pipeline_step_id")]
         self.django_mapping = {self.id_field: "name",
@@ -291,7 +291,7 @@ class PipelineStepParameterValidator(Validator):
 class ProtocolDeviationValidator(Validator):
     model_name = "ProtocolStepParameterDeviation"
     model = ProtocolStepParameterDeviation
- 
+
     def __init__(self, *args, **kwargs):
         self.id_field = None
         self.required_if_new = []
@@ -317,7 +317,7 @@ class SampleMetadataValidator(Validator):
         try:
             #This will need to check for index pk TODO
             samp = Sample.objects.get(name__exact=sample_identifier)
-            kwargs = {"key__exact": self.id_field, 
+            kwargs = {"key__exact": self.id_field,
                       "value__exact": self.value_field,
                       "sample": samp}
             obj = self.model.objects.get(**kwargs)
@@ -354,7 +354,7 @@ class SampleMetadataValidator(Validator):
         if (not self.in_db()):
             #First, get the sample
             samp = Sample.objects.get(name__exact=self.data["sample_id"])
-            mdl = self.model(sample = samp, 
+            mdl = self.model(sample = samp,
                              key = self.id_field,
                              value = self.value_field)
             mdl.save()
@@ -363,7 +363,7 @@ class SampleMetadataValidator(Validator):
 class BiologicalReplicateMetadataValidator(Validator):
     model_name = "BiologicalReplicateMetadata"
     model = BiologicalReplicateMetadata
-    
+
     def __init__(self, key, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.id_field = key
@@ -378,7 +378,7 @@ class BiologicalReplicateMetadataValidator(Validator):
         try:
             #This will need to check for index pk TODO
             biorep = BiologicalReplicate.objects.get(name__exact=rep_identifier)
-            kwargs = {"key__exact": self.id_field, 
+            kwargs = {"key__exact": self.id_field,
                       "value__exact": self.value_field,
                       "biological_replicate": biorep}
             obj = self.model.objects.get(**kwargs)
@@ -414,7 +414,7 @@ class BiologicalReplicateMetadataValidator(Validator):
         #First, get the replicate
         if (not self.in_db()):
             biorep = BiologicalReplicate.objects.get(name__exact=self.data["replicate_id"])
-            mdl = self.model(biological_replicate = biorep, 
+            mdl = self.model(biological_replicate = biorep,
                              key = self.id_field,
                              value = self.value_field)
             mdl.save()
@@ -422,7 +422,7 @@ class BiologicalReplicateMetadataValidator(Validator):
 
 
 Validators = [InvestigationValidator, BiologicalReplicateValidator,
-              BiologicalReplicateMetadataValidator, 
+              BiologicalReplicateMetadataValidator,
               BiologicalReplicateProtocolValidator,
               ProtocolStepValidator,
               ProtocolStepParameterValidator,
@@ -434,6 +434,7 @@ Validators = [InvestigationValidator, BiologicalReplicateValidator,
 id_fields = ["investigation_id", "protocol_id", "protocol_step_id", \
              "protocol_step_parameter_id", "sample_id", "replicate_id", \
              "pipeline_id", "pipeline_step_id", "pipeline_step_parameter_id"]
+
 reserved_fields = id_fields + ["investigation_description", \
                                "investigation_citation", \
                                "investigation_institution", \
@@ -457,14 +458,14 @@ validator_mapper = {"investigation_id": InvestigationValidator,
 
 
 def resolve_input_row(row):
-    #row: an object s.t. row['sample_id'] gets a single sample id 
+    #row: an object s.t. row['sample_id'] gets a single sample id
     # from e.g. a spreadsheet
     #We resolve the objects in order that they would need to be created if a
-    # record were to be inserted from scratch, and if every detail were to be 
+    # record were to be inserted from scratch, and if every detail were to be
     # included in a single line for some insane reason
     #Once all objects in the row are resolved and found not to conflict, then we will save all objects in the row
     validators = []
-    #This progressive validation ensures that absolutely everything present in 
+    #This progressive validation ensures that absolutely everything present in
     #the Spreadsheet is compatible with the database
     #It will throw an error if:
     # - An _id column exists in the input, but not in the database, and other required data is missing (MissingColumnError)
@@ -480,16 +481,25 @@ def resolve_input_row(row):
             except Exception as e:
                 raise e
     metadata_validators = []
-    # - Once we've shown that the whole row is consistent, we can save it to the database 
+    # - Once we've shown that the whole row is consistent, we can save it to the database
     if ("replicate_id" in row) and ("sample_id" in row):
         #We need to validate SampleMetadata and BiologicalReplicate
+        print("rep: ", row['replicate_id'])
+        print("samp: ", row["sample_id"])
         metadata_validators = [SampleMetadataValidator, BiologicalReplicateMetadataValidator]
     elif "replicate_id" in row:
+        print("2")
         metadata_validators = [BiologicalReplicateMetadataValidator]
     elif "sample_id" in row:
+        print("3")
         metadata_validators = [SampleMetadataValidator]
     for validator in validators:
         validator.save()
+
+    invs_seen= {}
+    samples_seen = {}
+
+
     for validator in metadata_validators:
         for field in row.index:
             if field not in reserved_fields:

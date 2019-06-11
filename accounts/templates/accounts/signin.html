@@ -9,6 +9,11 @@
         <li>{{ form.email }}</li>
         <li>Password</li>
         <li>{{ form.password }}</li>
+        {% if failed %}
+        <p style="color: red; font-size:0.75rem">
+          Login failed. Please try again.
+        </p>
+        {% endif %}
       </ul>
         <div class= "center"><button>{{ action }}</button></div>
         <p class = "small" >Not Registered? <a href="{% url 'accounts:signup' %}">Sign-Up</a></p>

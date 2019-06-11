@@ -29,7 +29,7 @@ section{
   padding: 50px 0;
 }
 
-h1, h2, p{
+h1, h2{
     color: black;
 }
 
@@ -135,6 +135,10 @@ input{
 
 button{
     margin-bottom: 15px;
+}
+.error{
+  color: red;
+  font-size: 0.75rem;
 }
 .small{
     font-size: 60%;

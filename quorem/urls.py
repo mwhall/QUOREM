@@ -16,6 +16,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from django.conf.urls import url
+from django.conf.urls.static import static
+from django.conf import settings
 from landingpage.views import index
 from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, ProtocolStepFkWidgetGrid
 from db.views import (
@@ -31,7 +33,9 @@ from db.views import (
     ReplicateDetail, ReplicateUpdate, ReplicateList,
     SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
     #SearchResultList
-    search
+    search,
+    #analysis page
+    analyze,
 )
 
 urlpatterns = [
@@ -45,6 +49,9 @@ urlpatterns = [
     re_path(r'upload/(?P<uploadinputfile_id>\d+)/$', UploadInputFileDetail.as_view(),
             name='uploadinputfile_detail',
             kwargs={'view_title': "Upload Details", "allow_anonymous": True}),
+    path('upload/<int:uploadinputfile_id>/<new>/', UploadInputFileDetail.as_view(is_new=True),
+            name='uploadinputfile_detail_new',
+            kwargs={'view_title':"Upload Details", "allow_anonymous": True,}),
     path('account/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
@@ -167,8 +174,10 @@ urlpatterns = [
 
     #Search Result Routing
     path('search/', search, name='search-results'),
+    #analysis routing
+    path('analyze/', analyze, name='analysis'),
 
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {
             'domain': 'djangojs',

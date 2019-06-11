@@ -6,7 +6,7 @@ from django.forms.utils import flatatt
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol, 
+    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
     ComputationalPipeline, PipelineStep, PipelineStepParameter, PipelineResult,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
     UploadInputFile, UserProfile, ErrorMessage
@@ -17,6 +17,8 @@ from django_jinja_knockout.forms import (
     ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin
 )
 from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
+
+from django.forms import inlineformset_factory
 
 
 '''
@@ -44,6 +46,10 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              form=UploadForm,
                                              extra=0,
                                              min_num=1)
+################Experiment
+
+##########################
+
 
 #This form used only for display purposes
 class UploadInputFileDisplayForm(WidgetInstancesMixin,
@@ -132,7 +138,8 @@ class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
 class SampleMetadataForm(RendererModelForm):
     class Meta:
         model = SampleMetadata
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
@@ -180,7 +187,8 @@ class ProtocolStepForm(RendererModelForm):
     protocolstep.label = "Protocol Step"
     class Meta:
         model = ProtocolStep
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
     def __init__(self, *args, **kwargs):
         super(ProtocolStepForm, self).__init__(*args, **kwargs)
         if 'biological_replicate_protocols' in self.fields:
@@ -190,17 +198,20 @@ class ProtocolStepForm(RendererModelForm):
 class ProtocolStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = ProtocolStep
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolStepParameterForm(RendererModelForm):
     class Meta:
         model = ProtocolStepParameter
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class ProtocolStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = ProtocolStepParameter
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['search_vector']
 
 class PipelineStepForm(RendererModelForm):
     pipelinestep = NameLabelChoiceField(queryset=PipelineStep.objects.all())

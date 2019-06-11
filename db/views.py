@@ -10,6 +10,8 @@ from django.utils.html import format_html, mark_safe
 from django.db import models
 from django.http import Http404
 
+from django.contrib.auth import get_user_model
+
 from django.core.paginator import(
     Paginator,
     EmptyPage,
@@ -28,7 +30,7 @@ from .models import (
         Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
         ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
         ComputationalPipeline, PipelineStep, PipelineStepParameter,
-        UploadInputFile, load_mixed_objects
+        UploadInputFile, load_mixed_objects, UserProfile
 )
 
 from .forms import (
@@ -46,6 +48,7 @@ from .forms import (
 
 import pandas as pd
 import numpy as np
+import zipfile
 
 ###Stuff for searching
 from django.contrib.postgres.search import(
@@ -60,15 +63,24 @@ Class-based Django-Jinja-Knockout views
 class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     pk_url_kwarg = 'userprofile_id'
+
     form_with_inline_formsets = UserWithInlineUploads
     def get_bs_form_opts(self):
         return {
                 'title': 'Upload Files',
                'submit_text': 'Upload',
                 }
-
- #   def get_success_url(self):
- #       return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.object.pk})
+    #InLineCreateView extends TemplateView.
+    #use get_context_data tp display modal.
+    """
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['new_upload'] = True
+        return context
+    """
+    def get_success_url(self):
+        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
+                                                            'new':"new"})
 
 class UploadList(ListSortingView):
     model = UploadInputFile
@@ -81,8 +93,7 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,
-                                                      }),
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,}),
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -103,9 +114,17 @@ class UploadList(ListSortingView):
         }
 
 class UploadInputFileDetail(InlineDetailView):
+    is_new = False
     pk_url_kwarg = 'uploadinputfile_id'
     form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
     format_view_title = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if(self.is_new):
+            context['new_upload'] = True
+        return context
+
     def get_heading(self):
         return "Upload File Details"
 
@@ -425,17 +444,39 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
 class PipelineResultList(ListSortingView):
     model = PipelineResult
     allowed_sort_orders = '__all__'
-    grid_fields = ['source_software', 'result_type', 'replicates', 'pipeline_step']
-    list_display = ["Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
+    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', 'pipeline_step']
+    list_display = ["Result File Name", "Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
     def get_heading(self):
         return "Pipeline Result List"
 
     def get_replicates_text(self, obj):
         return "Number matched: %d" % (len(obj.replicates.all()),)
 
+
+    def get_file_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
+            obj.input_file.upload_file
+        )]
+        #can anonymous users download files???? For now, yes...
+        #though the website 404s if not logged in.
+        #Only succrss files can be downloaded.
+        if obj.input_file.upload_status == 'S':
+            links.append(format_html(
+                ' (<a href="{}" target="_blank"><span class="iconui iconui-download"></span></a>)',
+                #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
+                "/" + obj.input_file.upload_file.url
+            ))
+        return links
+
     def get_display_value(self, obj, field):
         if field == 'replicates':
             return self.get_replicates_text(obj)
+        elif field == 'input_file':
+            links = self.get_file_links(obj)
+            return mark_safe(''.join(links))
+            #return self.get_file_name(obj)
         else:
             return super().get_display_value(obj, field)
 
@@ -569,50 +610,6 @@ class PipelineStepUpdate(BsTabsMixin, InlineCrudView):
 ### SEARCH AND QUERY BASED VIEWS                                            ####
 ###############################################################################
 
-#The url for this should pass a param, i.e. path('search/<query>/')
-"""
-It seems a function based view might be more appropriate! commenting this out
-for now so that I dont lose it if things go south.
-##
-
-class SearchResultList(ListView):
-    template_name = 'search_results.htm'
-
-    #Can I access the GET variables here????
-
-    ############################################################################
-    ### get_queryset() queries the database using search vectors. Each model ###
-    ### class has been given a search vector field. The search vector field  ###
-    ### essentially indexes searching on each of the models' fields. This    ###
-    ### allows fast search and union of objects with different numbers of    ###
-    ### fields: We can union the queryset on pk, though the results will be  ###
-    ### based on search against the search vector.                           ###
-    ############################################################################
-    def get_queryset(self):
-        query = self.kwargs['query']
-        rank_annotation = SearchRank(F('search_vector'), query)
-        model_types= [('investigation', Investigation), ('sample', Sample),
-                      ('sampleMetadata', SampleMetadata)]
-        #Make an empty QuerySet. arbitrarily use Investigation as the model.
-        results = Investigation.objects.annotate(
-            type=models.Value('empty', output_field=models.CharField()),
-            rank=rank_annotation
-        ).values('pk','type', 'rank').none()
-
-        #Now, more models can be added simply by adding to the model_types list.
-        for model_type in model_types:
-                results = results.union(model_type[1].objects.annotate(
-                        rank=rank_annotation,
-                        type = models.Value(model_type[0],output_field=models.CharField())
-                ).filter(search_vector=query).values('pk','type','rank'))
-
-
-        #results is now a QuerySet: A list of dicts containing primary key,
-        #search rank as a value from 0.0-1.0,  and type. This list can be used
-        #to load the model objects from the database.
-        return results
-
-"""
 #A simple function based view to GET the search bar form
 def search(request):
     ##MODEL INFO:::
@@ -622,7 +619,9 @@ def search(request):
                   ('sampleMetadata', SampleMetadata, 'Sample Metadata'),
                   ('biologicalReplicate', BiologicalReplicate, 'Biological Replicates'),
                   ('biologicalReplicateMetadata', BiologicalReplicateMetadata, 'Biological Replicate Metadata'),
-                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),]
+                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),
+                  ('pipeline', ComputationalPipeline, 'Computational Pipeline'),
+                  ('pipelineStep', PipelineStep, 'Computational Pipeline Step' )]
 
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
@@ -733,5 +732,10 @@ def search(request):
             #'search_page': "active",
     })
 
-#probably have to do something along the lines of
-# A template with extensive conditionals.
+###############################################################################
+###            ANALYSIS VIEWS                                             #####
+###############################################################################
+
+#Analysis portal view. Just a place holder for now
+def analyze(request):
+    return render(request, 'analyze.htm')

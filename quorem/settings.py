@@ -94,7 +94,7 @@ TEMPLATES = [
                 'django_jinja_knockout.context_processors.template_context_processor'
             ],
             'environment': 'quorem.jinja2.environment',
-            
+
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -170,10 +170,17 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-'''
+
 STATICFILES_DIRS = [
-    "vendors",
+    ("qiime", "staticfiles/q2templateassets"),
 ]
-'''
+
+#To allow download of files, we need to configure MEDIA_ROOT and MEDIA_URL
+#For now point them to upload. When we deploy we'll need to configure things
+#s.t. the appropriate webserver serves files.
+#MEDIA_ROOT = os.path.join(BASE_DIR, "upload")
+#media url needs to end in a slash.
+MEDIA_URL = "media/"
+
 
 AUTH_USER_MODEL = 'accounts.User'
