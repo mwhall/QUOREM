@@ -84,7 +84,7 @@ class ErrorMessage(models.Model):
     Store error messages for file uploads.
     """
     uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
-    error_message = models.CharField(max_length = 1000) #???? Maybe store as a textfile????
+    error_message = models.CharField(max_length = 1000, null=True) #???? Maybe store as a textfile????
 
 
 class Sample(models.Model):
@@ -366,7 +366,7 @@ class PipelineStep(models.Model):
         ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        PipeLineStep.objects.update(
+        PipelineStep.objects.update(
             search_vector = (SearchVector('method', weight='A') +
                              SearchVector('action', weight='B'))
         )
@@ -394,14 +394,7 @@ def load_mixed_objects(dicts,model_keys):
     for d in dicts:
         to_fetch.setdefault(d['type'], set()).add(d['pk'])
     fetched = {}
-    #TODO: Refactor this to be the same maping used in views.py
-    """
-    for key, model in(
-        ('investigation', Investigation),
-        ('sample', Sample),
-        ('sampleMetadata', SampleMetadata),
-    ):
-    """
+
     for key, model, ui_string in model_keys:
         #disregard the ui_string variable. It's for frontend convenience.
         ids = to_fetch.get(key) or []

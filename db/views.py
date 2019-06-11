@@ -64,12 +64,6 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     pk_url_kwarg = 'userprofile_id'
 
-    def get_user(self):
-        user = UserProfile.objects.filter(user=self.request.user)[0]
-        return user
-
-    user = get_user(self)
-
     form_with_inline_formsets = UserWithInlineUploads
     def get_bs_form_opts(self):
         return {
@@ -603,7 +597,9 @@ def search(request):
                   ('sampleMetadata', SampleMetadata, 'Sample Metadata'),
                   ('biologicalReplicate', BiologicalReplicate, 'Biological Replicates'),
                   ('biologicalReplicateMetadata', BiologicalReplicateMetadata, 'Biological Replicate Metadata'),
-                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),]
+                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),
+                  ('pipeline', ComputationalPipeline, 'Computational Pipeline'),
+                  ('pipelineStep', PipelineStep, 'Computational Pipeline Step' )]
 
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:

@@ -10,10 +10,11 @@ from django.db import models
 from django.apps import apps
 from .formatters import guess_filetype, parse_csv_or_tsv
 from .parser import resolve_input_row
-from .models import BiologicalReplicate, BiologicalReplicateMetadata, \
-                    BiologicalReplicateProtocol, ErrorMessage, Investigation, \
-                    Sample, SampleMetadata, UploadInputFile, PipelineResult, \
-                    PipelineStep
+from .models import (
+BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
+ErrorMessage, Investigation, Sample, SampleMetadata, UploadInputFile,
+PipelineResult, PipelineStep
+)
 
 from q2_extractor.Extractor import q2Extractor
 import pandas as pd
@@ -45,7 +46,6 @@ def react_to_file(upload_file_id):
             print("processing qiime file...")
             try:
                 status = process_qiime_artifact(infile, upfile)
-                print(status)
             except Exception as e:
                 print(e)
 
@@ -65,9 +65,11 @@ def react_to_file(upload_file_id):
         else:
             upfile.upload_status = 'E'
             upfile.update()
-            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=status)
+            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Upload failure.")
             errorMessage.save()
     except Exception as e:
+        print("Except here")
+        print(e)
         upfile.upload_status = 'E'
         upfile.update()
         errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=e)
@@ -155,6 +157,7 @@ def process_qiime_artifact(infile, upfile):
         except Exception as e:
             print(e)
             raise Exception("Something else went wrong")
+    return "Success"
 
 @shared_task
 def report_success(upfile):

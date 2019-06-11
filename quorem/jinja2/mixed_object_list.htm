@@ -45,6 +45,22 @@
       <p class="mb-1">Currently, BioRep info is all foreign key models. Search result
                       formatting does not currently account for this, but will soon. </p>
     </a>
+    {% elif item.type == 'pipeline' %}
+    <a class="list-group-item list-group-item-action flex-column align-items-start"
+    href="/pipeline/{{ item.obj.pk }}">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">Computational Pipeline {{ item.obj.name|highlight(q) }}</h5>
+      </div>
+      <p class="mb-1"> Additional info for computational pipeline will be placed here at a later iteration. </p>
+    </a>
+    {% elif item.type == 'pipelineStep' %}
+    <a class="list-group-item list-group-item-action flex-column align-items start"
+    href="/pipeline/step/{{ item.obj.pk }}">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">Step in computational pipeline: {{ item.obj.method|highlight(q) }} </h5>
+      </div>
+      <p class="mb-1"> Action: {{ item.obj.action|highlight(q) }}</p>
+    </a>
     {% endif %}
   {% endfor %}
 </div>
