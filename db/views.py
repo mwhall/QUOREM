@@ -452,14 +452,31 @@ class PipelineResultList(ListSortingView):
     def get_replicates_text(self, obj):
         return "Number matched: %d" % (len(obj.replicates.all()),)
 
-    def get_file_name(self, obj):
-        return obj.input_file.upload_file
+
+    def get_file_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
+            obj.input_file.upload_file
+        )]
+        #can anonymous users download files???? For now, yes...
+        #though the website 404s if not logged in.
+        #Only succrss files can be downloaded.
+        if obj.input_file.upload_status == 'S':
+            links.append(format_html(
+                ' (<a href="{}" target="_blank"><span class="iconui iconui-download"></span></a>)',
+                #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
+                "/" + obj.input_file.upload_file.url
+            ))
+        return links
 
     def get_display_value(self, obj, field):
         if field == 'replicates':
             return self.get_replicates_text(obj)
         elif field == 'input_file':
-            return self.get_file_name(obj)
+            links = self.get_file_links(obj)
+            return mark_safe(''.join(links))
+            #return self.get_file_name(obj)
         else:
             return super().get_display_value(obj, field)
 
