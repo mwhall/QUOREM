@@ -444,17 +444,22 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
 class PipelineResultList(ListSortingView):
     model = PipelineResult
     allowed_sort_orders = '__all__'
-    grid_fields = ['source_software', 'result_type', 'replicates', 'pipeline_step']
-    list_display = ["Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
+    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', 'pipeline_step']
+    list_display = ["Result File Name", "Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
     def get_heading(self):
         return "Pipeline Result List"
 
     def get_replicates_text(self, obj):
         return "Number matched: %d" % (len(obj.replicates.all()),)
 
+    def get_file_name(self, obj):
+        return obj.input_file.upload_file
+
     def get_display_value(self, obj, field):
         if field == 'replicates':
             return self.get_replicates_text(obj)
+        elif field == 'input_file':
+            return self.get_file_name(obj)
         else:
             return super().get_display_value(obj, field)
 
