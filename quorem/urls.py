@@ -36,6 +36,7 @@ from db.views import (
     search,
     #analysis page
     analyze,
+    test_view
 )
 
 urlpatterns = [
@@ -176,6 +177,8 @@ urlpatterns = [
     path('search/', search, name='search-results'),
     #analysis routing
     path('analyze/', analyze, name='analysis'),
+    #visualization Routing
+    path('test/', test_view, name='test')
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

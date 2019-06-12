@@ -55,6 +55,7 @@ from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
 from django.db.models import F
+from django.views.generic.edit import FormView
 
 '''
 Class-based Django-Jinja-Knockout views
@@ -62,6 +63,7 @@ Class-based Django-Jinja-Knockout views
 
 class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
+    form_class = UploadForm
     pk_url_kwarg = 'userprofile_id'
 
     form_with_inline_formsets = UserWithInlineUploads
@@ -739,3 +741,8 @@ def search(request):
 #Analysis portal view. Just a place holder for now
 def analyze(request):
     return render(request, 'analyze.htm')
+
+def test_view(request):
+    qs = UploadInputFile.objects.get(pk=4)
+
+    return render(request, 'q2test.htm', {'item':qs})
