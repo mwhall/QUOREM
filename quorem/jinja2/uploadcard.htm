@@ -8,7 +8,8 @@
   <div class="card-body text-dark bg-white">
     <div class="formsets default-padding card bg-default mb-3">
       <div class="card-header">
-        <div class="card-title mb-0">Upload</div>
+        <div class="card-title mb-0">Upload
+        <span class="iconui iconui-question-sign" data-toggle="tool-tip" data-placement="right" title="Upload a .CSV containing sample data, replicate data, or protocol data. Or, Upload a QIIME artifact."></span></div>
       </div>
     <form enctype="multipart/form-data" action="/upload/new" method="post">
     {% csrf_token %}
