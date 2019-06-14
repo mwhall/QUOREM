@@ -31,19 +31,19 @@ from db.views import (
     PipelineStepCreate, PipelineStepDetail,
     PipelineStepList, PipelineStepUpdate,
     ReplicateDetail, ReplicateUpdate, ReplicateList,
-    SampleDetail, SampleList, SampleUpdate, UploadCreate, UploadList, UploadInputFileDetail,
+    SampleDetail, SampleList, SampleUpdate,  UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
     #analysis page
     analyze,
-    test_view
+    test_view,new_upload
 )
 
 urlpatterns = [
     # Main page routing
     path('admin/', admin.site.urls),
-    re_path('upload/new', UploadCreate.as_view(), name='upload',
-        kwargs={'view_title': "Upload Data"} ),
+
+    path('upload/new', new_upload.as_view(), name='upload'),
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),
@@ -178,8 +178,7 @@ urlpatterns = [
     #analysis routing
     path('analyze/', analyze, name='analysis'),
     #visualization Routing
-    path('test/', test_view, name='test')
-
+    path('test/', test_view, name='test'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

@@ -14,11 +14,12 @@ from .models import (
 
 from django_jinja_knockout.forms import (
     DisplayModelMetaclass, FormWithInlineFormsets, RendererModelForm,
-    ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin
+    ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin,
+    BootstrapModelForm
 )
 from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
 
-from django.forms import inlineformset_factory
+from django.forms import inlineformset_factory, ModelForm
 
 
 '''
@@ -36,7 +37,7 @@ class UserProfileForm(RendererModelForm):
 
 
 
-class UploadForm(RendererModelForm):
+class UploadForm(WidgetInstancesMixin, BootstrapModelForm):
     class Meta:
         model = UploadInputFile
         fields = ['upload_file']
@@ -47,6 +48,15 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 ################Experiment
+class NewUploadForm(ModelForm):
+    class Meta:
+        model = UploadInputFile
+        #exclude = ('userprofile', )
+        fields = ('upload_file',)
+    def __init__(self, *args, **kwargs):
+        self.userprofile = kwargs.pop('userprofile')
+        super(NewUploadForm, self).__init__(*args, **kwargs)
+
 
 ##########################
 

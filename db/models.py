@@ -43,7 +43,7 @@ class Investigation(models.Model):
 
 class UserProfile(models.Model):
     #userprofile doesnt have a search vector bc it shouldn tbe searched.
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
 
     @classmethod
     def create(cls, user):

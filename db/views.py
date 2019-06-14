@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models
 from django.http import Http404
+from django.http import HttpResponseRedirect
 
 from django.contrib.auth import get_user_model
 
@@ -19,8 +20,9 @@ from django.core.paginator import(
 )
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
-        FormDetailView
+        FormDetailView, FormatTitleMixin, FormViewmodelsMixin, FormWithInlineFormsetsMixin,
 )
+
 
 import django_tables2 as tables
 import io
@@ -43,7 +45,7 @@ from .forms import (
     PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
-    UploadInputFileDisplayWithInlineErrors
+    UploadInputFileDisplayWithInlineErrors, NewUploadForm
 )
 
 import pandas as pd
@@ -55,35 +57,35 @@ from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
 from django.db.models import F
-from django.views.generic.edit import FormView
+from django.views.generic.edit import CreateView
 
 '''
 Class-based Django-Jinja-Knockout views
 '''
 
+"""
+###############################################################################
+Deprecated June 14, 2019. Leave in for ~a month in case of bugs with new_upload.
+###############################################################################
+
 class UploadCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
-    form_class = UploadForm
+    form_class = UserProfileForm
     pk_url_kwarg = 'userprofile_id'
 
     form_with_inline_formsets = UserWithInlineUploads
+
+
     def get_bs_form_opts(self):
         return {
                 'title': 'Upload Files',
                'submit_text': 'Upload',
                 }
-    #InLineCreateView extends TemplateView.
-    #use get_context_data tp display modal.
-    """
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['new_upload'] = True
-        return context
-    """
+
     def get_success_url(self):
         return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
                                                             'new':"new"})
-
+"""
 class UploadList(ListSortingView):
     model = UploadInputFile
     allowed_sort_orders = '__all__'
@@ -746,3 +748,25 @@ def test_view(request):
     qs = UploadInputFile.objects.get(pk=4)
 
     return render(request, 'q2test.htm', {'item':qs})
+
+
+class new_upload(CreateView):
+    form_class = NewUploadForm
+    template_name = 'uploadcard.htm'
+
+    def get_form_kwargs(self, *args, **kwargs):
+        kwargs = super(new_upload, self).get_form_kwargs(*args, **kwargs)
+        kwargs['userprofile'] = UserProfile.objects.get(user=self.request.user)
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        user = self.request.user
+        userprofile = UserProfile.objects.get(user=user)
+        self.object.userprofile = userprofile
+        self.object.save()
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk,
+                                                                    'new':"new"})
