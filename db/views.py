@@ -468,12 +468,12 @@ class PipelineResultList(ListSortingView):
         #Only succrss files can be downloaded.
         if obj.input_file.upload_status == 'S':
             links.append(format_html(
-                ' (<a href="{}" target="_blank"><span class="iconui iconui-download"></span></a>)',
+                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
                 #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
                 "/" + obj.input_file.upload_file.url
             ))
             links.append(format_html(
-            ' (<a href="{}" target="_blank"><span class="iconui iconui-eye-open"></span></a>)',
+            ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
             "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.input_file.upload_file.url
             ))
         return links
