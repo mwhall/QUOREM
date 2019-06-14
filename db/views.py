@@ -472,6 +472,10 @@ class PipelineResultList(ListSortingView):
                 #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
                 "/" + obj.input_file.upload_file.url
             ))
+            links.append(format_html(
+            ' (<a href="{}" target="_blank"><span class="iconui iconui-eye-open"></span></a>)',
+            "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.input_file.upload_file.url
+            ))
         return links
 
     def get_display_value(self, obj, field):
