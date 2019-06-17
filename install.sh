@@ -21,9 +21,9 @@ sudo -u postgres createdb --owner=$pguname $dbname
 python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
 python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic
 
-chmod 755 ./scripts/launchquorem.sh && sudo ln -s ./scripts/launchquorem.sh /usr/local/bin/launchdjango
+chmod 755 ./scripts/launchquorem.sh && sudo ln -s ./scripts/launchquorem.sh /usr/local/bin/launchquorem
 chmod 755 ./scripts/runcelery.sh && sudo ln -s ./scripts/runcelery.sh /usr/local/bin/runcelery
-chmod 755 ./scripts/resetdb.sh && sudo ln -s ./scripts/resetdb.sh /usr/local/bin/runcelery
+chmod 755 ./scripts/resetdb.sh && sudo ln -s ./scripts/resetdb.sh /usr/local/bin/resetdb
 
 touch credentials.txt
 echo "Database name: $dbname" >> credentials.txt
