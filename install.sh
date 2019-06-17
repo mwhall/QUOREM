@@ -18,7 +18,7 @@ conda activate $venv
 pip install -r requirements.txt
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
 sudo -u postgres createdb --owner=$pguname $dbname
-python ./scripts/config.py $dbname $pguname $pswd1
+python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
 python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic
 
 chmod 755 ./scripts/launchquorem.sh && sudo ln -s ./scripts/launchquorem.sh /usr/local/bin/launchdjango
