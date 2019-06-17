@@ -2,9 +2,9 @@ import sys
 def main():
 	db_name = sys.argv[1]
 	uname = sys.argv[2]
-	pwd = sys.argv[3]
-
-	with open('settings.py', 'r') as file:
+	pswd = sys.argv[3]
+	cwd = sys.argv[4]
+	with open('{0}/settings.py'.format(cwd), 'r') as file:
 		filedata = file.readlines()
 
 	index = 0
@@ -17,7 +17,7 @@ def main():
 		new_data += line
 		index += 1
 
-	with open('new_settings.py', 'w') as file:
+	with open('{0}/settings.py'.format(cwd), 'w') as file:
 		file.write(new_data)
 
 if __name__ == '__main__':
