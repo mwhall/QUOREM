@@ -70,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+
 ]
 if LooseVersion(get_version()) >= LooseVersion('1.11'):
     MIDDLEWARE.append(DJK_MIDDLEWARE)
@@ -79,6 +80,8 @@ else:
         'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
         DJK_MIDDLEWARE,
     ])
+
+
 
 ROOT_URLCONF = 'quorem.urls'
 
@@ -140,6 +143,9 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators

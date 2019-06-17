@@ -86,6 +86,8 @@ class UploadCreate(BsTabsMixin, InlineCreateView):
         return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
                                                             'new':"new"})
 """
+
+
 class UploadList(ListSortingView):
     model = UploadInputFile
     allowed_sort_orders = '__all__'

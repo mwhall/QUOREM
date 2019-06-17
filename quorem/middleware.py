@@ -1,5 +1,6 @@
 from django_jinja_knockout.middleware import ContextMiddleware as BaseContextMiddleware
-
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 
 class ContextMiddleware(BaseContextMiddleware):
 
