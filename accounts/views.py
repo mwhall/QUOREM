@@ -61,3 +61,7 @@ def account_edit(request):
 
 def forgot_password(request):
     pass
+
+
+def unauthorized(requets):
+    return redirect('landing')

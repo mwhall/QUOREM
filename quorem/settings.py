@@ -51,12 +51,17 @@ INSTALLED_APPS = [
     'django_jinja.contrib._humanize',
     'django_jinja_knockout',
     'djk_ui',
+    ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
+    'corsheaders',
 
 ] + DJK_APPS
 
 DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'
 
 MIDDLEWARE = [
+    ###########################################CORS Stuff
+    'corsheaders.middleware.CorsMiddleware',
+    ######################################################
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -64,6 +69,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+
 ]
 if LooseVersion(get_version()) >= LooseVersion('1.11'):
     MIDDLEWARE.append(DJK_MIDDLEWARE)
@@ -74,6 +81,8 @@ else:
         DJK_MIDDLEWARE,
     ])
 
+
+
 ROOT_URLCONF = 'quorem.urls'
 
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
@@ -81,6 +90,12 @@ CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+####CORS
+CORS_ORIGIN_WHITELIST = [
+    "https://view.qiime2.org",
+    "http://localhost:8000",
+]
 
 TEMPLATES = [
         {
@@ -121,13 +136,16 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'quoremtest',
-        'USER': 'alex',
-        'PASSWORD': '15fdnigp',
+        'NAME': 'yourdbname',
+        'USER': 'yourusername',
+        'PASSWORD': 'database_password1234',
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
