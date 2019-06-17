@@ -1,0 +1,367 @@
+body {
+	padding: 1em;
+}
+
+.label {
+	margin: 0 0.1em;
+}
+
+.hidden {
+	display: none;
+}
+
+.relative {
+	position: relative;
+}
+
+.preformatted {
+	white-space: pre-wrap;
+}
+
+.bold {
+	font-weight: 800 !important;
+}
+
+.condensed {
+	padding: 0.2em;
+}
+
+.fs-85 {
+	font-size: 85%;
+}
+
+.well-condensed {
+	margin: 5px;
+}
+
+.href-target:target {
+	border: 2px solid Aquamarine;
+	background-color: Aquamarine;
+}
+
+.nav-main {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.dropdown-menu-vscroll li > a {
+	white-space: pre-wrap !important;
+	max-height: 200px;
+	overflow-y: auto;
+	border-bottom: 1px solid lightgray;
+}
+
+.popover-title, .popover-content {
+	white-space: pre-wrap;
+}
+
+.vscroll,
+.dropdown-menu-vscroll,
+.input-as-select,
+.bootstrap-dialog-message {
+	max-height: 500px;
+	overflow-y: auto;
+}
+
+.input-as-select {
+	padding: 0 10px 0 10px;
+	border-radius: 2px;
+	border: 1px solid lightgray;
+	/* Uncomment next line to display input-as-select inputs */
+	/* padding: 0 5px 0 20px; */
+}
+
+.input-as-select input[type="checkbox"],
+.input-as-select input[type="radio"] {
+	display: none;
+}
+
+.input-as-select label {
+	cursor: pointer;
+	display: block;
+	padding: 3px;
+	border-radius: 2px;
+	border: 1px solid transparent;
+}
+
+.input-as-select label.selected {
+	background-color: #dff0d8;
+	border-radius: 2px;
+	border: 1px solid lightgray;
+}
+
+.default-padding {
+	padding: 0.5em;
+}
+
+.default-margin {
+	margin: 0.5em;
+}
+
+.vmargin {
+	margin: 0.5em 0;
+}
+
+
+.hmargin {
+	margin: 0 0.5em;
+}
+
+
+.linear-white {
+	background:
+		linear-gradient(to top, white 0%, #F4F4F4 50%, rgba(255, 255, 255, 0) 51%, rgba(255, 255, 255, 0) 100%),
+		linear-gradient(to bottom, white 0%, #F4F4F4 50%, rgba(255, 255, 255, 0) 51%, rgba(255, 255, 255, 0) 100%);
+		/* IE9 */
+		-ms-filter: "progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#F4F4F4', endColorstr='#FFFFFF')";
+}
+
+tr.linear-white:hover {
+	background:
+		linear-gradient(to top, #F4F4F4 0%, white 50%, rgba(255, 255, 255, 0) 51%, rgba(255, 255, 255, 0) 100%),
+		linear-gradient(to bottom, #F4F4F4 0%, white 50%, rgba(255, 255, 255, 0) 51%, rgba(255, 255, 255, 0) 100%);
+		/* IE9 */
+		-ms-filter: "progid:DXImageTransform.Microsoft.gradient(gradientType=0, startColorstr='#FFFFFF', endColorstr='#F4F4F4')";
+}
+
+table.table {
+	table-layout: fixed;
+	word-wrap: break-word;
+}
+
+table.rows-strong-border > thead > tr, table.rows-strong-border > tbody > tr {
+	border: 2px inset #eeeeee;
+}
+
+table.double-rows > thead > tr:nth-child(odd),
+table.double-rows > thead > tr:nth-child(odd) > td,
+table.double-rows > tbody > tr:nth-child(odd),
+table.double-rows > tbody > tr:nth-child(odd) > td
+{
+	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 0;
+}
+
+table.double-rows > thead > tr:nth-child(even),
+table.double-rows > thead > tr:nth-child(even) > td,
+table.double-rows > tbody > tr:nth-child(even),
+table.double-rows > tbody > tr:nth-child(even) > td
+{
+	border-top: none;
+	padding-top: 0;
+	margin-top: 0;
+}
+
+tr.cells-no-border > td, tr.cells-no-border > th {
+	border: none !important;
+}
+
+.display-table {
+	display: table; 
+}
+.display-table > div { 
+	display: table-row; 
+}
+.display-table > div > div { 
+	display: table-cell;
+	padding: 0.5em;
+}
+
+.label-gray {
+	color: gray;
+	background: transparent;
+	padding-left: 0;
+}
+
+.label-white {
+	color: white;
+	background: transparent;
+	padding-left: 0;
+}
+
+.error-bg, .validation-error {
+	color: white;
+	background-color: red;
+}
+
+.error-fg, .bootstrap-dialog.type-danger .bootstrap-dialog-message {
+	color: red;
+}
+
+.close {
+	float: right;
+	font-size: 18px;
+	font-weight: 700;
+	line-height: 1;
+	color: #000;
+	text-shadow: 0px 1px 0px #FFF;
+	opacity: 0.2;
+}
+
+.close:focus, .close:hover {
+	color: #000;
+	text-decoration: none;
+	cursor: pointer;
+	opacity: 0.5;
+}
+
+button.close {
+	padding: 0px 0px 0px 5px;
+	cursor: pointer;
+	background: transparent none repeat scroll 0px 0px;
+	border: 0px none;
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+.br-after::after {
+	content: '\a';
+	white-space: pre-wrap;
+}
+
+.choice-title:after {
+	content: ":";
+}
+
+.badge > a {
+	color: white;
+}
+
+/* Badges that can be used to wrap long text in bootstrap buttons. */
+.badge.btn-primary {
+	display: block;
+	white-space: pre-wrap;
+	color: white;
+}
+.badge.btn-default {
+	display: block;
+	white-space: pre-wrap;
+	color: slategray;
+}
+.badge.btn-info {
+	display: block;
+	white-space: pre-wrap;
+	color: white;
+}
+.badge.btn-success {
+	display: block;
+	white-space: pre-wrap;
+	color: white;
+}
+.badge.btn-warning {
+	display: block;
+	white-space: pre-wrap;
+	color: white;
+}
+.badge.btn-error {
+	display: block;
+	white-space: pre-wrap;
+	color: white;
+}
+
+form label {
+	font-weight: normal;
+}
+
+form label.required {
+	font-weight: 800;
+}
+
+form .form-empty input[name$='-DELETE'] {
+	color: red;
+}
+
+form .optional-input[type="checkbox"] {
+	margin-right: 0.5em;
+}
+
+textarea.ko-template {
+	display: none;
+	visibility: hidden;
+}
+
+.flex-space-between {
+	display: flex;
+	justify-content: space-between;
+}
+
+.display-block {
+	display: block;
+}
+
+.display-block-condition .conditional-display {
+	display: block;
+	margin: 0.25em 0 0.25em 0;
+}
+
+.display-inline-condition .conditional-display {
+	display: inline-block;
+	margin: 0 0.25em 0 0.25em;
+}
+
+.transform-origin-0 {
+	transform-origin: 0 0;
+	-ms-transform-origin: 0 0;
+	-moz-transform-origin: 0 0;
+	-o-transform-origin: 0 0;
+	-webkit-transform-origin: 0 0;
+}
+
+.align-center {
+	text-align: center;
+}
+
+.link-preview-spinner {
+	margin: auto;
+	text-align: center;
+}
+
+.link-preview-spinner > img {
+	width: 20px;
+	height: 20px;
+}
+
+/* Fit textarea width to outer element width. */
+.fit-width {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+a[name="#"] {
+	cursor: pointer;
+}
+
+.grid-breadcrumb {
+	padding: 10px;
+	margin: 10px;
+}
+
+.grid-glyph-cell {
+	width: 2em;
+}
+
+/* Support for App.ko.Grid highlightMode */
+table > tbody > tr.grid-new-row > td {
+	background-color: #F4F4F4; /* original: ffffff */
+}
+
+/* Support for App.ko.Grid highlightMode */
+table > tbody > tr.grid-new-row.success > td,
+table > tbody > tr.grid-new-row > td.success {
+	background-color: #EDFFE6; /* original: dff0d8 */
+}
+
+/* Support for App.ko.Grid highlightMode */
+table > tbody > tr.grid-new-row.info > td,
+table > tbody > tr.grid-new-row > td.info {
+	background-color: #E0F5FF; /* original: d9edf7 */
+}
+
+/* Support for App.ko.Grid highlightMode */
+table > tbody > tr.grid-new-row.warning > td,
+table > tbody > tr.grid-new-row > td.warning {
+	background-color: #FEF9E5; /* original: fcf8e3 */
+}
