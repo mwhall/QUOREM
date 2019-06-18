@@ -11,3 +11,4 @@ six==1.12.0
 django-cors-headers==3.0.2
 git+https://github.com/Dmitri-Sintsov/djk-bootstrap4.git
 git+https://github.com/Dmitri-Sintsov/django-jinja-knockout.git@v0.8.0
+git+https://github.com/beiko-lab/q2-extractor.git

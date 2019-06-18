@@ -189,9 +189,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
-STATICFILES_DIRS = [
-    ("qiime", "staticfiles/q2templateassets"),
-]
+STATICFILES_DIRS = []
 
 #To allow download of files, we need to configure MEDIA_ROOT and MEDIA_URL
 #For now point them to upload. When we deploy we'll need to configure things
