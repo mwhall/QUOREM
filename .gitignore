@@ -1,4 +1,3 @@
-staticfiles/
 accounts/migrations/*
 db/migrations/*
 accounts/__pycache__/*
