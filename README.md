@@ -17,6 +17,7 @@ Quick install requires anaconda or miniconda.
 2) Navigate to the cloned folder and run install.sh. You may need to change the permissons.
 
 `$ chmod 755 install.sh`
+
 `$ ./install.sh`
 
 3) Follow the directions on screen. Don't worry about forgetting your credentials; the install script 	
@@ -26,8 +27,11 @@ Quick install requires anaconda or miniconda.
    To start QUOREM, open two console tabs. In the first, type:
 
 `$ launchquorem`
+
    In the second, type:
+   
 `$ runcelery`
+
    Then, open your web browser and navigate to localhost:8000. QUOREM should be functioning there.
 
 5) To wipe your database, use the resetdb utility. Simply type:
