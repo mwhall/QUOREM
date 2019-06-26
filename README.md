@@ -40,6 +40,7 @@ Quick install requires anaconda or miniconda.
 ## For Developers
 0) Install requirements:
 `pip install -r requirements.txt`
+Install django-wiki with the commands in scripts/installdjangowiki.sh in a suitable directory (bleeding edge for the moment).
 
 
 1) Create postgres user:
@@ -61,10 +62,13 @@ Set your NAME, USER and PASSWORD for your database.
 5) Get staticfiles in order:
 `python manage.py collectstatic`
 
-6) Run the Celery task queue in one shell:
+6) Initialize the wiki:
+`python manage.py initializewiki`
+
+7) Run the Celery task queue in one shell:
 `celery -A quorem worker`
 
-7) Run the application in another:
+8) Run the application in another:
 `python manage.py runserver`
 
 ## Troubleshooting
