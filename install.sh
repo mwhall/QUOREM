@@ -19,6 +19,7 @@ fi
 conda create --name $venv python=3.7
 conda activate $venv
 pip install -r requirements.txt
+echo "Sudo password required to act as postgres user"
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
 sudo -u postgres createdb --owner=$pguname $dbname
 python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
@@ -26,11 +27,15 @@ python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
 #Seems like this is necessary
 ./extenddb.sh $venv
 
-python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic
+python manage.py makemigrations
+python manage.py migrate
+python manage.py collectstatic
+python manage.py initializewiki
 
-chmod 755 ./scripts/launchquorem.sh && sudo ln -s `pwd`/scripts/launchquorem.sh /usr/local/bin/launchquorem
-chmod 755 ./scripts/runcelery.sh && sudo ln -s `pwd`/scripts/runcelery.sh /usr/local/bin/runcelery
-chmod 755 ./scripts/resetdb.sh && sudo ln -s `pwd`/scripts/resetdb.sh /usr/local/bin/resetdb
+# Leave these links as optional
+#chmod 755 ./scripts/launchquorem.sh && sudo ln -s `pwd`/scripts/launchquorem.sh /usr/local/bin/launchquorem
+#chmod 755 ./scripts/runcelery.sh && sudo ln -s `pwd`/scripts/runcelery.sh /usr/local/bin/runcelery
+#chmod 755 ./scripts/resetdb.sh && sudo ln -s `pwd`/scripts/resetdb.sh /usr/local/bin/resetdb
 
 touch credentials.txt
 echo "Database name: $dbname" >> credentials.txt

@@ -42,7 +42,10 @@ from db.views import (
 urlpatterns = [
     # Main page routing
     path('admin/', admin.site.urls),
-
+    # Wiki routing
+    path('notifications/', include('django_nyt.urls')),
+    path('wiki/', include('wiki.urls')),
+    # Upload routing
     path('upload/new', new_upload.as_view(), name='upload'),
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',

@@ -450,8 +450,7 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
 class PipelineResultList(ListSortingView):
     model = PipelineResult
     allowed_sort_orders = '__all__'
-    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', 'pipeline_step']
-    list_display = ["Result File Name", "Source Software", "Result Type", "Number of Matched Replicates", "Pipeline Step"]
+    grid_fields = ['source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
     def get_heading(self):
         return "Pipeline Result List"
 

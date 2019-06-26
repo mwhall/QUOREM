@@ -53,7 +53,19 @@ INSTALLED_APPS = [
     'djk_ui',
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
-
+    'django.contrib.sites.apps.SitesConfig',
+    'django.contrib.humanize.apps.HumanizeConfig',
+    'django_nyt.apps.DjangoNytConfig',
+    'mptt',
+    'sekizai',
+    'sorl.thumbnail',
+    'wiki.apps.WikiConfig',
+    'wiki.plugins.attachments.apps.AttachmentsConfig',
+    'wiki.plugins.notifications.apps.NotificationsConfig',
+    'wiki.plugins.images.apps.ImagesConfig',
+    'wiki.plugins.macros.apps.MacrosConfig',
+    'wiki.plugins.links.apps.LinksConfig',
+    'wiki.plugins.help.apps.HelpConfig',
 ] + DJK_APPS
 
 DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'
@@ -113,14 +125,19 @@ TEMPLATES = [
           },
         },
         { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
-          'DIRS': [],
+          'DIRS': ['templates', 'quorem/templates'],
           'APP_DIRS': True,
           'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.request',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
                 'django.contrib.messages.context_processors.messages',
+                "sekizai.context_processors.sekizai",
             ],
           },
         },
@@ -136,9 +153,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'yourdbname',
-        'USER': 'yourusername',
-        'PASSWORD': 'yourpassword',
+        'NAME': 'qdb',
+        'USER': 'quser',
+        'PASSWORD': 'abc123',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -200,3 +217,7 @@ MEDIA_URL = "media/"
 
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# For the django-wiki installation
+SITE_ID = 1
+WIKI_ACCOUNT_HANDLING = False

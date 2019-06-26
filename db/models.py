@@ -9,17 +9,11 @@ from django.contrib.postgres.indexes import GinIndex
 
 from celery import current_app
 
+from quorem.wiki import refresh_automated_report
+
 User = get_user_model()
 
-#We need to wrap the auth model to make it a model the djk will work with
-#It must be based on models.Model, but User is based on AbstractUser
-#But this allows us to store metadata
-
 class Investigation(models.Model):
-
-    """
-    Groups of samples, biosamples, and compsamples
-    """
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
@@ -39,6 +33,8 @@ class Investigation(models.Model):
              SearchVector('institution', weight='C') )
         super().save(*args, **kwargs)
         Investigation.objects.update(search_vector = sv)
+        refresh_automated_report("investigation")
+        refresh_automated_report("investigation", pk=self.pk)
 
 
 class UserProfile(models.Model):
@@ -110,6 +106,7 @@ class Sample(models.Model):
                              # SearchVector('investigation', weight = 'B')
                              )
         )
+        refresh_automated_report("sample", pk=self.pk)
 
 class SampleMetadata(models.Model):
     """
@@ -307,10 +304,11 @@ class PipelineResult(models.Model):
     """
     Some kind of result from a ComputationalPipeline
     """
+    list_display = ('source_software', 'result_type', 'replicates', 'pipeline_step')
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name")
     source_software = models.CharField(max_length=255, verbose_name="Source Software")
     result_type = models.CharField(max_length=255, verbose_name="Result Type")
-    computational_pipelines = models.ManyToManyField('ComputationalPipeline', related_name='pipelines')
+    computational_pipelines = models.ManyToManyField('ComputationalPipeline', related_name='pipelines', verbose_name="Pipelines")
     # This pipeline result is
     pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE, verbose_name="Pipeline Step")
     replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicates', verbose_name="Replicates")
