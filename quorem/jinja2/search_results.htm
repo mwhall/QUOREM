@@ -35,8 +35,18 @@
               <a href="/search/" class="btn btn-outline-primary">
               {% endif %}
                 {{ selected.type }}  <span>&times;</span></a><br>
+                {% if meta %}
+                  {% if q %}
+                  <a href="?q={{ q }}&type={{ type }}" class="btn btn-outline-success">
+                  {% else %}
+                  <a href="?type={{ type }}" class="btn btn-outline-success">
+                  {% endif %}
+                    {{ meta }} <span>&times;</span></a><br>
+                {% endif %}
             {% endif %}
           {% endif %}
+
+
             {% if page_total %}
               {% if q %}
                 {% if page_total %}
@@ -70,6 +80,36 @@
               {% endif %}
               </ul>
           </div>
+          {% if metadata %}
+            <div class="card-header bg-success">
+            </div>
+            <div class="card-body">
+              <h5>Additional Filters</h5>
+                <ul class="list-group list-group-flush">
+                  {% if meta %}
+                  <li class="list-group-item">
+                    {% if q %}
+                      <a href="?q={{ q }}&type={{ type }}&meta={{ meta }}">
+                    {% else %}
+                      <a href="?type={{ type }}&meta={{ meta}}">
+                    {% endif %}
+                    {{ meta }}
+                  </li>
+                  {% else %}
+                  {% for k in metadata %}
+                  <li class="list-group-item">
+                    {% if q %}
+                      <a href="?q={{ q }}&type={{ type }}&meta={{ k.key }}">
+                    {% else %}
+                      <a href="?type={{ type }}&meta={{ k.key }}">
+                    {% endif %}
+                    {{ k.key }}
+                  </li>
+                  {% endfor %}
+                  {% endif %}
+                </ul>
+            </div>
+          {% endif %}
         </div>
      </div>
     </div>

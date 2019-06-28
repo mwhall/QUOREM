@@ -645,6 +645,8 @@ def search(request):
 
     #put stuff here as you build filters
     selected_type = request.GET.get('type', '')
+    meta = request.GET.get('meta', '')
+    print("Meta", meta)
 
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
@@ -723,6 +725,13 @@ def search(request):
     selected = {
         'type': selected_type,
     }
+    if selected['type'] == 'sampleMetadata':
+        metadata = SampleMetadata.objects.order_by('key').distinct('key')
+    elif selected['type'] == 'biologicalReplicateMetadata':
+        metadata = BiologicalReplicateMetadata.objects.order_by('key').distinct('key')
+    else:
+        metadata = None
+
     #remove empty keys if there are any
     selected = {
         key: value
@@ -738,6 +747,8 @@ def search(request):
         'type_counts': type_counts,
         'selected': selected,
         'type': selected_type,
+        'metadata':metadata,
+        'meta': meta,
             #'search_page': "active",
     })
 
