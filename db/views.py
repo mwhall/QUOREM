@@ -45,7 +45,7 @@ from .forms import (
     PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
-    UploadInputFileDisplayWithInlineErrors, NewUploadForm
+    UploadInputFileDisplayWithInlineErrors, NewUploadForm,
 )
 
 import pandas as pd
@@ -635,6 +635,13 @@ def search(request):
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
         q = request.GET.get('q2', '').strip()
+
+    ##From search form
+    selected_type = request.GET.get('sel_type', '')
+    meta = request.GET.get('sel_meta', '')
+    min_selected = request.GET.get('min_value', '')
+    print("Min selected: ", min_selected)
+
     query = None
     rank_annotation = None
     values = ['pk','type']
@@ -643,10 +650,14 @@ def search(request):
         rank_annotation = SearchRank(F('search_vector'), query)
         values.append('rank')
 
-    #put stuff here as you build filters
-    selected_type = request.GET.get('type', '')
-    meta = request.GET.get('meta', '')
-    print("Meta", meta)
+    #Check if vals are recieved from search form. If not, look for values
+    # from filters, facets etc
+    if not selected_type:
+        selected_type = request.GET.get('type', '')
+    if not meta:
+        meta = request.GET.get('meta', '')
+        print("Meta", meta)
+
 
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
@@ -727,23 +738,24 @@ def search(request):
     }
 
     value_range = None
+    value_form = None
 
     if selected['type'] == 'sampleMetadata':
         metadata = SampleMetadata.objects.order_by('key').distinct('key')
         if meta:
             value_range = {
-                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value')),
-                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value')),
-
+                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
+            #value_form = maxMinForm(initial={'min_value': value_range['min'], 'max_value': value_range['max']})
     elif selected['type'] == 'biologicalReplicateMetadata':
         metadata = BiologicalReplicateMetadata.objects.order_by('key').distinct('key')
         if meta:
             value_range = {
-                'min': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value')),
-                'max': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value')),
-
+                'min': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+                'max': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
+            #value_form = maxMinForm(initial={'min_value': value_range['min'], 'max_value': value_range['max']})
     else:
         metadata = None
 
@@ -765,6 +777,7 @@ def search(request):
         'metadata':metadata,
         'meta': meta,
         'value_range': value_range,
+        #'value_form': value_form,
             #'search_page': "active",
     })
 

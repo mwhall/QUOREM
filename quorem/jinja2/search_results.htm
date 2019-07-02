@@ -4,9 +4,13 @@
     {% include 'base_head.htm' -%}
     {% block head -%}
     {% endblock head -%}
+    <link rel="stylesheet" href="{{ static('/css/jquery-ui.css') }}">
+
     <style>
       /*style stuff */
+
     </style>
+
   </head>
   <body>
     {% set active_page = "search" %}
@@ -23,6 +27,16 @@
             <div class="form-group">
               <label for="largesearchbar">Putting the Q in QUOREM.</label>
               <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
+              {% if selected.type %}
+              <input class="form-control" type=hidden name="sel_type" value="{{ selected.type }}">
+              {% endif %}
+              {% if meta %}
+              <input class="form-control" type=hidden name="sel_meta" value="{{ meta }}">
+                {% if value_range %}
+                <input type="hidden" id="min" name="min_value">
+                <input type="hidden" id="max" name="max_value">
+                {% endif %}
+              {% endif %}
             </div>
             <button type="submit" class="btn btn-success">Search</button>
           </form>
@@ -96,19 +110,11 @@
                     {% else %}
                       <a href="?type={{ type }}&meta={{ meta}}">
                     {% endif %}
-                    {{ meta }}
+                    {{ meta }}</a>
                   </li>
                   <!-- check for value range and render it. -->
                 </ul>
 
-                {% if value_range %}
-                <ul class="list-group list-group-flush">
-                  <li class="list-group-item">
-                    Min: {{ value_range.min['value__min'] }} <br>
-                    Max: {{ value_range. max['value__max'] }}
-                  </li>
-                </ul>
-                {% endif %}
                   {% else %}
                   <!-- If a facet is not selected, render options. -->
                   {% for k in metadata %}
@@ -127,6 +133,18 @@
 
             </div>
           {% endif %}
+          {% if value_range %}
+          <div class="card-header bg-warning">
+          </div>
+          <div class="card-body">
+              <h5>Restrict Query</h5>
+              <p>
+                <label for="amount">Value Range:</label>
+                <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
+              </p>
+              <div id="slider-range"></div>
+          </div>
+          {% endif %}
         </div>
      </div>
     </div>
@@ -134,5 +152,26 @@
     {% include 'base_bottom_scripts.htm' -%}
     {% block bottom_scripts -%}
     {% endblock bottom_scripts -%}
+    <script src="{{ static('/js/jquery-ui.js') }}"></script>
+    {% if value_range %}
+    <script>
+  $( function() {
+    $( "#slider-range" ).slider({
+      range: true,
+      min: {{ value_range.min }},
+      max: {{ value_range.max }},
+      values: [ {{ value_range.min }}, {{ value_range.max }} ],
+      slide: function( event, ui ) {
+        $( "#amount" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
+        $( "#min" ).val( ui.values[ 0 ] );
+        $( "#max" ).val( ui.values[ 1 ] );
+      }
+    });
+    $( "#amount" ).val( $( "#slider-range" ).slider( "values", 0 ) +
+      " - " + $( "#slider-range" ).slider( "values", 1 ) );
+  } );
+  </script>
+  {% endif %}
   </body>
+
 </html>
