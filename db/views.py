@@ -725,10 +725,25 @@ def search(request):
     selected = {
         'type': selected_type,
     }
+
+    value_range = None
+
     if selected['type'] == 'sampleMetadata':
         metadata = SampleMetadata.objects.order_by('key').distinct('key')
+        if meta:
+            value_range = {
+                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value')),
+                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value')),
+
+            }
     elif selected['type'] == 'biologicalReplicateMetadata':
         metadata = BiologicalReplicateMetadata.objects.order_by('key').distinct('key')
+        if meta:
+            value_range = {
+                'min': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value')),
+                'max': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value')),
+
+            }
     else:
         metadata = None
 
@@ -749,6 +764,7 @@ def search(request):
         'type': selected_type,
         'metadata':metadata,
         'meta': meta,
+        'value_range': value_range,
             #'search_page': "active",
     })
 

@@ -81,11 +81,14 @@
               </ul>
           </div>
           {% if metadata %}
+          <!-- Display additional facets if a metadata category is selected -->
             <div class="card-header bg-success">
             </div>
             <div class="card-body">
               <h5>Additional Filters</h5>
                 <ul class="list-group list-group-flush">
+                  <!-- IF a search facet is selected, display it and
+                       render a removable tag. -->
                   {% if meta %}
                   <li class="list-group-item">
                     {% if q %}
@@ -95,7 +98,19 @@
                     {% endif %}
                     {{ meta }}
                   </li>
+                  <!-- check for value range and render it. -->
+                </ul>
+
+                {% if value_range %}
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item">
+                    Min: {{ value_range.min['value__min'] }} <br>
+                    Max: {{ value_range. max['value__max'] }}
+                  </li>
+                </ul>
+                {% endif %}
                   {% else %}
+                  <!-- If a facet is not selected, render options. -->
                   {% for k in metadata %}
                   <li class="list-group-item">
                     {% if q %}
@@ -105,9 +120,11 @@
                     {% endif %}
                     {{ k.key }}
                   </li>
+
                   {% endfor %}
+                  </ul>
                   {% endif %}
-                </ul>
+
             </div>
           {% endif %}
         </div>
