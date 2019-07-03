@@ -6,6 +6,8 @@ from django.shortcuts import render
 def highlight(text, selection):
     if not text:
         return
+    if not selection:
+        return Markup(text)
     pattern = re.compile(selection, re.IGNORECASE)
     l = re.findall(pattern, text)
     l = list(set(l))

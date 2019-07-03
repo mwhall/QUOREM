@@ -62,14 +62,14 @@
 
 
             {% if page_total %}
-              {% if q %}
+              <!--end if q -->
                 {% if page_total %}
                   <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
                 {% endif %}
                 {% include "_pagination.htm" %}
                 {% include "mixed_object_list.htm" %}
                 {% include "_pagination.htm" %}
-              {% endif %}
+            <!-- end if q -->
             {% else %}
               <h3> No results found. </h3>
             {% endif %}
