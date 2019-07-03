@@ -45,7 +45,7 @@ from .forms import (
     PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
-    UploadInputFileDisplayWithInlineErrors, NewUploadForm
+    UploadInputFileDisplayWithInlineErrors, NewUploadForm,
 )
 
 import pandas as pd
@@ -632,9 +632,28 @@ def search(request):
                   ('pipeline', ComputationalPipeline, 'Computational Pipeline'),
                   ('pipelineStep', PipelineStep, 'Computational Pipeline Step' )]
 
+    ## Retrieve values from request
+    #q or q2 is search term.
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
         q = request.GET.get('q2', '').strip()
+
+    ##From search form
+    selected_type = request.GET.get('sel_type', '')
+    meta = request.GET.get('sel_meta', '')
+    min_selected = request.GET.get('min_value', '')
+    max_selected = request.GET.get('max_value', '')
+    print("Min selected: ", min_selected)
+
+    #Check if vals are recieved from search form. If not, look for values
+    # from filters, facets etc
+    if not selected_type:
+        selected_type = request.GET.get('type', '')
+    if not meta:
+        meta = request.GET.get('meta', '')
+        print("Meta", meta)
+
+    #initialize vars for query
     query = None
     rank_annotation = None
     values = ['pk','type']
@@ -643,18 +662,26 @@ def search(request):
         rank_annotation = SearchRank(F('search_vector'), query)
         values.append('rank')
 
-    #put stuff here as you build filters
-    selected_type = request.GET.get('type', '')
+
 
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
         qs = model_type.objects.annotate(
             type=models.Value(type_name, output_field=models.CharField())
         )
+        #Filter metadata ranges
+        if meta:
+            qs = qs.filter(key=meta)
+        if min_selected and max_selected:
+            print(qs.count())
+            qs = qs.filter(value__lte=max_selected).filter(value__gte=min_selected)
+            print(qs.count())
+
         if q:
             qs = qs.filter(search_vector = query)
             qs = qs.annotate(rank=rank_annotation)
         return qs.order_by()
+
 
     #Create an empty qs with the right 'shape' to build upon.
     #Model type is arbitrary.
@@ -669,7 +696,9 @@ def search(request):
     #stuff for faceted search
     type_counts_raw = {}
 
+    #Iteratively construct the query.
     for type_name, model_type, frontend_string in model_types:
+        #If a type has been selected, only use that type.
         if selected_type and selected_type != type_name:
             continue
         this_qs = make_queryset(model_type, type_name)
@@ -677,15 +706,13 @@ def search(request):
         if type_count:
             type_counts_raw[frontend_string] = {'count': type_count,
                                                 'name': type_name}
-        #TODO add counts for each type here.
-        #type_count = this_qs.count()
         qs = qs.union(this_qs.values(*values))
-
-        this_qs.annotate(n=models.Count('pk'))
+        #this_qs.annotate(n=models.Count('pk')) #why is this here? delete bu August if no bugs come up.
 
     if q:
         qs = qs.order_by('-rank')
 
+    #create a dict of types and counts to pass to the view.
     type_counts = sorted(
         [
             {'type': type_name, 'n': value['count'], 'name': value['name']}
@@ -694,7 +721,7 @@ def search(request):
         key=lambda t: t['n'], reverse=True
     )
     #use a pagintator.
-    paginator = Paginator(qs, 20) #20 results per page? maybe 20 pages.
+    paginator = Paginator(qs, 20) #20 results per page
     page_number = request.GET.get('page') or '1'
     try:
         page = paginator.page(page_number)
@@ -723,12 +750,35 @@ def search(request):
     selected = {
         'type': selected_type,
     }
+
+    #Find value ranges for relevant queries.
+    value_range = None
+    if selected['type'] == 'sampleMetadata':
+        metadata = SampleMetadata.objects.order_by('key').distinct('key')
+        if meta:
+            value_range = {
+                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
+            }
+
+    elif selected['type'] == 'biologicalReplicateMetadata':
+        metadata = BiologicalReplicateMetadata.objects.order_by('key').distinct('key')
+        if meta:
+            value_range = {
+                'min': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+                'max': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
+            }
+
+    else:
+        metadata = None
+
     #remove empty keys if there are any
     selected = {
         key: value
         for key, value in selected.items()
         if value
     }
+
     return render(request, 'search_results.htm',{
         'q':q,
         'title':title,
@@ -738,6 +788,12 @@ def search(request):
         'type_counts': type_counts,
         'selected': selected,
         'type': selected_type,
+        'metadata':metadata,
+        'meta': meta,
+        'value_range': value_range,
+        'min_sel': min_selected,
+        'max_sel': max_selected,
+        #'value_form': value_form,
             #'search_page': "active",
     })
 

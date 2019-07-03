@@ -420,3 +420,13 @@ class PipelineStepDisplayWithInlineParameters(FormWithInlineFormsets):
 ##### Search form
 class SearchBarForm(forms.Form):
     search = forms.CharField(max_length=100)
+
+## Form for search faceting. Wille ventually replace with JQuery slider and AJAX
+"""
+class maxMinForm(forms.Form):
+    def __init__(self, min, max):
+        self.minimum = min
+        self.maximum = max
+        self.min_range = forms.DecimalField(min_value=self.minimum, max_value=self.maximum)
+        self.max_range = forms.DecimalField(min_value=self.minimum, max_value=self.maximum)
+"""
