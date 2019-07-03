@@ -1,5 +1,6 @@
 import re
 from jinja2 import Markup
+from jinja2 import contextfilter
 from django.utils.http import urlencode
 from django.shortcuts import render
 
@@ -16,6 +17,7 @@ def highlight(text, selection):
         text = text.replace(i, "<mark>{0}</mark>".format(i))
     return Markup(text)
 
+@contextfilter
 def add_type(context, type_name):
     q_dict = context.copy()
     q_dict['selected']['type'] = type_name
@@ -38,3 +40,10 @@ def format_pages(paginator, current_page, neighbors=5):
         page_list = [f for f in range(start_index, end_index+1)]
         return page_list[:(2*neighbors + 1)]
     return paginator.page_range
+
+#Generate pagination links that don't discard the search filters.
+@contextfilter
+def page_url(context, page_num):
+    ctx = context['request'].GET.copy()
+    ctx['page'] = str(page_num)
+    return '?' + ctx.urlencode()
