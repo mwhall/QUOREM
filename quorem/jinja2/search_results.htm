@@ -56,6 +56,14 @@
                   <a href="?type={{ type }}" class="btn btn-outline-success">
                   {% endif %}
                     {{ meta }} <span>&times;</span></a><br>
+                  {% if min_sel and max_sel %}
+                    {% if q %}
+                    <a href="?q={{ q }}&type={{ type }}&meta={{ meta }}" class="btn btn-outline-warning">
+                    {% else %}
+                    <a href="?type={{ type }}&meta={{ meta }}" class="btn btn-outline-warning">
+                    {% endif %}
+                      Range: {{ min_sel }} - {{ max_sel }} <span>&times;</span></a><br>
+                  {% endif %}
                 {% endif %}
             {% endif %}
           {% endif %}

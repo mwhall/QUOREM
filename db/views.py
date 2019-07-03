@@ -778,6 +778,7 @@ def search(request):
         for key, value in selected.items()
         if value
     }
+
     return render(request, 'search_results.htm',{
         'q':q,
         'title':title,
@@ -790,6 +791,8 @@ def search(request):
         'metadata':metadata,
         'meta': meta,
         'value_range': value_range,
+        'min_sel': min_selected,
+        'max_sel': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })
