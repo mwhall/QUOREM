@@ -25,7 +25,7 @@
     {% if page.number == page.paginator.num_pages %}
       <li class="page-item disabled"><a class="page-link text-info">Last</a></li>
     {% else %}
-      <li class="page-item"><a class="page-link text-info" href="{{ page.paginator.num_pages|page_url() }}">last</a></li>
+      <li class="page-item"><a class="page-link text-info" href="{{ page.paginator.num_pages|page_url() }}">Last</a></li>
     {% endif %}
   </ul>
 {% endif %}
