@@ -57,6 +57,7 @@ from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
 from django.db.models import F
+from django.db.models.functions import Cast 
 from django.views.generic.edit import CreateView
 
 '''
@@ -672,10 +673,12 @@ def search(request):
         #Filter metadata ranges
         if meta:
             qs = qs.filter(key=meta)
-        if min_selected and max_selected:
-            print(qs.count())
-            qs = qs.filter(value__lte=max_selected).filter(value__gte=min_selected)
-            print(qs.count())
+            if min_selected and max_selected:
+                print("Filtering by min-max. before count: ", qs.count())
+                qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
+                    num_val__lte=max_selected).filter(num_val__gte=min_selected)
+                print("Max val: ", max_selected, " Min val: ", min_selected)
+                print("Filtered count: " , qs.count())
 
         if q:
             qs = qs.filter(search_vector = query)
