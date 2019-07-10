@@ -57,7 +57,7 @@ from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
 from django.db.models import F
-from django.db.models.functions import Cast 
+from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView
 
 '''
@@ -451,7 +451,7 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
 class PipelineResultList(ListSortingView):
     model = PipelineResult
     allowed_sort_orders = '__all__'
-    grid_fields = ['source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
+    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
     def get_heading(self):
         return "Pipeline Result List"
 
@@ -460,6 +460,7 @@ class PipelineResultList(ListSortingView):
 
 
     def get_file_links(self, obj):
+        print("the function was called")
         links = [format_html(
             '<a href="{}">{}</a>',
             reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
@@ -812,6 +813,9 @@ def test_view(request):
     qs = UploadInputFile.objects.get(pk=4)
 
     return render(request, 'q2test.htm', {'item':qs})
+
+def plot_view(request):
+    return render(request, 'plot.htm')
 
 
 class new_upload(CreateView):

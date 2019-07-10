@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+    {% endblock head -%}
+    <style>
+      /*style stuff */
+      .marketing .row{
+        padding-top: 3rem;
+      }
+      .marketing .col-lg-4 {
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      .marketing .col-lg-12{
+        text-align: center;
+      }
+      .marketing h2 {
+        font-weight: 400;
+      }
+      .marketing .col-lg-4 p {
+        margin-right: .75rem;
+        margin-left: .75rem;
+      }
+      .placeholder{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20rem;
+        height: 20rem;
+        border-style: groove;
+        border-color: black;
+        border-width: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    {% set active_page = "analyze" %}
+    {% include 'header.htm' -%}
+    <div class="container marketing">
+      <div class="row">
+        <div class="col-lg-8 border-right">
+          <h4>Welcome to the interactive chart wizard.</h4>
+          <p>Explore the relationships in QUOR'em data. <br>
+            Simply choose filters for your data, then select what attributes you want to compare.
+            The wizard will generate a graph visualization.
+          </p>
+          {% if graph %}
+            {{ graph|safe }}
+          {% else %}
+          <div class="placeholder">
+            <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
+            alt="graph image" width="30" height="30">
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+      {% include 'base_bottom_scripts.htm' -%}
+      {% block bottom_scripts -%}
+      {% endblock bottom_scripts -%}
+  </body>
+</html>

@@ -36,7 +36,7 @@ from db.views import (
     search,
     #analysis page
     analyze,
-    test_view,new_upload
+    test_view,new_upload, plot_view,
 )
 
 urlpatterns = [
@@ -180,6 +180,7 @@ urlpatterns = [
     path('search/', search, name='search-results'),
     #analysis routing
     path('analyze/', analyze, name='analysis'),
+    path('analyze/plot/', plot_view, name='plot'),
     #visualization Routing
     path('test/', test_view, name='test'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
