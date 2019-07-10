@@ -641,8 +641,8 @@ def search(request):
         q = request.GET.get('q2', '').strip()
 
     ##From search form
-    selected_type = request.GET.get('sel_type', '')
-    meta = request.GET.get('sel_meta', '')
+    selected_type = request.GET.get('type', '')
+    meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
     print("Min selected: ", min_selected)
@@ -795,8 +795,8 @@ def search(request):
         'metadata':metadata,
         'meta': meta,
         'value_range': value_range,
-        'min_sel': min_selected,
-        'max_sel': max_selected,
+        'min_value': min_selected,
+        'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })

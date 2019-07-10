@@ -47,3 +47,20 @@ def page_url(context, page_num):
     ctx = context['request'].GET.copy()
     ctx['page'] = str(page_num)
     return '?' + ctx.urlencode()
+
+
+@contextfilter
+def add_facet(context, changes):
+    ctx = context['request'].GET.copy()
+    for key in changes.keys():
+        ctx[key] = changes[key]
+    return '?' + ctx.urlencode()
+
+@contextfilter
+def remove_facet(context, keys):
+    ctx = context['request'].GET.copy()
+    for key in keys:
+        print(key)
+        if key in ctx:
+            ctx.pop(key)
+    return '?' + ctx.urlencode()

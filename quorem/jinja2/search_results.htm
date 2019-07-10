@@ -1,185 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    {% include 'base_head.htm' -%}
-    {% block head -%}
-    {% endblock head -%}
-    <link rel="stylesheet" href="{{ static('/css/jquery-ui.css') }}">
+<head>
+  {% include 'base_head.htm' -%}
+  {% block head -%}
+  {% endblock head -%}
+  <link rel="stylesheet" href="{{ static('/css/jquery-ui.css') }}">
+  <style>
+  /*style stuff */
+  </style>
+</head>
+<body>
+  {% set active_page = "search" %}
+  {% include 'header.htm' -%}
 
-    <style>
-      /*style stuff */
+  <div class="container">
+    <div row>
 
-    </style>
-
-  </head>
-  <body>
-    {% set active_page = "search" %}
-    {% include 'header.htm' -%}
-
-    <div class="container">
-      <div row>
-
-      </div>
-      <div class="row">
-        <div class="col-8 border-right">
-          <h3> {{ title }} </h3>
-          <form action="/search"/ method="GET">
-            <div class="form-group">
-              <label for="largesearchbar">Putting the Q in QUOREM.</label>
-              <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
-              {% if selected.type %}
-              <input class="form-control" type=hidden name="sel_type" value="{{ selected.type }}">
-              {% endif %}
-              {% if meta %}
-              <input class="form-control" type=hidden name="sel_meta" value="{{ meta }}">
-                {% if value_range %}
+    </div>
+    <div class="row">
+      <div class="col-8 border-right">
+        <h3> {{ title }} </h3>
+        <!-- Search Bar Form -->
+        <form action="/search"/ method="GET">
+          <div class="form-group">
+            <label for="largesearchbar">Putting the Q in QUOREM.</label>
+            <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
+            {% if selected.type %}
+              <input class="form-control" type=hidden name="type" value="{{ selected.type }}">
+            {% endif %}
+            {% if meta %}
+              <input class="form-control" type=hidden name="meta" value="{{ meta }}">
+              {% if value_range %}
                 <input type="hidden" id="min" name="min_value">
                 <input type="hidden" id="max" name="max_value">
-                {% endif %}
               {% endif %}
-            </div>
-            <button type="submit" class="btn btn-success">Search</button>
-          </form>
-          {% if selected %}
-          <p>Filters:</p>
-            {% if selected.type %}
-              {% if q %}
-              <a href="?q={{ q }}" class="btn btn-outline-primary">
-              {% else %}
-              <a href="/search/" class="btn btn-outline-primary">
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-success">Search</button>
+        </form>
+        <!-- Display of Selected Facets -->
+        {% if selected %}
+        <p>Filters:</p>
+          {% if selected.type %}
+            <a href="{{ ['type', 'meta', 'min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-primary">
+              {{ selected.type }}  <span>&times;</span>
+            </a><br>
+            {% if meta %}
+              <a href="{{ ['meta', 'min_sel', 'max_sel']|remove_facet() }}" class="btn btn-outline-success">
+                {{ meta }} <span>&times;</span>
+              </a><br>
+              {% if min_value and max_value %}
+                <a href="{{ ['min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-warning">
+                  Range: {{ min_value }} - {{ max_value }} <span>&times;</span>
+                </a><br>
               {% endif %}
-                {{ selected.type }}  <span>&times;</span></a><br>
-                {% if meta %}
-                  {% if q %}
-                  <a href="?q={{ q }}&type={{ type }}" class="btn btn-outline-success">
-                  {% else %}
-                  <a href="?type={{ type }}" class="btn btn-outline-success">
-                  {% endif %}
-                    {{ meta }} <span>&times;</span></a><br>
-                  {% if min_sel and max_sel %}
-                    {% if q %}
-                    <a href="?q={{ q }}&type={{ type }}&meta={{ meta }}" class="btn btn-outline-warning">
-                    {% else %}
-                    <a href="?type={{ type }}&meta={{ meta }}" class="btn btn-outline-warning">
-                    {% endif %}
-                      Range: {{ min_sel }} - {{ max_sel }} <span>&times;</span></a><br>
-                  {% endif %}
-                {% endif %}
             {% endif %}
           {% endif %}
-
-
-            {% if page_total %}
-              <!--end if q -->
-                {% if page_total %}
-                  <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
-                {% endif %}
-                {% include "_pagination.htm" %}
-                {% include "mixed_object_list.htm" %}
-                {% include "_pagination.htm" %}
-            <!-- end if q -->
-            {% else %}
-              <h3> No results found. </h3>
-            {% endif %}
+        {% endif %}
+        <!-- Paginated Search Results -->
+        {% if page_total %}
+          <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
+          {% include "_pagination.htm" %}
+          {% include "mixed_object_list.htm" %}
+          {% include "_pagination.htm" %}
+        {% else %}
+          <h3> No results found. </h3>
+        {% endif %}
       </div>
+      <!-- Facet Selection Cards -->
       <div class="col-4">
         <div class="card">
           <div class="card-header bg-primary">
           </div>
           <div class="card-body">
             <h5>Search Filters</h5>
-              <ul class="list-group list-group-flush">
-              {% if type_counts %}
-                {% for t in type_counts %}
-                  <li class='list-group-item'>
-                    {% if q %}
-                      <a href="?q={{ q }}&type={{ t.name }}">
-                    {% else %}
-                      <a href="?type={{ t.name }}">
-                    {% endif %}
-                      {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span></a></li>
-                {% endfor %}
-              {% endif %}
-              </ul>
+            <ul class="list-group list-group-flush">
+            {% if type_counts %}
+              {% for t in type_counts %}
+                <li class='list-group-item'>
+                  <a href="{{ {'type': t.name}|add_facet() }}">
+                    {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span>
+                  </a>
+                </li>
+              {% endfor %}
+            {% endif %}
+            </ul>
           </div>
-          {% if metadata %}
           <!-- Display additional facets if a metadata category is selected -->
+          {% if metadata %}
             <div class="card-header bg-success">
             </div>
             <div class="card-body">
               <h5>Additional Filters</h5>
                 <ul class="list-group list-group-flush">
-                  <!-- IF a search facet is selected, display it and
-                       render a removable tag. -->
-                  {% if meta %}
+      <!-- IF a search facet is selected, display it and render a removable tag. -->
+                {% if meta %}
                   <li class="list-group-item">
-                    {% if q %}
-                      <a href="?q={{ q }}&type={{ type }}&meta={{ meta }}">
-                    {% else %}
-                      <a href="?type={{ type }}&meta={{ meta}}">
-                    {% endif %}
-                    {{ meta }}</a>
+                    <a href="{{ {'meta': meta}|add_facet() }}">
+                      {{ meta }}
+                    </a>
                   </li>
-                  <!-- check for value range and render it. -->
                 </ul>
-
-                  {% else %}
-                  <!-- If a facet is not selected, render options. -->
-                  {% for k in metadata %}
+                {% else %}
+        <!-- If a facet is not selected, render options. -->
+                {% for k in metadata %}
                   <li class="list-group-item">
-                    {% if q %}
-                      <a href="?q={{ q }}&type={{ type }}&meta={{ k.key }}">
-                    {% else %}
-                      <a href="?type={{ type }}&meta={{ k.key }}">
-                    {% endif %}
-                    {{ k.key }}
+                    <a href="{{ {'meta': k.key}|add_facet() }}">
+                      {{ k.key }}
+                    </a>
                   </li>
-
-                  {% endfor %}
-                  </ul>
-                  {% endif %}
-
+                {% endfor %}
+                </ul>
+                {% endif %}
             </div>
-          {% endif %}
-          {% if value_range %}
-          <div class="card-header bg-warning">
-          </div>
-          <div class="card-body">
+              {% endif %}
+            <!-- Render Value range selector if possible -->
+            {% if value_range %}
+            <div class="card-header bg-warning">
+            </div>
+            <div class="card-body">
               <h5>Restrict Query</h5>
               <p>
                 <label for="amount">Value Range:</label>
                 <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
               </p>
               <div id="slider-range"></div>
+            </div>
+            {% endif %}
           </div>
-          {% endif %}
         </div>
-     </div>
-    </div>
-  </div> <!--container -->
+      </div>
+    </div> <!--container -->
     {% include 'base_bottom_scripts.htm' -%}
     {% block bottom_scripts -%}
     {% endblock bottom_scripts -%}
     <script src="{{ static('/js/jquery-ui.js') }}"></script>
     {% if value_range %}
     <script>
-  $( function() {
-    $( "#slider-range" ).slider({
-      range: true,
-      min: {{ value_range.min }},
-      max: {{ value_range.max }},
-      values: [ {{ value_range.min }}, {{ value_range.max }} ],
-      slide: function( event, ui ) {
-        $( "#amount" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
-        $( "#min" ).val( ui.values[ 0 ] );
-        $( "#max" ).val( ui.values[ 1 ] );
-      }
-    });
-    $( "#amount" ).val( $( "#slider-range" ).slider( "values", 0 ) +
+    $( function() {
+      $( "#slider-range" ).slider({
+        range: true,
+        min: {{ value_range.min }},
+        max: {{ value_range.max }},
+        values: [ {{ value_range.min }}, {{ value_range.max }} ],
+        slide: function( event, ui ) {
+          $( "#amount" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
+          $( "#min" ).val( ui.values[ 0 ] );
+          $( "#max" ).val( ui.values[ 1 ] );
+        }
+      });
+      $( "#amount" ).val( $( "#slider-range" ).slider( "values", 0 ) +
       " - " + $( "#slider-range" ).slider( "values", 1 ) );
-  } );
-  </script>
-  {% endif %}
+    } );
+    </script>
+    {% endif %}
   </body>
 
-</html>
+  </html>
