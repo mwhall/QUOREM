@@ -1,0 +1,56 @@
+<div class="carousel-container">
+  <div id="carouselExampleControls" class="carousel" data-ride="carousel" data-interval="false">
+
+    <!--Controls-->
+    <div class="controls-top">
+      <a class="btn-floating" href="#carouselExampleControls" data-slide="prev"><i class="fa fa-chevron-left"></i></a>
+      <a class="btn-floating" href="#carouselExampleControls" data-slide="next"><i
+        class="fa fa-chevron-right"></i></a>
+    </div>
+    <!--/.Controls-->
+
+    <!-- slide content -->
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <div class="col-12">
+          <div class="card mb-2 text-center">
+            <img class="card-img-top" src="{{ static ('img/color-barchart.png') }}"
+            alt="Card image cap">
+            <div class="card-body">
+              <h4 class="card-title font-weight-bold">Aggregate</h4>
+              <p class="card-text">Visualize the proportions of data meeting characteristics of your choosing.</p>
+              <a href="{{ url('plot_aggregate') }}" class="btn btn-info btn-lg btn-rounded">Go</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <div class="col-12">
+          <div class="card mb-2 text-center">
+            <img class="card-img-top" src="{{ static ('img/trend.png') }}"
+            alt="Card image cap">
+            <div class="card-body">
+              <h4 class="card-title font-weight-bold">Trend</h4>
+              <p class="card-text">Look for relations in the data. Select paramters to compare against each other and discover trends.</p>
+              <a href="#" class="btn btn-info btn-lg btn-rounded">Go</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item">
+        <div class="col-12">
+          <div class="card mb-2 text-center">
+            <img class="card-img-top" src="{{ static ('img/cluster.png') }}"
+            alt="Card image cap">
+            <div class="card-body">
+              <h4 class="card-title font-weight-bold">Cluster</h4>
+              <p class="card-text">Select filters for your data of interest. Then, search for clustering patterns based on attributes of your choosing.</p>
+              <a href="#" class="btn btn-info btn-lg btn-rounded">Go</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /slide content -->
+    </div>
+  </div>
+</div>

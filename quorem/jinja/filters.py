@@ -21,7 +21,7 @@ def highlight(text, selection):
 def add_type(context, type_name):
     q_dict = context.copy()
     q_dict['selected']['type'] = type_name
-    return render(request, 'search_results.htm', q_dict)
+    return render(request, 'search/search_results.htm', q_dict)
 
 def format_pages(paginator, current_page, neighbors=5):
     if paginator.num_pages > 2*neighbors:

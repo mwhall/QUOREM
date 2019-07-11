@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% include 'base_head.htm' -%}
+  {% block head -%}
+  {% endblock head -%}
+  <link rel="stylesheet" href="{{ static('/css/jquery-ui.css') }}">
+  <style>
+  /*style stuff */
+  </style>
+</head>
+<body>
+  {% set active_page = "search" %}
+  {% include 'core/header.htm' -%}
+
+  <div class="container">
+    <div row>
+
+    </div>
+    <div class="row">
+      <div class="col-8 border-right">
+        <h3> {{ title }} </h3>
+        <!-- Search Bar Form -->
+        <form action="/search"/ method="GET">
+          <div class="form-group">
+            <label for="largesearchbar">Putting the Q in QUOREM.</label>
+            <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
+            {% if selected.type %}
+              <input class="form-control" type=hidden name="type" value="{{ selected.type }}">
+            {% endif %}
+            {% if meta %}
+              <input class="form-control" type=hidden name="meta" value="{{ meta }}">
+              {% if value_range %}
+                <input type="hidden" id="min" name="min_value">
+                <input type="hidden" id="max" name="max_value">
+              {% endif %}
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-success">Search</button>
+        </form>
+        <!-- Display of Selected Facets -->
+        {% if selected %}
+        <p>Filters:</p>
+          {% if selected.type %}
+            <a href="{{ ['type', 'meta', 'min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-primary">
+              {{ selected.type }}  <span>&times;</span>
+            </a><br>
+            {% if meta %}
+              <a href="{{ ['meta', 'min_sel', 'max_sel']|remove_facet() }}" class="btn btn-outline-success">
+                {{ meta }} <span>&times;</span>
+              </a><br>
+              {% if min_value and max_value %}
+                <a href="{{ ['min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-warning">
+                  Range: {{ min_value }} - {{ max_value }} <span>&times;</span>
+                </a><br>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        <!-- Paginated Search Results -->
+        {% if page_total %}
+          <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
+          {% include "search/_pagination.htm" %}
+          {% include "search/mixed_object_list.htm" %}
+          {% include "search/_pagination.htm" %}
+        {% else %}
+          <h3> No results found. </h3>
+        {% endif %}
+      </div>
+      <!-- Facet Selection Cards -->
+      <div class="col-4">
+        {% include 'search/search_facets.htm' %}
+      </div>
+      </div>
+    </div> <!--container -->
+    {% include 'base_bottom_scripts.htm' -%}
+    {% block bottom_scripts -%}
+    {% endblock bottom_scripts -%}
+    <script src="{{ static('/js/jquery-ui.js') }}"></script>
+    {% if value_range %}
+    <script>
+    $( function() {
+      $( "#slider-range" ).slider({
+        range: true,
+        min: {{ value_range.min }},
+        max: {{ value_range.max }},
+        values: [ {{ value_range.min }}, {{ value_range.max }} ],
+        slide: function( event, ui ) {
+          $( "#amount" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
+          $( "#min" ).val( ui.values[ 0 ] );
+          $( "#max" ).val( ui.values[ 1 ] );
+        }
+      });
+      $( "#amount" ).val( $( "#slider-range" ).slider( "values", 0 ) +
+      " - " + $( "#slider-range" ).slider( "values", 1 ) );
+    } );
+    </script>
+    {% endif %}
+  </body>
+
+  </html>

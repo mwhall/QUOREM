@@ -775,7 +775,7 @@ def search(request):
         if value
     }
 
-    return render(request, 'search_results.htm',{
+    return render(request, 'search/search_results.htm',{
         'q':q,
         'title':title,
         'results':results,
@@ -799,20 +799,19 @@ def search(request):
 
 #Analysis portal view. Just a place holder for now
 def analyze(request):
-    return render(request, 'analyze.htm')
+    return render(request, 'analyze/analyze.htm')
 
-def test_view(request):
-    qs = UploadInputFile.objects.get(pk=4)
-
-    return render(request, 'q2test.htm', {'item':qs})
-
+##Plot pages.
+#Plotting landing page
 def plot_view(request):
-    return render(request, 'plot.htm')
+    return render(request, 'analyze/plot.htm')
 
+def plot_aggregate_view(request):
+    return render(request, 'analyze/plot_aggregate.htm')
 
 class new_upload(CreateView):
     form_class = NewUploadForm
-    template_name = 'uploadcard.htm'
+    template_name = 'core/uploadcard.htm'
 
     def get_form_kwargs(self, *args, **kwargs):
         kwargs = super(new_upload, self).get_form_kwargs(*args, **kwargs)
