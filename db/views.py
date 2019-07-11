@@ -57,7 +57,7 @@ from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
 from django.db.models import F
-from django.db.models.functions import Cast 
+from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView
 
 '''
@@ -451,7 +451,7 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
 class PipelineResultList(ListSortingView):
     model = PipelineResult
     allowed_sort_orders = '__all__'
-    grid_fields = ['source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
+    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
     def get_heading(self):
         return "Pipeline Result List"
 
@@ -460,6 +460,7 @@ class PipelineResultList(ListSortingView):
 
 
     def get_file_links(self, obj):
+        print("the function was called")
         links = [format_html(
             '<a href="{}">{}</a>',
             reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
@@ -640,19 +641,11 @@ def search(request):
         q = request.GET.get('q2', '').strip()
 
     ##From search form
-    selected_type = request.GET.get('sel_type', '')
-    meta = request.GET.get('sel_meta', '')
+    selected_type = request.GET.get('type', '')
+    meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
     print("Min selected: ", min_selected)
-
-    #Check if vals are recieved from search form. If not, look for values
-    # from filters, facets etc
-    if not selected_type:
-        selected_type = request.GET.get('type', '')
-    if not meta:
-        meta = request.GET.get('meta', '')
-        print("Meta", meta)
 
     #initialize vars for query
     query = None
@@ -782,7 +775,7 @@ def search(request):
         if value
     }
 
-    return render(request, 'search_results.htm',{
+    return render(request, 'search/search_results.htm',{
         'q':q,
         'title':title,
         'results':results,
@@ -794,8 +787,8 @@ def search(request):
         'metadata':metadata,
         'meta': meta,
         'value_range': value_range,
-        'min_sel': min_selected,
-        'max_sel': max_selected,
+        'min_value': min_selected,
+        'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })
@@ -806,17 +799,19 @@ def search(request):
 
 #Analysis portal view. Just a place holder for now
 def analyze(request):
-    return render(request, 'analyze.htm')
+    return render(request, 'analyze/analyze.htm')
 
-def test_view(request):
-    qs = UploadInputFile.objects.get(pk=4)
+##Plot pages.
+#Plotting landing page
+def plot_view(request):
+    return render(request, 'analyze/plot.htm')
 
-    return render(request, 'q2test.htm', {'item':qs})
-
+def plot_aggregate_view(request):
+    return render(request, 'analyze/plot_aggregate.htm')
 
 class new_upload(CreateView):
     form_class = NewUploadForm
-    template_name = 'uploadcard.htm'
+    template_name = 'core/uploadcard.htm'
 
     def get_form_kwargs(self, *args, **kwargs):
         kwargs = super(new_upload, self).get_form_kwargs(*args, **kwargs)

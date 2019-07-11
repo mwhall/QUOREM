@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    <script src="https://kit.fontawesome.com/cdd00f6227.js"></script>
+    {% block head -%}
+    {% endblock head -%}
+    <style>
+      /*style stuff */
+      .marketing .row{
+        padding-top: 3rem;
+      }
+      .marketing .col-lg-4 {
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      .marketing .col-lg-12{
+        text-align: center;
+      }
+      .marketing h2 {
+        font-weight: 400;
+      }
+      .marketing .col-lg-4 p {
+        margin-right: .75rem;
+        margin-left: .75rem;
+      }
+      .placeholder{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20rem;
+        height: 20rem;
+        border-style: groove;
+        border-color: black;
+        border-width: 3px;
+      }
+
+      .carousel-container{
+        width:60%;
+      }
+      .controls-top{
+        text-align: center;
+        margin-bottom: 1.88rem;
+      }
+      .btn-floating {
+        background: #17a2b8;
+        display: inline-block;
+        box-shadow: 0 5px 11px 0 rgba(0,0,0, .18),
+                    0 4px 15px 0 rgba(0,0,0, .15);
+        width: 47px;
+        height: 47px;
+        position: relative;
+        z-index: 1;
+        vertical-align: middle;
+        overflow: hidden;
+        transition: all 0.2s ease-in-out;
+        border-radius: 50%;
+        padding: 0;
+        cursor: pointer;
+        margin: 10px;
+      }
+      .btn-floating i{
+        display: inline-block;
+        width: inherit;
+        text-align: center;
+        color: #fff;
+        font-size: 1.25rem;
+        line-height: 47px;
+      }
+      .card button{
+        color: white;
+
+      }
+
+    </style>
+  </head>
+  <body>
+    {% set active_page = "analyze" %}
+    {% include 'header.htm' -%}
+    <div class="container marketing">
+      {% block body %}
+      <div class="row">
+        <div class="col-lg-8 border-right">
+          <h4>Welcome to the interactive chart wizard.</h4>
+          <p>Explore the relationships in QUOR'em data. <br>
+            Simply choose filters for your data, then select what attributes you want to compare.
+            The wizard will generate a graph visualization.
+          </p>
+          {% include 'plot_options.htm' %}
+        </div>
+      </div>
+      {% endblock body %}
+    </div>
+      {% include 'base_bottom_scripts.htm' -%}
+      {% block bottom_scripts -%}
+      {% endblock bottom_scripts -%}
+  </body>
+</html>

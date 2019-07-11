@@ -21,7 +21,7 @@ def highlight(text, selection):
 def add_type(context, type_name):
     q_dict = context.copy()
     q_dict['selected']['type'] = type_name
-    return render(request, 'search_results.htm', q_dict)
+    return render(request, 'search/search_results.htm', q_dict)
 
 def format_pages(paginator, current_page, neighbors=5):
     if paginator.num_pages > 2*neighbors:
@@ -46,4 +46,21 @@ def format_pages(paginator, current_page, neighbors=5):
 def page_url(context, page_num):
     ctx = context['request'].GET.copy()
     ctx['page'] = str(page_num)
+    return '?' + ctx.urlencode()
+
+
+@contextfilter
+def add_facet(context, changes):
+    ctx = context['request'].GET.copy()
+    for key in changes.keys():
+        ctx[key] = changes[key]
+    return '?' + ctx.urlencode()
+
+@contextfilter
+def remove_facet(context, keys):
+    ctx = context['request'].GET.copy()
+    for key in keys:
+        print(key)
+        if key in ctx:
+            ctx.pop(key)
     return '?' + ctx.urlencode()

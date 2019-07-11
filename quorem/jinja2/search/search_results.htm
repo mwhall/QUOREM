@@ -11,7 +11,7 @@
 </head>
 <body>
   {% set active_page = "search" %}
-  {% include 'header.htm' -%}
+  {% include 'core/header.htm' -%}
 
   <div class="container">
     <div row>
@@ -60,16 +60,16 @@
         <!-- Paginated Search Results -->
         {% if page_total %}
           <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>
-          {% include "_pagination.htm" %}
-          {% include "mixed_object_list.htm" %}
-          {% include "_pagination.htm" %}
+          {% include "search/_pagination.htm" %}
+          {% include "search/mixed_object_list.htm" %}
+          {% include "search/_pagination.htm" %}
         {% else %}
           <h3> No results found. </h3>
         {% endif %}
       </div>
       <!-- Facet Selection Cards -->
       <div class="col-4">
-        {% include 'search_facets.htm' %}
+        {% include 'search/search_facets.htm' %}
       </div>
       </div>
     </div> <!--container -->
