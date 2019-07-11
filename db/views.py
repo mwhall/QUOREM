@@ -647,14 +647,6 @@ def search(request):
     max_selected = request.GET.get('max_value', '')
     print("Min selected: ", min_selected)
 
-    #Check if vals are recieved from search form. If not, look for values
-    # from filters, facets etc
-    if not selected_type:
-        selected_type = request.GET.get('type', '')
-    if not meta:
-        meta = request.GET.get('meta', '')
-        print("Meta", meta)
-
     #initialize vars for query
     query = None
     rank_annotation = None

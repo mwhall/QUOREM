@@ -69,66 +69,8 @@
       </div>
       <!-- Facet Selection Cards -->
       <div class="col-4">
-        <div class="card">
-          <div class="card-header bg-primary">
-          </div>
-          <div class="card-body">
-            <h5>Search Filters</h5>
-            <ul class="list-group list-group-flush">
-            {% if type_counts %}
-              {% for t in type_counts %}
-                <li class='list-group-item'>
-                  <a href="{{ {'type': t.name}|add_facet() }}">
-                    {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span>
-                  </a>
-                </li>
-              {% endfor %}
-            {% endif %}
-            </ul>
-          </div>
-          <!-- Display additional facets if a metadata category is selected -->
-          {% if metadata %}
-            <div class="card-header bg-success">
-            </div>
-            <div class="card-body">
-              <h5>Additional Filters</h5>
-                <ul class="list-group list-group-flush">
-      <!-- IF a search facet is selected, display it and render a removable tag. -->
-                {% if meta %}
-                  <li class="list-group-item">
-                    <a href="{{ {'meta': meta}|add_facet() }}">
-                      {{ meta }}
-                    </a>
-                  </li>
-                </ul>
-                {% else %}
-        <!-- If a facet is not selected, render options. -->
-                {% for k in metadata %}
-                  <li class="list-group-item">
-                    <a href="{{ {'meta': k.key}|add_facet() }}">
-                      {{ k.key }}
-                    </a>
-                  </li>
-                {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
-              {% endif %}
-            <!-- Render Value range selector if possible -->
-            {% if value_range %}
-            <div class="card-header bg-warning">
-            </div>
-            <div class="card-body">
-              <h5>Restrict Query</h5>
-              <p>
-                <label for="amount">Value Range:</label>
-                <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
-              </p>
-              <div id="slider-range"></div>
-            </div>
-            {% endif %}
-          </div>
-        </div>
+        {% include 'search_facets.htm' %}
+      </div>
       </div>
     </div> <!--container -->
     {% include 'base_bottom_scripts.htm' -%}
