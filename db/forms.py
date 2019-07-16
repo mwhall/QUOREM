@@ -21,6 +21,51 @@ from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
 
 from django.forms import inlineformset_factory, ModelForm
 
+#Stuff for custom FieldSetForm
+from django.forms.models import ModelFormOptions
+
+
+"""
+Custom Form Classes
+"""
+#ModelFormOption config to allow FieldSetForm
+_old_init = ModelFormOptions.__init__
+def _new_init(self, options=None):
+    _old_init(self, options)
+    self.fieldsets = getattr(options, 'fieldsets', None)
+ModelFormOptions.__init__ = _new_init
+
+##Fieldset class will allow multi-part forms to be Rendered  in the way
+# you might expect rather than having to use sessions and third party libs.
+class Fieldset(object):
+    def __init__(self, form, title, description, fields, classes):
+        self.form = form
+        self.title = title
+        self.description = description
+        self.fields = fields
+        self.classes = classes
+    #iter allows intuitive template rendering
+    def __iter__(self):
+        for field in self.fields:
+            yield field
+
+##Add a fieldsets() method to BaseForm to allow forms to have fieldsets.
+def fieldsets(self):
+    meta = getattr(self, '_meta', None)
+    if not meta:
+        meta = getattr(self, 'Meta', None)
+    if not meta or not meta.fieldsets:
+        return
+    for name, desc, data in meta.fieldsets:
+        yield Fieldset(
+            form=self,
+            title=name,
+            description=desc,
+            fields=(self[f] for f in data.get('fields',())),
+            classes=data.get('classes', '')
+        )
+
+forms.BaseForm.fieldsets = fieldsets
 
 '''
 Django-Jinja-Knockout Forms
@@ -421,12 +466,74 @@ class PipelineStepDisplayWithInlineParameters(FormWithInlineFormsets):
 class SearchBarForm(forms.Form):
     search = forms.CharField(max_length=100)
 
-## Form for search faceting. Wille ventually replace with JQuery slider and AJAX
-"""
-class maxMinForm(forms.Form):
-    def __init__(self, min, max):
-        self.minimum = min
-        self.maximum = max
-        self.min_range = forms.DecimalField(min_value=self.minimum, max_value=self.maximum)
-        self.max_range = forms.DecimalField(min_value=self.minimum, max_value=self.maximum)
-"""
+##### Fieldset Forms
+class FieldsetTestForm(forms.Form):
+    field1 = forms.BooleanField(required = False)
+    field2 = forms.CharField()
+    field3 = forms.CharField()
+
+    class Meta:
+        fieldsets = (
+           #Title, Description, Fields
+          ('Field Set 1', 'The First Component', {'fields': ('field1',)}),
+          ('Field Set 2', 'The Second Component', {'fields': ('field2',)}),
+          ('Field Set 3', 'The Last Component', {'fields': ('field3',)}),
+        )
+
+class AggregatePlotForm(forms.Form):
+    AGG_CHOICES = (
+        ('C', 'Count'),
+        ('U', 'Mean'),
+    )
+    agg_choice = forms.ChoiceField(choices=AGG_CHOICES)
+    #Other Fields, placeholder for now until I figure it out
+    field1 = forms.CharField()
+    field2 = forms.CharField()
+    field3 = forms.CharField()
+
+    class Meta:
+        fieldsets = (
+        #title, description, Fields
+            ('Select an Aggregate Query', 'Select Aggregate', {'fields': ('agg_choice',)}),
+            ('Select Dependant and Independant Variables', 'Select Variables', {'fields': ('field1', 'field2')}),
+            ('Select Filters for Data', 'Filter Data', {'fields': ('field3',)}),
+        )
+
+##### Aggregation Views and utils
+
+# Custom Field Choice for rendering form
+class CustomModelChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        if type(obj) is SampleMetadata or type(obj) is BiologicalReplicateMetadata:
+            return obj.key
+        else:
+            return super().label_from_instance(obj)
+
+#Multistep form
+class AggregatePlotInvestigation(forms.Form):
+    AGG_CHOICES = (
+        ('1', 'Count'),
+        ('2', 'Mean'),
+        ('3', 'Median'),
+    )
+    MODEL_CHOICES = (
+        ('', '----------'),
+        ('1', 'Samples'),
+        ('2', 'Biological Replicates'),
+    #    ('3', 'Computational Pipelines'),
+
+    )
+    agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
+    invField = forms.ModelChoiceField(queryset = Investigation.objects.all())
+    modelField = forms.ChoiceField(choices = MODEL_CHOICES)
+    metaValueField = CustomModelChoiceField(queryset=SampleMetadata.objects.none())
+
+    class Meta:
+        fieldsets = (
+            ('Aggregate', 'Select Aggregation Operation', {'fields': ('agg_choice',)}),
+            ('Data Choice', 'Select Investigation and Models', {'fields': ('invField', 'modelField',)}),
+            ('Filter', 'Select parameters to filter your data', {'fields': ('metaValueField',)}),
+        )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.fields['metaValueField'].queryset = SampleMetadata.objects.order_by('key').distinct('key')

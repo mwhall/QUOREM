@@ -46,6 +46,7 @@ from .forms import (
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
+    AggregatePlotForm, AggregatePlotInvestigation
 )
 
 import pandas as pd
@@ -58,7 +59,7 @@ from django.contrib.postgres.search import(
 
 from django.db.models import F
 from django.db.models.functions import Cast
-from django.views.generic.edit import CreateView
+from django.views.generic.edit import CreateView, FormView
 
 '''
 Class-based Django-Jinja-Knockout views
@@ -667,11 +668,8 @@ def search(request):
         if meta:
             qs = qs.filter(key=meta)
             if min_selected and max_selected:
-                print("Filtering by min-max. before count: ", qs.count())
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
-                print("Max val: ", max_selected, " Min val: ", min_selected)
-                print("Filtered count: " , qs.count())
 
         if q:
             qs = qs.filter(search_vector = query)
@@ -806,8 +804,40 @@ def analyze(request):
 def plot_view(request):
     return render(request, 'analyze/plot.htm')
 
+################################################################################
+## Aggregate Views!                                                            #
+################################################################################
+
 def plot_aggregate_view(request):
-    return render(request, 'analyze/plot_aggregate.htm')
+    form = AggregatePlotInvestigation()
+    return render(request, 'analyze/plot_aggregate.htm', {'form':form})
+
+#ajax view for populating metaValue Field
+def ajax_aggregates_meta_view(request):
+    inv_id = request.GET.get('inv_id')
+    model_choice = request.GET.get('type')
+    #get investigation specific meta data.
+    #E.g. Inv -> Samples -> SampleMetadata
+    #     Inv -> Reps -> BiologicalReplicateMetadata
+    qs = None
+    type = None
+
+    if model_choice == "1": #Samples
+        print("yes")
+        qs = SampleMetadata.objects.filter(
+            sample__in = Sample.objects.filter(
+            investigation = inv_id
+            )).order_by('key').distinct('key')
+        type = "sample"
+    elif model_choice == "2": #Bio Replicates
+        qs = BiologicalReplicateMetadata.objects.filter(
+            biological_replicate__in = (BiologicalReplicate.objects.filter(
+            sample__in = models.Sample.objects.filter(investigation=inv)
+            ))).order_by('key').distinct('key')
+        type = "replicate"
+#    elif model_choice == '3': #Computational something or other
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
 
 class new_upload(CreateView):
     form_class = NewUploadForm

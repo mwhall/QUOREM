@@ -35,7 +35,8 @@ from db.views import (
     #SearchResultList
     search,
     #analysis page
-    analyze, new_upload, plot_view, plot_aggregate_view,
+    analyze, new_upload, plot_view, plot_aggregate_view, ajax_aggregates_meta_view,
+
 )
 
 urlpatterns = [
@@ -183,6 +184,7 @@ urlpatterns = [
     #plot Routing
     path('analyze/plot/', plot_view, name='plot'),
     path('analyze/plot/aggregate/', plot_aggregate_view, name='plot_aggregate'),
+    path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
     #visualization Routing
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
