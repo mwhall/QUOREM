@@ -514,7 +514,7 @@ class AggregatePlotInvestigation(forms.Form):
     AGG_CHOICES = (
         ('1', 'Count'),
         ('2', 'Mean'),
-        ('3', 'Median'),
+    #    ('3', 'Median'),
     )
     MODEL_CHOICES = (
         ('', '----------'),
@@ -526,7 +526,7 @@ class AggregatePlotInvestigation(forms.Form):
     agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
     invField = forms.ModelChoiceField(queryset = Investigation.objects.all())
     modelField = forms.ChoiceField(choices = MODEL_CHOICES)
-    metaValueField = CustomModelChoiceField(queryset=SampleMetadata.objects.none())
+    metaValueField = forms.CharField(widget=forms.Select)
 
     class Meta:
         fieldsets = (

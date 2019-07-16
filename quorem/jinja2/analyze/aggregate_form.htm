@@ -22,7 +22,8 @@
 <!-- MultiStep Form -->
 <div class="row">
     <div class="col-md-12 col-md-offset-3">
-        <form method="post" id="msform" data-models-url="{{ url('ajax_load_model_options') }}">
+        <form action="/analyze/plot/aggregate/" method="POST" id="msform" data-models-url="{{ url('ajax_load_model_options') }}">
+            {% csrf_token %}
             <!-- progressbar -->
             <ul id="progressbar">
                 {% for fieldset in form.fieldsets() %}
@@ -44,7 +45,7 @@
                 <input type="button" name="previous" class="previous action-button-previous" value="Previous"/>
               {% endif %}
               {% if loop.last %}
-                <input type="button" name="submit" class="submit action-button" value="Submit"/>
+                <input type="submit" name="submit" class="submit action-button" value="Submit"/>
               {% else %}
                 <input {% if fieldset.title=="Data Choice" %}id="options"{% endif %} type="button" name="next" class="next action-button" value="Next"/>
               {% endif %}

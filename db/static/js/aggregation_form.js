@@ -121,9 +121,9 @@ var form_valid = function(frame){
 $(".next").click(next_frame);
 $(".previous").click(prev_frame);
 
-$(".submit").click(function(){
+/*$(".submit").click(function(){
   return false;
-});
+}); */
 /******************************************************************************/
 
 /*******************************************************************************

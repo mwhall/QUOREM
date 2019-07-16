@@ -48,6 +48,7 @@ from .forms import (
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation
 )
+from .utils import barchart_html
 
 import pandas as pd
 import numpy as np
@@ -808,9 +809,21 @@ def plot_view(request):
 ## Aggregate Views!                                                            #
 ################################################################################
 
-def plot_aggregate_view(request):
-    form = AggregatePlotInvestigation()
-    return render(request, 'analyze/plot_aggregate.htm', {'form':form})
+class PlotAggregateView(FormView):
+        template_name = 'analyze/plot_aggregate.htm'
+        form_class = AggregatePlotInvestigation
+        success_url = '/analyze/'
+
+        def form_invalid(self, form):
+            print("form invalid for some reason")
+            print(form.errors)
+            return super().form_invalid(form)
+
+        def form_valid(self, form):
+            req = self.request.POST
+            html = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
+                                req['metaValueField'])
+            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html})
 
 #ajax view for populating metaValue Field
 def ajax_aggregates_meta_view(request):
