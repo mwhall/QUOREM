@@ -524,9 +524,9 @@ class AggregatePlotInvestigation(forms.Form):
 
     )
     agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
-    invField = forms.ModelChoiceField(queryset = Investigation.objects.all())
-    modelField = forms.ChoiceField(choices = MODEL_CHOICES)
-    metaValueField = forms.CharField(widget=forms.Select)
+    invField = forms.ModelChoiceField(queryset = Investigation.objects.all(), label="Select Investigation")
+    modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
+    metaValueField = forms.CharField(widget=forms.Select, label="Select X Value")
 
     class Meta:
         fieldsets = (

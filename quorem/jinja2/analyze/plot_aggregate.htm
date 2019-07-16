@@ -160,7 +160,7 @@
 {% endblock style %}
 {% block body %}
 <div class="row">
-  <div class="col-md-10 border-right">
+  <div class="col-lg-9 border-right">
     <h3>Aggregate Plot Wizard</h3>
     <p>Filter the data you are interested in, choose an aggregation, and plot
       against a parameter of interest.<br> <br>For now, comparisons can only be made within a single Investigation.</p>
@@ -172,6 +172,31 @@
       {% endif %}
     </div>
   </div>
+  {% if choices %}
+  <div class="col-lg-3 border-left">
+    <div class="card">
+      <div class="card-header bg-primary">
+      </div>
+      <div class="card-body">
+        <h5>Parameter Choices</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            <p>Aggregate operation: {{ choices.agg }}</p>
+          </li>
+          <li class='list-group-item'>
+            <p>Investigation: {{ choices.inv }}</p>
+          </li>
+          <li class='list-group-item'>
+            <p>Query Object: {{ choices.type }}</p>
+          </li>
+          <li class='list-group-item'>
+            <p>Data Filter: {{ choices.meta }}</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
  </div>
 {% endblock %}
 {% block bottom_scripts %}

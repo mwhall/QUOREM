@@ -821,9 +821,9 @@ class PlotAggregateView(FormView):
 
         def form_valid(self, form):
             req = self.request.POST
-            html = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
+            html, choices = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
                                 req['metaValueField'])
-            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html})
+            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices})
 
 #ajax view for populating metaValue Field
 def ajax_aggregates_meta_view(request):
