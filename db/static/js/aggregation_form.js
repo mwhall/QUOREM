@@ -99,6 +99,13 @@ var prev_frame = function(){
 
 var form_valid = function(frame){
   valid = true;
+  //check for radio button selection
+  if ($("input[type=radio]").length > 0) {
+    if($("input[type=radio]:checked").length <= 0){
+      return false
+    }
+  }
+  //check for select boxes
   fields = frame[0].getElementsByTagName("select");
   for (i = 0; i < fields.length; i++) {
     if (fields[i].value == "" || fields[i].value == "----------"){

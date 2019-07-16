@@ -832,7 +832,7 @@ def ajax_aggregates_meta_view(request):
     elif model_choice == "2": #Bio Replicates
         qs = BiologicalReplicateMetadata.objects.filter(
             biological_replicate__in = (BiologicalReplicate.objects.filter(
-            sample__in = models.Sample.objects.filter(investigation=inv)
+            sample__in = Sample.objects.filter(investigation=inv_id)
             ))).order_by('key').distinct('key')
         type = "replicate"
 #    elif model_choice == '3': #Computational something or other
