@@ -46,7 +46,9 @@ from .forms import (
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
+    AggregatePlotForm, AggregatePlotInvestigation
 )
+from .utils import barchart_html
 
 import pandas as pd
 import numpy as np
@@ -58,7 +60,7 @@ from django.contrib.postgres.search import(
 
 from django.db.models import F
 from django.db.models.functions import Cast
-from django.views.generic.edit import CreateView
+from django.views.generic.edit import CreateView, FormView
 
 '''
 Class-based Django-Jinja-Knockout views
@@ -667,11 +669,8 @@ def search(request):
         if meta:
             qs = qs.filter(key=meta)
             if min_selected and max_selected:
-                print("Filtering by min-max. before count: ", qs.count())
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
-                print("Max val: ", max_selected, " Min val: ", min_selected)
-                print("Filtered count: " , qs.count())
 
         if q:
             qs = qs.filter(search_vector = query)
@@ -806,8 +805,52 @@ def analyze(request):
 def plot_view(request):
     return render(request, 'analyze/plot.htm')
 
-def plot_aggregate_view(request):
-    return render(request, 'analyze/plot_aggregate.htm')
+################################################################################
+## Aggregate Views!                                                            #
+################################################################################
+
+class PlotAggregateView(FormView):
+        template_name = 'analyze/plot_aggregate.htm'
+        form_class = AggregatePlotInvestigation
+        success_url = '/analyze/'
+
+        def form_invalid(self, form):
+            print("form invalid for some reason")
+            print(form.errors)
+            return super().form_invalid(form)
+
+        def form_valid(self, form):
+            req = self.request.POST
+            html, choices = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
+                                req['metaValueField'])
+            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices})
+
+#ajax view for populating metaValue Field
+def ajax_aggregates_meta_view(request):
+    inv_id = request.GET.get('inv_id')
+    model_choice = request.GET.get('type')
+    #get investigation specific meta data.
+    #E.g. Inv -> Samples -> SampleMetadata
+    #     Inv -> Reps -> BiologicalReplicateMetadata
+    qs = None
+    type = None
+
+    if model_choice == "1": #Samples
+        print("yes")
+        qs = SampleMetadata.objects.filter(
+            sample__in = Sample.objects.filter(
+            investigation = inv_id
+            )).order_by('key').distinct('key')
+        type = "sample"
+    elif model_choice == "2": #Bio Replicates
+        qs = BiologicalReplicateMetadata.objects.filter(
+            biological_replicate__in = (BiologicalReplicate.objects.filter(
+            sample__in = Sample.objects.filter(investigation=inv_id)
+            ))).order_by('key').distinct('key')
+        type = "replicate"
+#    elif model_choice == '3': #Computational something or other
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
 
 class new_upload(CreateView):
     form_class = NewUploadForm
