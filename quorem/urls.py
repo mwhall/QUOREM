@@ -36,7 +36,7 @@ from db.views import (
     search,
     #analysis page
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
-    PlotAggregateView,
+    PlotAggregateView, PlotTrendView,
 )
 
 urlpatterns = [
@@ -176,16 +176,18 @@ urlpatterns = [
     re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
         name='replicate_grid', kwargs={'ajax':True}),
 
-    #Search Result Routing
+    #### Search Result Routing
     path('search/', search, name='search-results'),
 
-    #analysis routing
+    #### analysis routing
     path('analyze/', analyze, name='analysis'),
-    #plot Routing
+    ### plot Routing
     path('analyze/plot/', plot_view, name='plot'),
+    ## Aggregate routing
     path('analyze/plot/aggregate/', PlotAggregateView.as_view(), name='plot_aggregate'),
     path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
-    #visualization Routing
+    ## Trend Routing
+    path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

@@ -46,7 +46,7 @@ from .forms import (
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation
+    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm,
 )
 from .utils import barchart_html
 
@@ -62,35 +62,9 @@ from django.db.models import F
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
 
-'''
-Class-based Django-Jinja-Knockout views
-'''
-
-"""
 ###############################################################################
-Deprecated June 14, 2019. Leave in for ~a month in case of bugs with new_upload.
+### Database Browse DJK views                                              ####
 ###############################################################################
-
-class UploadCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    form_class = UserProfileForm
-    pk_url_kwarg = 'userprofile_id'
-
-    form_with_inline_formsets = UserWithInlineUploads
-
-
-    def get_bs_form_opts(self):
-        return {
-                'title': 'Upload Files',
-               'submit_text': 'Upload',
-                }
-
-    def get_success_url(self):
-        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
-                                                            'new':"new"})
-"""
-
-
 class UploadList(ListSortingView):
     model = UploadInputFile
     allowed_sort_orders = '__all__'
@@ -793,7 +767,7 @@ def search(request):
     })
 
 ###############################################################################
-###            ANALYSIS VIEWS                                             #####
+###          Analyse menu views                                           #####
 ###############################################################################
 
 #Analysis portal view. Just a place holder for now
@@ -812,18 +786,23 @@ def plot_view(request):
 class PlotAggregateView(FormView):
         template_name = 'analyze/plot_aggregate.htm'
         form_class = AggregatePlotInvestigation
+        action = "/analyze/plot/aggregate/"
         success_url = '/analyze/'
 
+        def get_context_data(self, *args, **kwargs):
+            context = super(PlotAggregateView, self).get_context_data(**kwargs)
+            print(context)
+            context['action'] = self.action
+            return context
+
         def form_invalid(self, form):
-            print("form invalid for some reason")
-            print(form.errors)
             return super().form_invalid(form)
 
         def form_valid(self, form):
             req = self.request.POST
             html, choices = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
                                 req['metaValueField'])
-            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices})
+            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'action':self.action})
 
 #ajax view for populating metaValue Field
 def ajax_aggregates_meta_view(request):
@@ -852,6 +831,18 @@ def ajax_aggregates_meta_view(request):
     return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
 
 
+###############################################################################
+### Trend Analysis Views                                                    ###
+###############################################################################
+
+class PlotTrendView(FormView):
+    template_name="analyze/plot_trend.htm"
+    form_class = TrendPlotForm
+    success_url = '/analyze/'
+
+###############################################################################
+### View for handling file uploads                                          ###
+###############################################################################
 class new_upload(CreateView):
     form_class = NewUploadForm
     template_name = 'core/uploadcard.htm'

@@ -526,6 +526,7 @@ class AggregatePlotInvestigation(forms.Form):
     agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
     invField = forms.ModelChoiceField(queryset = Investigation.objects.all(), label="Select Investigation")
     modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
+    #metaValueField will be populated by AJAX call to ajax_model_options view
     metaValueField = forms.CharField(widget=forms.Select, label="Select X Value")
 
     class Meta:
@@ -537,3 +538,15 @@ class AggregatePlotInvestigation(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.fields['metaValueField'].queryset = SampleMetadata.objects.order_by('key').distinct('key')
+
+class TrendPlotForm(forms.Form):
+    invField = forms.ModelChoiceField(queryset = Investigation.objects.all(),
+                                      label="Select Investigation(s)",
+                                      widget=forms.SelectMultiple,
+                                      empty_label=None)
+
+    class Meta:
+        fieldsets = (
+            ('Choose Investigation(s)', "Select Investigation(s)", {'fields': ('invField',)}),
+
+        )

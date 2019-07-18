@@ -22,7 +22,7 @@
 <!-- MultiStep Form -->
 <div class="row">
     <div class="col-md-12 col-md-offset-3">
-        <form action="/analyze/plot/aggregate/" method="POST" id="msform" data-models-url="{{ url('ajax_load_model_options') }}">
+        <form action="{{ action }}" method="POST" id="msform" data-models-url="{{ url('ajax_load_model_options') }}">
             {% csrf_token %}
             <!-- progressbar -->
             <ul id="progressbar">
