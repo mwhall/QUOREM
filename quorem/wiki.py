@@ -4,6 +4,32 @@ from wiki.models.urlpath import URLPath
 from wiki.models.article import Article, ArticleRevision
 from wiki.core.exceptions import NoRootURL
 from django.apps import apps
+from django.contrib.staticfiles.storage import staticfiles_storage
+
+def get_content_from_file(staticfile):
+    #url = staticfiles_storage.url(staticfile)
+    with open(staticfile, 'r') as sfile:
+       return sfile.read()
+
+def initialize_documentation(root):
+    try:
+        URLPath.get_by_path("use")
+    except:
+        URLPath.create_urlpath(root, slug="use", 
+                                 title="Using QUOR'em",
+                                 content=get_content_from_file("quorem/static/docs/use.md"))
+    try:
+        URLPath.get_by_path("develop")
+    except:
+        URLPath.create_urlpath(root, slug="develop",
+            title="Developing QUOR'em",
+            content=get_content_from_file("quorem/static/docs/develop.md"))
+    try:
+        URLPath.get_by_path("deploy")
+    except:
+        URLPath.create_urlpath(root, slug="deploy",
+            title="Deploying QUOR'em",
+            content=get_content_from_file("quorem/static/docs/deploy.md"))
 
 #Wire up the reports here so that it can all be imported in one function
 def get_wiki_report(report_name, **kwargs):
@@ -118,10 +144,10 @@ def initialize_wiki():
     except NoRootURL:
         print("Root URL not found, creating...")
         root = URLPath.create_root(title="QUOR'EM Wiki",
-                                   content="""Welcome to your QUOR'EM Wiki. You
-                            may edit any part of any page, except for the
-                            top-level Automated Report sections of any page. 
-                            These will be overwritten on occasion\r\n\r\n""")
+                                   content=get_content_from_file("quorem/static/docs/root.md"))
+    article_revision = ArticleRevision(title=root.article.current_revision.title,
+                                                   content=get_content_from_file("quorem/static/docs/root.md"))
+    root.article.add_revision(article_revision)
     try:
         investigation = URLPath.get_by_path("investigation")
     except URLPath.DoesNotExist:
@@ -161,6 +187,8 @@ def initialize_wiki():
         URLPath.create_urlpath(root, slug="sample",
                                      title="List of Samples",
                                      content="This page lists the samples that are present in your QUOR'EM database. You may edit anything on this page, except the Automated Report section.\r\n\r\n")
+
+    initialize_documentation(root)
 
 
         
