@@ -4,8 +4,8 @@
      working_directory: ~/circleci-quorem
      docker:
        - image: circleci/python:3.6.4
-	environment: 
-	  PIPENV_VENV_IN_PROJECT: true
+         environment: 
+           PIPENV_VENV_IN_PROJECT: true
      steps:
        - checkout
        - run: echo "Setup config"
