@@ -156,3 +156,48 @@ $("#options").click(function () {
     }
   });
 });
+
+/******************************************************************************
+*** Ajax for trend line code                                                ***
+******************************************************************************/
+$("#id_x_val_category").change(function(){
+  //data url attached to the form, which calls a qs gerating view
+  var url = $("#msform").attr('data-models-url');
+  //the value of x_val field
+  var model = $(this).val();
+  //list of selected investigations, by pk
+  var invs = $('#id_invField').val();
+  //ajax makes call to view and passes params
+  $.ajax({
+    url: url,
+    data: {
+      'inv_id': invs,
+      'type': model,
+    },
+    // on successful call, replace x_val selector with html generated from view
+    success: function(data){
+      $("#id_x_val").html(data);
+    }
+  });
+});
+
+//same code but for y vals. might abstract later for DRY
+$("#id_y_val_category").change(function(){
+  var url = $('#msform').attr('data-models-url');
+  var model = $(this).val();
+  var invs = $('#id_invField').val();
+  //exclude the selected x-val from qs to prevent self vs self analysis.
+  var x_sel = $('#id_x_val').val()
+  $.ajax({
+    url:url,
+    data: {
+      'inv_id': invs,
+      'type': model,
+      'exclude': x_sel,
+    },
+    success: function(data){
+      console.log(data);
+      $("#id_y_val").html(data);
+    }
+  });
+});
