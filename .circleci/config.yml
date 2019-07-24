@@ -1,6 +1,6 @@
 version: 2 # use CircleCI 2.0
 jobs: # A basic unit of work in a run
-  build: # runs not using Workflows must have a `build` job as entry point 
+  build: # runs not using Workflows must have a `build` job as entry point
     # directory where steps are run
     working_directory: ~/circleci-demo-python-django
     docker: # run the steps with Docker
@@ -33,7 +33,7 @@ jobs: # A basic unit of work in a run
             - "/usr/local/lib/python3.6/site-packages"
       - run:
           command: |
-            pipenv run python manage.py makemigrations && python manage.py migrate
+            pipenv run python manage.py makemigrations && pipenv run python manage.py migrate
             pipenv run python manage.py test
       - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
           path: test-results
