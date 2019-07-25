@@ -160,6 +160,26 @@ $("#options").click(function () {
 /******************************************************************************
 *** Ajax for trend line code                                                ***
 ******************************************************************************/
+//Wipe fields if investigation changes
+$("#id_invField").change(function(){
+  console.log('id field change registered');
+  var url = $('#msform').attr('data-models-url');
+  var invs = $('#id_invField').val();
+  var model = $('#id_x_val_category').val();
+  console.log(model);
+  $.ajax({
+    url: url,
+    data: {
+      'inv_id': invs,
+      'type': model,
+    },
+    // on successful call, replace x_val selector with html generated from view
+    success: function(data){
+      $("#id_x_val").html(data);
+    }
+  });
+});
+
 $("#id_x_val_category").change(function(){
   //data url attached to the form, which calls a qs gerating view
   var url = $("#msform").attr('data-models-url');

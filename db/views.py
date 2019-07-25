@@ -825,6 +825,9 @@ def ajax_aggregates_meta_view(request):
     qs = None
     type = None
 
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
     if model_choice == "1": #Samples
         print("yes")
         qs = SampleMetadata.objects.filter(
