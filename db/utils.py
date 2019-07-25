@@ -10,7 +10,7 @@ def barchart_html(agg, inv, model, meta):
     type = None
     metaType = None
 
-    investigation = models.Investigation.objects.get(pk=inv[0])
+    investigations = models.Investigation.objects.filter(pk__in=inv)
     #Assign aggregate operation
     if agg == '1':
         Operation = Count
@@ -29,25 +29,31 @@ def barchart_html(agg, inv, model, meta):
         metaType = models.BiologicalReplicateMetadata
     #using this conditional will allow later additions to this method.
     if metaType:
-        qs = metaType.objects.filter(sample__in=models.Sample.objects.filter(investigation=inv)).filter(key=meta).values('value').order_by(
-            'value').annotate(agg=Operation('value'))
-        #plotly plot
-        x = [s['value'] for s in qs]
-        y = [s['agg'] for s in qs]
+        #create qs for each selected investigation
+        sets = []
+        for inv in investigations:
+            sets.append({'title': inv.name,
+                         'data': metaType.objects.filter(sample__in=models.Sample.objects.filter(investigation=inv)).filter(key=meta).values('value').order_by(
+                'value').annotate(agg=Operation('value'))})
 
-        data = [go.Bar(
-            x=x,
-            y=y,
-            text=y,
-            textposition= 'auto',
-            marker=dict(
-                color='rgb(158,202,225)',
-                line=dict(
-                    color='rgb(8,48,107)',
-                    width=1.5),
-            ),
-            opacity=0.75,
-        )]
+        #create values for plotly
+        graph_values = []
+        for qs in sets:
+            graph_values.append(
+                {'x': [s['value'] for s in qs['data']],
+                 'y': [s['agg'] for s in qs['data']],
+                 'title': qs['title']}
+            )
+
+        data = []
+        for bar in graph_values:
+            data.append(go.Bar(
+                x=bar['x'],
+                y=bar['y'],
+                text=bar['y'],
+                textposition = 'auto',
+                name=bar['title'],
+            ))
 
         layout = go.Layout(title=(title + " by  " + meta),
                            xaxis={'title': meta},
@@ -59,7 +65,7 @@ def barchart_html(agg, inv, model, meta):
         else:
             print("something is wrong")
         return to_html(figure, full_html=False), {'agg':title,
-                                                  'inv': investigation.name,
+                                                  'inv': 'TODO investigations',
                                                   'type':model_choice,
                                                   'meta':meta}
     return None
