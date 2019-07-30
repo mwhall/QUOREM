@@ -60,10 +60,6 @@ def barchart_html(agg, inv, model, meta):
                            yaxis={'title': title})
 
         figure = go.Figure(data=data, layout=layout)
-        if figure:
-            print("a figure was made")
-        else:
-            print("something is wrong")
         return to_html(figure, full_html=False), {'agg':title,
                                                   'inv': 'TODO investigations',
                                                   'type':model_choice,

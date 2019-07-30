@@ -436,7 +436,6 @@ class PipelineResultList(ListSortingView):
 
 
     def get_file_links(self, obj):
-        print("the function was called")
         links = [format_html(
             '<a href="{}">{}</a>',
             reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
@@ -621,7 +620,6 @@ def search(request):
     meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
-    print("Min selected: ", min_selected)
 
     #initialize vars for query
     query = None
@@ -791,7 +789,6 @@ class PlotAggregateView(FormView):
 
         def get_context_data(self, *args, **kwargs):
             context = super(PlotAggregateView, self).get_context_data(**kwargs)
-            print(context)
             context['action'] = self.action
             return context
 
@@ -801,7 +798,8 @@ class PlotAggregateView(FormView):
 
         def form_valid(self, form):
             req = self.request.POST
-            html, choices = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
+            inv = req.getlist('invField')
+            html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
                                 req['metaValueField'])
             return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'action':self.action})
 
@@ -810,8 +808,7 @@ class PlotAggregateView(FormView):
 #This view generates html for metavalue selection and populates a template
 #The template html is passed to the view via AJAX javascript; 'aggregation_form.js'
 def ajax_aggregates_meta_view(request):
-    print(request.GET)
-    inv_id = request.GET.get('inv_id[]')
+    inv_id = request.GET.getlist('inv_id[]')
     #if only one id is selected, not a list.
     if not inv_id:
         inv_id = request.GET.get('inv_id')
@@ -820,8 +817,6 @@ def ajax_aggregates_meta_view(request):
     #get investigation specific meta data.
     #E.g. Inv -> Samples -> SampleMetadata
     #     Inv -> Reps -> BiologicalReplicateMetadata
-    print(inv_id)
-    print(model_choice)
     qs = None
     type = None
 
@@ -829,7 +824,6 @@ def ajax_aggregates_meta_view(request):
         return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
 
     if model_choice == "1": #Samples
-        print("yes")
         qs = SampleMetadata.objects.filter(
             sample__in = Sample.objects.filter(
             investigation__in = inv_id
@@ -862,7 +856,6 @@ class PlotTrendView(FormView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(PlotTrendView, self).get_context_data(**kwargs)
-        print(context)
         context['action'] = self.action
         return context
 
