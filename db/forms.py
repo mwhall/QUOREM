@@ -509,7 +509,7 @@ class CustomModelChoiceField(forms.ModelChoiceField):
         else:
             return super().label_from_instance(obj)
 
-#Multistep form
+#Form for barcharts. Maybe pie charts someday!
 class AggregatePlotInvestigation(forms.Form):
     AGG_CHOICES = (
         ('1', 'Count'),
@@ -524,8 +524,10 @@ class AggregatePlotInvestigation(forms.Form):
 
     )
     agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
-    invField = forms.ModelChoiceField(queryset = Investigation.objects.all(), label="Select Investigation")
+    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
+                                      label="Select Investigation(s)")
     modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
+    #metaValueField will be populated by AJAX call to ajax_model_options view
     metaValueField = forms.CharField(widget=forms.Select, label="Select X Value")
 
     class Meta:
@@ -537,3 +539,34 @@ class AggregatePlotInvestigation(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.fields['metaValueField'].queryset = SampleMetadata.objects.order_by('key').distinct('key')
+
+
+#Form for trendline plotting
+class TrendPlotForm(forms.Form):
+    MODEL_CHOICES = (
+        ('', '----------'),
+        ('1', 'Samples'),
+        ('2', 'Biological Replicates'),
+    #    ('3', 'Computational Pipelines'),
+
+    )
+    #In each field, define class labels for widgets where field change affects subesqeuent fields.
+    #These class labels will have JS event listeneres attached where relevant.
+    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
+                                      label="Select Investigation(s)")
+    x_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select X-value category.", widget=forms.Select(attrs={'class':'x-val'}))
+    x_val = forms.CharField(widget=forms.Select, label="Select X Value.")
+
+    y_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Y-value category.")
+    y_val = forms.CharField(widget=forms.Select, label="Select Y Value.")
+
+    operation_choice = forms.ChoiceField(choices = (('1','Scatter'),('2','Contiuous')),
+                                        label="Select Plot Type.")
+
+    class Meta:
+        fieldsets = (
+            ('Choose Investigation(s)', "Select Investigation(s)", {'fields': ('invField',)}),
+            ('Choose Dependant Variable', "Select X", {'fields': ('x_val_category', 'x_val',)}),
+            ("Choose Independant Variable", "Select Y", {'fields': ('y_val_category', 'y_val',)}),
+            ("Choose output format", "Select Plot", {'fields':('operation_choice',)}),
+        )

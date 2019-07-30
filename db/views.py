@@ -46,9 +46,9 @@ from .forms import (
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation
+    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm,
 )
-from .utils import barchart_html
+from .utils import barchart_html, trendchart_html
 
 import pandas as pd
 import numpy as np
@@ -62,35 +62,9 @@ from django.db.models import F
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
 
-'''
-Class-based Django-Jinja-Knockout views
-'''
-
-"""
 ###############################################################################
-Deprecated June 14, 2019. Leave in for ~a month in case of bugs with new_upload.
+### Database Browse DJK views                                              ####
 ###############################################################################
-
-class UploadCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    form_class = UserProfileForm
-    pk_url_kwarg = 'userprofile_id'
-
-    form_with_inline_formsets = UserWithInlineUploads
-
-
-    def get_bs_form_opts(self):
-        return {
-                'title': 'Upload Files',
-               'submit_text': 'Upload',
-                }
-
-    def get_success_url(self):
-        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk -1,
-                                                            'new':"new"})
-"""
-
-
 class UploadList(ListSortingView):
     model = UploadInputFile
     allowed_sort_orders = '__all__'
@@ -462,7 +436,6 @@ class PipelineResultList(ListSortingView):
 
 
     def get_file_links(self, obj):
-        print("the function was called")
         links = [format_html(
             '<a href="{}">{}</a>',
             reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
@@ -647,7 +620,6 @@ def search(request):
     meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
-    print("Min selected: ", min_selected)
 
     #initialize vars for query
     query = None
@@ -793,7 +765,7 @@ def search(request):
     })
 
 ###############################################################################
-###            ANALYSIS VIEWS                                             #####
+###          Analyse menu views                                           #####
 ###############################################################################
 
 #Analysis portal view. Just a place holder for now
@@ -812,46 +784,105 @@ def plot_view(request):
 class PlotAggregateView(FormView):
         template_name = 'analyze/plot_aggregate.htm'
         form_class = AggregatePlotInvestigation
+        action = 'plot_aggregate'
         success_url = '/analyze/'
 
+        def get_context_data(self, *args, **kwargs):
+            context = super(PlotAggregateView, self).get_context_data(**kwargs)
+            context['action'] = self.action
+            return context
+
         def form_invalid(self, form):
-            print("form invalid for some reason")
             print(form.errors)
             return super().form_invalid(form)
 
         def form_valid(self, form):
             req = self.request.POST
-            html, choices = barchart_html(req['agg_choice'], req['invField'], req['modelField'],
+            inv = req.getlist('invField')
+            html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
                                 req['metaValueField'])
-            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices})
+            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'action':self.action})
+
 
 #ajax view for populating metaValue Field
+#This view generates html for metavalue selection and populates a template
+#The template html is passed to the view via AJAX javascript; 'aggregation_form.js'
 def ajax_aggregates_meta_view(request):
-    inv_id = request.GET.get('inv_id')
+    inv_id = request.GET.getlist('inv_id[]')
+    #if only one id is selected, not a list.
+    if not inv_id:
+        inv_id = request.GET.get('inv_id')
     model_choice = request.GET.get('type')
+    exclude = request.GET.get('exclude')
     #get investigation specific meta data.
     #E.g. Inv -> Samples -> SampleMetadata
     #     Inv -> Reps -> BiologicalReplicateMetadata
     qs = None
     type = None
 
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
     if model_choice == "1": #Samples
-        print("yes")
         qs = SampleMetadata.objects.filter(
             sample__in = Sample.objects.filter(
-            investigation = inv_id
+            investigation__in = inv_id
             )).order_by('key').distinct('key')
+        #excludes are defined in each conditional to allow later flexibility
+        if exclude:
+            qs = qs.exclude(key=exclude)
         type = "sample"
     elif model_choice == "2": #Bio Replicates
         qs = BiologicalReplicateMetadata.objects.filter(
             biological_replicate__in = (BiologicalReplicate.objects.filter(
-            sample__in = Sample.objects.filter(investigation=inv_id)
+            sample__in = Sample.objects.filter(investigation__in = inv_id)
             ))).order_by('key').distinct('key')
+        if exclude:
+            qs = qs.exclude(key=exclude)
         type = "replicate"
 #    elif model_choice == '3': #Computational something or other
     return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
 
 
+###############################################################################
+### Trend Analysis Views                                                    ###
+###############################################################################
+
+class PlotTrendView(FormView):
+    template_name="analyze/plot_trend.htm"
+    form_class = TrendPlotForm
+    action = "plot_trend"
+    success_url = '/analyze/'
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(PlotTrendView, self).get_context_data(**kwargs)
+        context['action'] = self.action
+        return context
+
+    def form_invalid(self, form):
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        req = self.request.POST
+        html= trendchart_html(req['invField'], req['x_val'], req['x_val_category'],
+                                        req['y_val'], req['y_val_category'], req['operation_choice'])
+        return render(self.request, '/analyze/plot_trend.htm', {'graph':html, 'action':self.action})
+
+
+# View for x choices. Will need to populate x-val choices based on Investigations
+# selected as well as x_val_category. Example, if choice is BB samples, populate
+# with metadata found in BB. If two or more invs are selected, need to only show
+# options found in all invs.
+def ajax_plot_trendx_view(request):
+    pass
+
+#Should be basically the same as x_view.
+def ajax_plot_trendy_view(request):
+    pass
+
+###############################################################################
+### View for handling file uploads                                          ###
+###############################################################################
 class new_upload(CreateView):
     form_class = NewUploadForm
     template_name = 'core/uploadcard.htm'

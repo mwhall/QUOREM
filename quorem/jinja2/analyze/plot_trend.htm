@@ -1,0 +1,25 @@
+{% extends 'analyze/plot.htm' %}
+{% block style %}
+<link rel="stylesheet" href="{{ static('css/plot_form_css.css') }}">
+{% endblock style %}
+{% block body %}
+<div class="row">
+  <div class="col-lg-9 border-right">
+    <h3>Trend Plot Wizard</h3>
+    <p>Select X and Y values to discover trends in data.</P>
+    <div class="aggregate-content">
+      {% if graph %}
+      {{ graph|safe }}
+      {% else %}
+      {% include 'analyze/aggregate_form.htm' %}
+      {% endif %}
+    </div>
+  </div>
+ </div>
+{% endblock %}
+{% block bottom_scripts %}
+<script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js'>
+</script>
+<script src="{{ static ('js/aggregation_form.js') }}">
+</script>
+{% endblock %}

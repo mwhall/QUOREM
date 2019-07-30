@@ -121,28 +121,21 @@ var form_valid = function(frame){
 $(".next").click(next_frame);
 $(".previous").click(prev_frame);
 
-/*$(".submit").click(function(){
-  return false;
-}); */
 /******************************************************************************/
 
 /*******************************************************************************
-*** Ajax code for populating form field                                      ***
+*** Ajax code for barchart                                                   ***
 *******************************************************************************/
-
+//TODO change this into a named function.
+// For some reason doing so in the same way as the other code throws a
+// synchronous XTML error. Not a high priority but refactoring here would be nice.
 $("#options").click(function () {
   if (!form_valid(current_fs)){
-    console.log('AJAX FORM CHECK INVALID');
-    console.log(current_fs[0]);
     return false;
   }
-  console.log("ajax called");
   var url = $("#msform").attr('data-models-url');
-  var fields = current_fs[0].getElementsByTagName('select');
-  var invId = fields[0].value;
-  var modelType = fields[1].value;
-  console.log("invid ", invId);
-  console.log("modelType ", modelType);
+  var invId = $('#id_invField').val();
+  var modelType = $('#id_modelField').val();
   $.ajax({
     url: url,
     data: {
@@ -150,9 +143,51 @@ $("#options").click(function () {
       'type': modelType,
     },
     success: function(data){
-      console.log("ajax success");
-      console.log(data['message']);
       $('#id_metaValueField').html(data);
     }
   });
 });
+
+/******************************************************************************
+*** Ajax for trend line code                                                ***
+******************************************************************************/
+//TODO: refactor this to allow the same function to be used for x and y, as
+//      they are basically the same. Params in JS events arent that simple though
+
+function populateXOptions(){
+  var url = $('#msform').attr('data-models-url');
+  var model = $('#id_x_val_category').val();
+  var invs = $('#id_invField').val();
+  $.ajax({
+    url:url,
+    data:{
+      'inv_id':invs,
+      'type':model,
+    },
+    success: function(data){
+      $('#id_x_val').html(data);
+    }
+  });
+}
+function populateYOptions(){
+  var url = $('#msform').attr('data-models-url');
+  var model = $('#id_y_val_category').val();
+  var invs = $('#id_invField').val();
+  //exclude the selected x-val from qs to prevent self vs self analysis.
+  var x_sel = $('#id_x_val').val();
+  $.ajax({
+    url:url,
+    data:{
+      'inv_id': invs,
+      'type': model,
+      'exclude': x_sel,
+    },
+    success: function(data){
+      $('#id_y_val').html(data);
+    }
+  });
+}
+//Bind event listeners
+$("#id_x_val_category").change(populateXOptions);
+$("#id_invField").change(populateXOptions);
+$('#id_y_val_category').change(populateYOptions);
