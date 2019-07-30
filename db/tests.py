@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from . import models, views, forms
+from quorem.wiki import initialize_wiki
 # Create your tests here.
 class BasicFormTests(TestCase):
     def test_investigation_form(self):
@@ -12,6 +13,7 @@ class BasicFormTests(TestCase):
 
     #depends on test_investigation_form being run first.
     def test_sample_form(self):
+        initialize_wiki()
         test_inv = models.Investigation(name='test', institution=
         'test', description='test')
         test_inv.save()
