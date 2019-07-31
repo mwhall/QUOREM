@@ -1,24 +1,59 @@
-from django.test import TestCase
+from django.test import TestCase, LiveServerTestCase
 
 from . import models, views, forms
 from quorem.wiki import initialize_wiki
 
 from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 import os
 
 def chromedriver_init():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
-    #driver_location = os.getcwd() + '/db/chromedriver'
+    """
+    LOCAL TESTING:
+
+    driver_location = os.getcwd() + '/db/chromedriver'
+    driver = webdriver.Chrome(executable_path=driver_location)
+
+    """
+    #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
+    
     return driver
 
 #Note that functions with prefix "test_" will be run by manage.py test
-class FunctionalTests(TestCase):
-    def test_webdriver(self):
-        driver = chromedriver_init()
-        driver.get('http://localhost:8000')
-        assert driver
+class FunctionalTests(LiveServerTestCase):
+    def setUp(self):
+        self.driver = chromedriver_init()
+        super(FunctionalTests, self).setUp()
+
+    def tearDown(self):
+        self.driver.quit()
+        super(FunctionalTests, self).tearDown()
+
+    def test_register(self):
+        driver = self.driver
+        #nav to web page
+        driver.get(self.live_server_url)
+        #navigate to sign up page
+        signup = driver.find_element_by_xpath('/html/body/header/div[1]/ul/li[1]/a')
+        signup.click()
+        #find form elements
+        email = driver.find_element_by_id('id_email')
+        password1 = driver.find_element_by_id('id_password')
+        password2 = driver.find_element_by_id('id_confirm_password')
+        submit = driver.find_element_by_xpath('/html/body/header/div[2]/form/div/button')
+        #enter valid registration information and submit
+        email.send_keys('testemail@gmail.com')
+        password1.send_keys('password123')
+        password2.send_keys('password123')
+        #submit the form
+        submit.click()
+        #Try to enter the page.
+        enter = driver.find_element_by_xpath('/html/body/header/div[2]/p/a')
+        enter.click()
+        assert "Investigation List" in driver.page_source
 
 #simply test if the basic forms work
 class BasicFormTests(TestCase):
