@@ -9,10 +9,9 @@ import os
 def chromedriver_init():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
-    driver_location = os.getcwd() + '/db/chromedriver'
+    #driver_location = os.getcwd() + '/db/chromedriver'
     print(driver_location)
-    driver = webdriver.Chrome(executable_path=driver_location,
-                              chrome_options=option)
+    driver = webdriver.Chrome(chrome_options=option)
     return driver
 
 #Note that functions with prefix "test_" will be run by manage.py test
