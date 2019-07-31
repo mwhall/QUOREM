@@ -467,18 +467,6 @@ class SearchBarForm(forms.Form):
     search = forms.CharField(max_length=100)
 
 ##### Fieldset Forms
-class FieldsetTestForm(forms.Form):
-    field1 = forms.BooleanField(required = False)
-    field2 = forms.CharField()
-    field3 = forms.CharField()
-
-    class Meta:
-        fieldsets = (
-           #Title, Description, Fields
-          ('Field Set 1', 'The First Component', {'fields': ('field1',)}),
-          ('Field Set 2', 'The Second Component', {'fields': ('field2',)}),
-          ('Field Set 3', 'The Last Component', {'fields': ('field3',)}),
-        )
 
 class AggregatePlotForm(forms.Form):
     AGG_CHOICES = (

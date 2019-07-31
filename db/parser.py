@@ -36,6 +36,7 @@ class Validator():
         """Base Validator in database check
            id_field is the value in the id_field for this model
            But has to check all metadata, since some models have joint keys"""
+        print("call to in_db; self: ", self)
         kwargs = {self.django_mapping[self.id_field] + "__exact": self.data[self.id_field]}
         for field1, field2 in self.jointly_unique:
             if (field1 == self.id_field):
@@ -54,8 +55,10 @@ class Validator():
                 kwargs[self.django_mapping[swap_field]] = obj
         try:
             self.model.objects.get(**kwargs)
+            print("in_db returned True")
             return True
         except self.model.DoesNotExist:
+            print("in_Db returned False")
             return False
 
     def validate(self):
