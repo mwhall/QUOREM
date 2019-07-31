@@ -141,9 +141,7 @@ class BiologicalReplicate(models.Model):
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='sample')  # fk 1
     #sequence_file = models.ManyToManyField('Document') # store the location of the sequence file(s)
     biological_replicate_protocol = models.ForeignKey('BiologicalReplicateProtocol', on_delete=models.CASCADE)  # fk 5
-    #Should be locked down to match sample's Investigation field, but I can't
-    #Ok, let's try the simple approach, where we fetch it through .sample.invesigation whenever we have a replicate
-    #investigation = sample.investigation
+    
 
     search_vector = SearchVectorField(null=True)
     class Meta:
