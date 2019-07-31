@@ -10,7 +10,6 @@ def chromedriver_init():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
     #driver_location = os.getcwd() + '/db/chromedriver'
-    print(driver_location)
     driver = webdriver.Chrome(chrome_options=option)
     return driver
 
