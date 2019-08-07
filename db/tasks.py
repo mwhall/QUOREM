@@ -13,7 +13,8 @@ from .parser import resolve_input_row
 from .models import (
 BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
 ErrorMessage, Investigation, Sample, SampleMetadata, UploadInputFile,
-PipelineResult, PipelineStep
+PipelineResult, PipelineStep, Measure, StrMeasure, FloatMeasure, IntMeasure, DatetimeMeasure,
+ReplicateMeasure, FeatureMeasure, SampleMeasure, FeatureReplicateMeasure, InvestigationMeasure
 )
 
 from q2_extractor.Extractor import q2Extractor
@@ -41,7 +42,7 @@ def react_to_file(upload_file_id):
         filetype = guess_filetype(infile)
         infile.seek(0)
         print(filetype)
-
+        status = ""
         if filetype == 'qz':
             print("processing qiime file...")
             try:
@@ -87,34 +88,10 @@ def process_table(infile):
             raise e
     return "Success"
 
-"""
-try:
-    #an artifact is either qzv or qza.
-    name = upfile.upload_file.name
-    zip_name = name[:-3] + "zip"
-    zf = zipfile.ZipFile(zip_name, mode='a')
-    zf.write(name)
-    with open('filetext.txt', mode='w') as textfile:
-        template = loader.get_template('db/test_template.txt')
-        s = template.render({'passed_in':"GEORGE"})
-        textfile.write(s)
-    zf.write('filetext.txt')
-    zf.close()
-    upfile.upload_file = zf.filename
-    upfile.update()
-    print(upfile.upload_file.url)
-    return 'Success'
-except Exception as e:
-    return e
-"""
-
 @shared_task
 def process_qiime_artifact(infile, upfile):
-    print("Extracting QIIME info")
     q2e = q2Extractor(infile)
-    print("Getting provenance")
     parameter_table_str, file_table_str = q2e.get_provenance()
-
     #Validate the parameter_table, to check that all the steps are in the DB
     #If it matches perfectly to n, assign this artifact to those n pipelines
     #if it matches none, assign it to the closest one(s) and make a deviation
@@ -124,7 +101,6 @@ def process_qiime_artifact(infile, upfile):
     action = q2e.action
     #Get BiologicalReplicates this file belongs to, based on file_table_str
     # Get PipelineStep this belongs to
-    print("Matching with entries in database")
     try:
         step = PipelineStep.objects.get(**{"method__exact": plugin,
                                            "action__exact": action})
@@ -135,7 +111,6 @@ def process_qiime_artifact(infile, upfile):
                                     source_software=source_software,
                                     result_type = result_type)
     pipelineresult.save()
-    print("Saving PipelineResults as id %s" % (pipelineresult.id,))
     filetab = pd.read_csv(io.StringIO(file_table_str), sep="\t")
     replicates = set()
     for item in filetab.index:
@@ -147,17 +122,88 @@ def process_qiime_artifact(infile, upfile):
         #Search for sample in database
         try:
             #This should never return more than one, unique constraint
-            print("Adding %s to PipelineResult" % (replicate,))
             brep = BiologicalReplicate.objects.get(name__exact=replicate)
             pipelineresult.replicates.add(brep)
-            print("Added")
-            print(pipelineresult.replicates.all())
         except BiologicalReplicate.DoesNotExist:
             print("Replicate %s not found in database, link not made" % (replicate,))
         except Exception as e:
             print(e)
             raise Exception("Something else went wrong")
+    scrape_measures(q2e, pipelineresult)
     return "Success"
+
+@shared_task
+def scrape_measures(q2e, pipeline_result):
+    #Suck the goodies out of the artifacts that we know how to import
+    result_type = q2e.type
+    try:
+        data = q2e.extract_measures()
+    except NotImplementedError:
+        raise NotImplementedError("q2_extractor does not know how to extract measures from this file")
+    for measure_tuple in data:
+        name = measure_tuple[0]
+        description = measure_tuple[1]
+        result_type = measure_tuple[2]
+        value = measure_tuple[3]
+        target = measure_tuple[4]
+        target_names = measure_tuple[5]
+        if result_type == "Str":
+            measurefunc = StrMeasure
+        elif result_type == "Int":
+            measurefunc = IntMeasure
+        elif result_type == "Float":
+            measurefunc = FloatMeasure
+        elif result_type == "Datetime":
+            measurefunc = DatetimeMeasure
+        else:
+            raise NotImplementedError("Unknown measure type %s" % (result_type,))
+        measureval = measurefunc(value=value)
+        measureval.save()
+        measure = Measure(name=name, description=description, 
+                          pipeline_result=pipeline_result,
+                          content_object=measureval)
+        measure.save()
+        if target == "BiologicalReplicate":
+            breps = BiologicalReplicate.objects.filter(name__in=target_names)
+            measure_wrapper = ReplicateMeasure
+            mw = measure_wrapper(measure=measure)
+            if len(breps) > 0:
+                mw.replicates.add(breps)
+            else:
+                print("Warning: No matching replicates to add")
+        elif target == "Sample":
+            samples = Sample.objects.filter(name__in=target_names)
+            measure_wrapper = SampleMeasure
+            mw = measure_wrapper(measure=measure)
+        elif target == "Feature":
+            features = ",".join(target_names)
+            measure_wrapper = FeatureMeasure
+            mw = measure_wrapper(features=features, measure=measure)
+        elif target == "Investigation":
+            #Grab the replicates, then grab their investigation
+            breps = BiologicalReplicate.objects.filter(name__in=q2e.get_replicates())
+            #TODO: Allow it to at least catch if multiple
+            if len(breps) > 0:
+                investigation = breps[0].sample.investigation
+            else:
+                investigation = None
+            measure_wrapper = InvestigationMeasure
+            mw = measure_wrapper(measure=measure)
+            if investigation is not None:
+                mw.investigations.add(investigation)
+        elif target == "FeatureReplicate":
+            features = ",".join([x[0] for x in target_names])
+            breps = BiologicalReplicate.objects.filter(name__in=[x[1] for x in target_names])
+            measure_wrapper = FeatureReplicateMeasure
+            mw = measure_wrapper(features=features, measure=measure)
+            if len(breps) > 0:
+                mw.replicates.add(breps)
+            else:
+                print("Warning: No matching replicates to add")
+        else:
+            raise NotImplementedError("Unknown measure target %s" % (target,))
+        mw.save()
+
 
 @shared_task
 def report_success(upfile):

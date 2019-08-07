@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
+
 #for searching
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.search import SearchVector
@@ -181,6 +184,63 @@ class BiologicalReplicateMetadata(models.Model):
                              # SearchVector('BiologicalReplicate', weight='C')
                              )
         )
+
+
+#We can get all Measures with .objects.get, and if its
+#a StrMeasure, then use measure.strmeasure.value to get the value, etc.
+class Measure(models.Model):
+    pipeline_result = models.ForeignKey('PipelineResult', on_delete=models.CASCADE)
+    name = models.CharField(max_length=512)
+    description = models.CharField(max_length=512)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
+    object_id = models.PositiveIntegerField(blank=True, null=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+class StrMeasure(models.Model):
+    #TextField rather than CharField so we can store
+    #things like newick strings
+    value = models.TextField()
+    val_obj = GenericRelation(Measure, object_id_field="object_id", 
+                                       related_query_name="str")
+
+class IntMeasure(models.Model):
+    value = models.IntegerField()
+    val_obj = GenericRelation(Measure, object_id_field="object_id", 
+                                       related_query_name="int")
+
+class FloatMeasure(models.Model):
+    value = models.FloatField()
+    val_obj = GenericRelation(Measure, object_id_field="object_id", 
+                                       related_query_name="float")
+
+class DatetimeMeasure(models.Model):
+    value = models.DateTimeField()
+    val_obj = GenericRelation(Measure, object_id_field="object_id", 
+                                       related_query_name="datetime")
+
+class FeatureMeasure(models.Model):
+    #Should "feature" aka taxon aka OTU aka ASV be its own class?
+    features = models.TextField()
+    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
+
+class SampleMeasure(models.Model):
+    samples = models.ManyToManyField('Sample', related_name='sample_measure')
+    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
+
+class ReplicateMeasure(models.Model):
+    replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicate_measure')
+    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
+
+class InvestigationMeasure(models.Model):
+    investigations = models.ManyToManyField('Investigation', related_name='investigation_measure')
+    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
+
+class FeatureReplicateMeasure(models.Model):
+    #This is a measure that links to both a replicate (or replicates) and a feature
+    #e.g., abundance in a replicate
+    replicates = models.ManyToManyField('BiologicalReplicate', related_name='feature_replicate_measure')
+    features = models.TextField()
+    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
 
 #UNUSED, tagged for removal
 class Document(models.Model):  #file
