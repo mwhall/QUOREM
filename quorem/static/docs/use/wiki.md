@@ -1,3 +1,4 @@
+Title: About the QUOR'em Wiki
 # QUOR'em Wiki
 
 This Wiki is your place to fill in information about your Investigations, Samples, Replicates, etc.

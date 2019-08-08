@@ -140,6 +140,16 @@ def scrape_measures(q2e, pipeline_result):
         data = q2e.extract_measures()
     except NotImplementedError:
         raise NotImplementedError("q2_extractor does not know how to extract measures from this file")
+    #Tuple description:
+    #  (name: The name of the measure,
+    #   description: A description of the measure,
+    #   result_type: Basic type of measure, Str, Int, Float, or Datetime,
+    #   value: The data payload,
+    #   target: The object that this measure attached to, Investigation, Sample, BiologicalReplicate, Feature, FeatureReplicate,
+    #   target_names: An iterable containing the target names, unless it is FeatureReplicate in which case it is an iterable containing (feature, replicate) pairs
+    #  )
+    #TODO: Move to a separate function so others can call the measure saving software without
+    #all of this q2e context
     for measure_tuple in data:
         name = measure_tuple[0]
         description = measure_tuple[1]

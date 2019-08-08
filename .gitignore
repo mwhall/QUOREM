@@ -3,6 +3,7 @@ db/migrations/*
 accounts/__pycache__/*
 db/__pycache__/*
 quorem/__pycache__/*
+landingpage/__pycache__/*
 *.swp
 *.pyc
 upload/*
