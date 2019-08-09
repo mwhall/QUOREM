@@ -80,6 +80,14 @@ class SearchTest(SeleniumTest):
         assert meta_filter != None
         assert range_filter != None
 
+        meta_filter.click()
+        category_filter = driver.find_elements_by_class_name('btn-outline-primary')
+        meta_filter = driver.find_elements_by_class_name('btn-outline-success')
+        range_filter = driver.find_elements_by_class_name('btn-outline-warning')
+
+        assert len(category_filter) != 0
+        assert len(range_filter) == 0
+
 #simply test if the basic forms work
 class BasicFormTests(TestCase):
     #initialize objects into testdb to allow form tests.
