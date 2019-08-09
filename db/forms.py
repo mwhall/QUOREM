@@ -9,7 +9,7 @@ from .models import (
     BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
     ComputationalPipeline, PipelineStep, PipelineStepParameter, PipelineResult,
     Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile, ErrorMessage
+    UploadInputFile, UserProfile, ErrorMessage, Measure
 )
 
 from django_jinja_knockout.forms import (
@@ -92,6 +92,7 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              form=UploadForm,
                                              extra=0,
                                              min_num=1)
+
 ################Experiment
 class NewUploadForm(ModelForm):
     class Meta:
@@ -129,6 +130,29 @@ UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(
                                                 extra=0,
                                                 min_num=0,
                                                 can_delete=False)
+
+class MeasureDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = Measure
+        fields = '__all__'
+
+MeasuresFormset = ko_inlineformset_factory(PipelineResult,
+                                            Measure,
+                                            form=MeasureDisplayForm,
+                                            extra=0,
+                                            min_num=0,
+                                            can_delete=False)
+
+class PipelineResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = PipelineResult
+        fields = '__all__'
+
+class PipelineResultDisplayWithInlineMeasures(FormWithInlineFormsets):
+    FormClass = PipelineResultDisplayForm
+    FormsetClasses = [MeasuresFormset]
+    def get_formset_inline_title(self, formset):
+        return "Measures"
 
 class UploadInputFileDisplayWithInlineErrors(FormWithInlineFormsets):
     FormClass = UploadInputFileDisplayForm
@@ -232,10 +256,7 @@ class PipelineDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
         model = ComputationalPipeline
         fields = '__all__'
 
-class PipelineResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = PipelineResult
-        fields = '__all__'
+
 
 class ProtocolStepForm(RendererModelForm):
     protocolstep = NameLabelChoiceField(queryset=ProtocolStep.objects.all())

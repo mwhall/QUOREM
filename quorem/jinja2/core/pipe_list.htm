@@ -1,0 +1,19 @@
+{% extends 'base.htm' -%}
+
+{% block main -%}
+{% if main_navs is defined -%}
+    {% from 'bs_navs.htm' import bs_navs with context -%}
+    {{ bs_navs(main_navs) }}
+{% endif -%}
+{% from 'core/pipeline_list.htm' import bs_list with context -%}
+{{ bs_list(view, object_list, is_paginated, page_obj) }}
+{% endblock main -%}
+{% block bottom_scripts %}
+<script type="text/text/javascript">
+  jQuery(document.ready(function($){
+    $(".clickable-row").click(function(){
+      window.location = $(this).data("href");
+    });
+  });
+</script>
+{% endblock %}

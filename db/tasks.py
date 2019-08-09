@@ -159,7 +159,7 @@ def scrape_measures(q2e, pipeline_result):
             raise NotImplementedError("Unknown measure type %s" % (result_type,))
         measureval = measurefunc(value=value)
         measureval.save()
-        measure = Measure(name=name, description=description, 
+        measure = Measure(name=name, description=description,
                           pipeline_result=pipeline_result,
                           content_object=measureval)
         measure.save()

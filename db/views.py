@@ -46,7 +46,7 @@ from .forms import (
     ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
     SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm,
+    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, PipelineResultDisplayWithInlineMeasures,
 )
 from .utils import barchart_html, trendchart_html
 
@@ -110,6 +110,13 @@ class UploadInputFileDetail(InlineDetailView):
 
     def get_heading(self):
         return "Upload File Details"
+
+class PipelineResultDetail(InlineDetailView):
+    pk_url_kwarg = 'pipelineresult_id'
+    form_with_inline_formsets = PipelineResultDisplayWithInlineMeasures
+    format_view_title = True
+    def get_heading(self):
+        return "Pipeline Result Details"
 
 class InvestigationList(ListSortingView):
     model = Investigation
@@ -425,6 +432,7 @@ class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
         return reverse('protocol_step_detail', kwargs={'protocol_step_id': self.object.pk})
 
 class PipelineResultList(ListSortingView):
+    template_name='core/pipe_list.htm'
     model = PipelineResult
     allowed_sort_orders = '__all__'
     grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
@@ -465,6 +473,13 @@ class PipelineResultList(ListSortingView):
             #return self.get_file_name(obj)
         else:
             return super().get_display_value(obj, field)
+
+
+    def get_table_attrs(self):
+        return {
+            'class': 'table table-bordered table-collapse display-block-condition custom-table',
+            'id' : 'pipeline_table',
+        }
 
 class PipelineList(ListSortingView):
     model = ComputationalPipeline
@@ -553,10 +568,10 @@ class PipelineUpdate(BsTabsMixin, InlineCrudView):
 
     def get_success_url(self):
         return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
-
+"""
 class PipelineResultDetail(InlineDetailView):
     pk_url_kwargs = 'pipeline_result_id'
-
+"""
 class PipelineStepDetail(InlineDetailView):
     pk_url_kwarg = 'pipeline_step_id'
     form_with_inline_formsets = PipelineStepDisplayWithInlineParameters
