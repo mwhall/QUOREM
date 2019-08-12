@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'django_tables2',
     #postgres, needed for search functionality
     'django.contrib.postgres',
+    #extensions
+    'django_extensions',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -53,6 +55,7 @@ INSTALLED_APPS = [
     'djk_ui',
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
+    ##########
     'django.contrib.sites.apps.SitesConfig',
     'django.contrib.humanize.apps.HumanizeConfig',
     'django_nyt.apps.DjangoNytConfig',
@@ -157,7 +160,6 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': '',
         'HOST': '127.0.0.1',
-        'PORT': '5432',
     }
 }
 AUTHENTICATION_BACKENDS = [
