@@ -1,3 +1,4 @@
+Title: Developing for QUOR'em
 # QUOR'em Developer Documentation
 
 This documentation is for those who want to:

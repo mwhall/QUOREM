@@ -1,3 +1,4 @@
+Title: Deploying QUOR'em
 # Deploying QUOR'em
 
 You can launch your own private instance of QUOR'em to keep all of your research group's data in one place. This is the guide for system administrators who wish to deploy their own instance of QUOR'em.

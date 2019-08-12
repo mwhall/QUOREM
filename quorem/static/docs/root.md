@@ -1,3 +1,4 @@
+Title: QUOR'em Wiki
 # Welcome to your QUOR'em Wiki!
 
 In this Wiki, you will find automatically-generated pages for your investigations, samples, replicates, and more. Automated wiki reports are automatically refreshed, but a manual refresh can be done by the administrator with the `manage.py refreshwiki` command.
