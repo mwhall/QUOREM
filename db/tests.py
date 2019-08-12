@@ -13,14 +13,14 @@ def chromedriver_init():
     option.add_argument("--headless")
     """
     LOCAL TESTING:
-    """
+
     driver_location = os.getcwd() + '/db/chromedriver'
     driver = webdriver.Chrome(executable_path=driver_location)
 
     """
     #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
-    """
+    
     return driver
 
 #Class seleniumTests instantiates web driver
