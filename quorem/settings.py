@@ -40,8 +40,6 @@ INSTALLED_APPS = [
     'django_tables2',
     #postgres, needed for search functionality
     'django.contrib.postgres',
-    #extensions
-    'django_extensions',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
