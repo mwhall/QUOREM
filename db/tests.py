@@ -13,14 +13,14 @@ def chromedriver_init():
     option.add_argument("--headless")
     """
     LOCAL TESTING:
-    """
+
     driver_location = os.getcwd() + '/db/chromedriver'
     driver = webdriver.Chrome(executable_path=driver_location)
 
     """
     #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
-    """
+    
     return driver
 
 #Class seleniumTests instantiates web driver
@@ -87,6 +87,7 @@ class SearchTest(SeleniumTest):
 
         assert len(category_filter) != 0
         assert len(range_filter) == 0
+        return True
 
 #simply test if the basic forms work
 class BasicFormTests(TestCase):
