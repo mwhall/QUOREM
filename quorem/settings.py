@@ -161,7 +161,8 @@ DATABASES = {
     }
 }
 
-TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes']
+TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
+                            'django.contrib.auth']
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
