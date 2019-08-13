@@ -14,12 +14,12 @@ import os
 def chromedriver_init():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
-    option.add_argument("javascript.enabled", True)
+    option.add_argument("--enable-javascript")
     """
     LOCAL TESTING:
 
     driver_location = os.getcwd() + '/db/chromedriver'
-    driver = webdriver.Chrome(executable_path=driver_location)
+    driver = webdriver.Chrome(executable_path=driver_location, chrome_options=option)
 
     """
     #CircleCI config:
