@@ -59,10 +59,14 @@ class SearchTest(SeleniumTest):
         driver.get(self.live_server_url + '/search/')
         #check that facets exist
         types =  driver.find_elements_by_class_name('typecounts')
+        print("Testy woop de woop ", types[0].text)
         assert types != None
+        driver.implicitly_wait(5)
         types[0].click()
         meta = driver.find_elements_by_class_name('metadata')
         assert meta != None
+        print("TEST TEST TEST ", meta[1].text)
+        driver.implicitly_wait(5)
         meta[1].click()
         move_slider = webdriver.ActionChains(driver)
         slider = driver.find_element_by_xpath('//*[@id="slider-range"]/span[1]')
