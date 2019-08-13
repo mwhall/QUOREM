@@ -44,7 +44,7 @@ class SearchTest(SeleniumTest):
     def test_searchpage(self):
         #init
         driver = self.driver
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 100)
         driver.get(self.live_server_url)
         #click signin page
         signup = driver.find_element_by_xpath('/html/body/header/div[1]/ul/li[1]/a')
