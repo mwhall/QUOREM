@@ -5,7 +5,10 @@ from accounts.models import User
 from quorem.wiki import initialize_wiki
 
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import os
 
 def chromedriver_init():
@@ -13,14 +16,14 @@ def chromedriver_init():
     option.add_argument("--headless")
     """
     LOCAL TESTING:
-    
+
     driver_location = os.getcwd() + '/db/chromedriver'
     driver = webdriver.Chrome(executable_path=driver_location)
 
     """
     #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
-
+    
     return driver
 
 #Class seleniumTests instantiates web driver
@@ -40,6 +43,7 @@ class SearchTest(SeleniumTest):
     def test_searchpage(self):
         #init
         driver = self.driver
+        wait = WebDriverWait(driver, 15)
         driver.get(self.live_server_url)
         #click signin page
         signup = driver.find_element_by_xpath('/html/body/header/div[1]/ul/li[1]/a')
@@ -70,9 +74,10 @@ class SearchTest(SeleniumTest):
         meta[1].click()
         move_slider = webdriver.ActionChains(driver)
         #slider = driver.find_element_by_xpath('//*[@id="slider-range"]/span[1]')
-        slider = driver.find_elements_by_class_name('ui-slider-handle')
+        slider = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="slider-range"]/span[1]' )))
+#        slider = driver.find_elements_by_class_name('ui-slider-handle')
         assert slider != None
-        move_slider.click_and_hold(slider[0]).move_by_offset(10,0).release().perform()
+        move_slider.click_and_hold(slider).move_by_offset(10,0).release().perform()
         #search
         search = driver.find_element_by_xpath('/html/body/div/div[2]/div[1]/form/button')
         search.click()
