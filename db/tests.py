@@ -24,7 +24,7 @@ def chromedriver_init():
     """
     #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
-    
+
     return driver
 
 #Class seleniumTests instantiates web driver
@@ -75,7 +75,7 @@ class SearchTest(SeleniumTest):
         meta[1].click()
         move_slider = webdriver.ActionChains(driver)
         #slider = driver.find_element_by_xpath('//*[@id="slider-range"]/span[1]')
-        slider = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="slider-range"]/span[1]' )))
+        slider = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="slider-range"]/span[1]' )))
 #        slider = driver.find_elements_by_class_name('ui-slider-handle')
         assert slider != None
         move_slider.click_and_hold(slider).move_by_offset(10,0).release().perform()
