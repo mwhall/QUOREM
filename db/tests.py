@@ -13,14 +13,14 @@ def chromedriver_init():
     option.add_argument("--headless")
     """
     LOCAL TESTING:
-
+    
     driver_location = os.getcwd() + '/db/chromedriver'
     driver = webdriver.Chrome(executable_path=driver_location)
 
     """
     #CircleCI config:
     driver = webdriver.Chrome(chrome_options=option)
-    
+
     return driver
 
 #Class seleniumTests instantiates web driver
@@ -69,9 +69,10 @@ class SearchTest(SeleniumTest):
         driver.implicitly_wait(5)
         meta[1].click()
         move_slider = webdriver.ActionChains(driver)
-        slider = driver.find_element_by_xpath('//*[@id="slider-range"]/span[1]')
+        #slider = driver.find_element_by_xpath('//*[@id="slider-range"]/span[1]')
+        slider = driver.find_elements_by_class_name('ui-slider-handle')
         assert slider != None
-        move_slider.click_and_hold(slider).move_by_offset(10,0).release().perform()
+        move_slider.click_and_hold(slider[0]).move_by_offset(10,0).release().perform()
         #search
         search = driver.find_element_by_xpath('/html/body/div/div[2]/div[1]/form/button')
         search.click()
