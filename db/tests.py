@@ -14,6 +14,7 @@ import os
 def chromedriver_init():
     option = webdriver.ChromeOptions()
     option.add_argument("--headless")
+    option.add_argument("javascript.enabled", True)
     """
     LOCAL TESTING:
 
