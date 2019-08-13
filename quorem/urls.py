@@ -27,7 +27,7 @@ from db.views import (
     ProtocolStepCreate, ProtocolStepDetail,
     ProtocolStepList, ProtocolStepUpdate,
     PipelineCreate, PipelineDetail, PipelineList, PipelineUpdate,
-    PipelineResultList,
+    PipelineResultList, PipelineResultDetail,
     PipelineStepCreate, PipelineStepDetail,
     PipelineStepList, PipelineStepUpdate,
     ReplicateDetail, ReplicateUpdate, ReplicateList,
@@ -151,7 +151,10 @@ urlpatterns = [
         kwargs={'view_title': "Pipeline Update", 'allow_anonymous': False}),
     re_path(r'pipeline/result/all/$', PipelineResultList.as_view(),
         name = 'pipeline_result_all',
-        kwargs={'view_title': "Pipeline Update", 'alllow_anonymous': False}),
+        kwargs={'view_title': "Pipeline Update", 'allow_anonymous': False}),
+    re_path(r'pipeline/result/(?P<pipelineresult_id>\d+)/$', PipelineResultDetail.as_view(),
+        name = 'pipelineresult_detail',
+        kwargs={'view_title': "Pipeline Result Detail", 'allow_anonymous': False}),
 
     # Protocol Step Routing
     re_path(r'pipeline/step/all/$', PipelineStepList.as_view(),

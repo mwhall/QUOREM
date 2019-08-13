@@ -7,7 +7,7 @@
     {% if type_counts %}
       {% for t in type_counts %}
         <li class='list-group-item'>
-          <a href="{{ {'type': t.name}|add_facet() }}">
+          <a href="{{ {'type': t.name}|add_facet() }}" class="typecounts">
             {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span>
           </a>
         </li>
@@ -25,7 +25,7 @@
 <!-- IF a search facet is selected, display it and render a removable tag. -->
         {% if meta %}
           <li class="list-group-item">
-            <a href="{{ {'meta': meta}|add_facet() }}">
+            <a href="{{ {'meta': meta}|add_facet() }}" class="metadata">
               {{ meta }}
             </a>
           </li>
@@ -34,7 +34,7 @@
 <!-- If a facet is not selected, render options. -->
         {% for k in metadata %}
           <li class="list-group-item">
-            <a href="{{ {'meta': k.key}|add_facet() }}">
+            <a href="{{ {'meta': k.key}|add_facet() }}" class="metadata">
               {{ k.key }}
             </a>
           </li>
