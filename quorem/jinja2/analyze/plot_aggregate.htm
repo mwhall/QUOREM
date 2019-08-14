@@ -28,13 +28,21 @@
             <p>Aggregate operation: {{ choices.agg }}</p>
           </li>
           <li class='list-group-item'>
-            <p>Investigation: {{ choices.inv }}</p>
+            <p>Investigation(s):</p>
+            <ul>
+              {% for i in choices.inv %}
+              <li>{{ i }}</li>
+              {% endfor %}
+            </ul>
           </li>
           <li class='list-group-item'>
             <p>Query Object: {{ choices.type }}</p>
           </li>
           <li class='list-group-item'>
             <p>Data Filter: {{ choices.meta }}</p>
+          </li>
+          <li class='list-group-item'>
+            <a href="{{ url( 'plot_aggregate' ) }}" class="btn btn-success btn-lg button-block">Choose Different Parameters</a>
           </li>
         </ul>
       </div>

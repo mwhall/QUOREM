@@ -11,6 +11,7 @@ def barchart_html(agg, inv, model, meta):
     metaType = None
 
     investigations = models.Investigation.objects.filter(pk__in=inv)
+    inv_titles = [i.name for i in investigations]
     #Assign aggregate operation
     if agg == '1':
         Operation = Count
@@ -61,7 +62,7 @@ def barchart_html(agg, inv, model, meta):
 
         figure = go.Figure(data=data, layout=layout)
         return to_html(figure, full_html=False), {'agg':title,
-                                                  'inv': 'TODO investigations',
+                                                  'inv': inv_titles,
                                                   'type':model_choice,
                                                   'meta':meta}
     return None
