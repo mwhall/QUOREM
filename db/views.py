@@ -879,9 +879,9 @@ class PlotTrendView(FormView):
 
     def form_valid(self, form):
         req = self.request.POST
-        html= trendchart_html(req['invField'], req['x_val'], req['x_val_category'],
+        html, choices= trendchart_html(req['invField'], req['x_val'], req['x_val_category'],
                                         req['y_val'], req['y_val_category'], req['operation_choice'])
-        return render(self.request, '/analyze/plot_trend.htm', {'graph':html, 'action':self.action})
+        return render(self.request, '/analyze/plot_trend.htm', {'graph':html, 'choices':choices, 'action':self.action})
 
 
 # View for x choices. Will need to populate x-val choices based on Investigations

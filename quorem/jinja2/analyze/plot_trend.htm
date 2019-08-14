@@ -15,6 +15,46 @@
       {% endif %}
     </div>
   </div>
+  {% if choices %}
+  <div class="col-lg-3 border-left">
+    <div class="card">
+      <div class="card-header bg-primary">
+      </div>
+      <div class="card-body">
+        <h5>Parameter Choices</h5>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item">
+            <p>Graph Style: {{ choices.style }}</p>
+          </li>
+          <li class="list-group-item">
+            <p>Investigation(s):<p>
+            <ul>
+              {% for i in choices.inv %}
+              <li>{{ i }}</li>
+              {% endfor %}
+            </ul>
+          </li>
+          <li class='list-group-item'>
+            <p>X Params:</p>
+            <ul>
+              <li>Category: {{ choices.x_cat }}</li>
+              <li>Value: {{ choices.x_val }}</li>
+            </ul>
+          </li>
+          <li class='list-group-item'>
+            <p>Y Params</p>
+            <ul>
+              <li>Category: {{ choices.y_cat }}</li>
+              <li>Value: {{ choices.y_val }}</li>
+            </ul>
+          </li>
+          <a href="{{ url( 'plot_trend' ) }}"
+           class="bg-success text-white list-group-item list-group-item-action btn-success">Choose Different Parameters</a>
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
  </div>
 {% endblock %}
 {% block bottom_scripts %}
