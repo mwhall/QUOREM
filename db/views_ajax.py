@@ -1,8 +1,8 @@
 from collections import OrderedDict
 from django_jinja_knockout.views import KoGridView, KoGridInline
 
-from .models import BiologicalReplicate, Investigation, Sample, ProtocolStep
-from .forms import ProtocolForm, ReplicateForm, SampleForm
+from .models import Replicate, Investigation, Sample, Step
+from .forms import ProcessForm, ReplicateForm, SampleForm
 
 class InvestigationGridView(KoGridView):
     model = Investigation
@@ -28,15 +28,15 @@ class SampleFkWidgetGrid(KoGridView):
 #        ('company_name', 'icontains'),
 #    ]
 class ReplicateFkWidgetGrid(KoGridView):
-    model = BiologicalReplicate
+    model = Replicate
     form = ReplicateForm
     enable_deletion = True
     grid_fields = '__all__'
     allowed_sort_orders = '__all__'
 
-class ProtocolStepFkWidgetGrid(KoGridView):
-    model = ProtocolStep
-    form = ProtocolForm
+class StepFkWidgetGrid(KoGridView):
+    model = Step
+    form = ProcessForm
     enable_deletion = False
     grid_fields = '__all__'
     allowed_sort_orders = '__all__'

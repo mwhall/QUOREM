@@ -21,6 +21,8 @@ class Investigation(models.Model):
     institution = models.CharField(max_length=255)
     description = models.TextField()
 
+    values = models.ManyToManyField('Value', related_name="investigations", blank=True)
+
     #Stuff for searching
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -31,13 +33,245 @@ class Investigation(models.Model):
         return self.name
     #override save to update the search vector field
     def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
         sv =( SearchVector('name', weight='A') +
              SearchVector('description', weight='B') +
              SearchVector('institution', weight='C') )
-        super().save(*args, **kwargs)
         Investigation.objects.update(search_vector = sv)
-        refresh_automated_report("investigation")
-        refresh_automated_report("investigation", pk=self.pk)
+#        refresh_automated_report("investigation")
+#        refresh_automated_report("investigation", pk=self.pk)
+
+class Feature(models.Model):
+    name = models.CharField(max_length=255)
+    sequence = models.TextField(null=True, blank=True)
+    taxonomy = models.ManyToManyField('Value', related_name='taxonomy', blank=True)
+    first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True)
+    observed_results = models.ManyToManyField('Result', related_name='observed_results')
+    observed_replicates = models.ManyToManyField('Replicate', related_name='observed_replicates')
+
+    values = models.ManyToManyField('Value', related_name="features", blank=True)
+
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Feature.objects.update(
+            search_vector = (SearchVector('name', weight= 'A') +
+                             SearchVector(StringAgg('taxonomy__str', delimiter=' '), weight='B'))
+        )
+
+
+class Sample(models.Model):
+    """
+    Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
+    """
+    name = models.CharField(max_length=255,unique=True)
+    investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
+
+    values = models.ManyToManyField('Value', related_name="samples", blank=True)
+
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Sample.objects.update(
+            search_vector = (SearchVector('name', weight= 'A') #+
+                             # Should be investigation name, not pk.
+                             # SearchVector('investigation', weight = 'B')
+                             )
+        )
+#        refresh_automated_report("sample", pk=self.pk)
+
+class Replicate(models.Model):
+    """
+    A sample resulting from a biological analysis of a collected sample.
+    If a poo sample is a sample, the DNA extracted and amplified with primer
+    set A is a Replicate of that sample
+    """
+    name = models.CharField(max_length=255,unique=True)
+    sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='sample')  # fk 1
+    process = models.ForeignKey('Process', on_delete=models.CASCADE)  # fk 5
+
+    values = models.ManyToManyField('Value', related_name="replicates", blank=True)
+   
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Replicate.objects.update(
+            search_vector = (SearchVector('name', weight='A') +
+                             SearchVector('sample__name', weight='B') +
+                             SearchVector('process__name', weight='C') +
+                             SearchVector('sample__investigation__name', weight='D')
+                              )
+        )
+
+# This allows the users to define a process as they wish
+# Could be split into "wet-lab process" and "computational process"
+# or alternatively, "amplicon", "metagenomics", "metabolomics", "physical chemistry", etc.
+class ProcessCategory(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField()
+    
+
+class Process(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True)
+    category = models.ForeignKey('ProcessCategory', on_delete=models.CASCADE)
+    citation = models.TextField(blank=True)
+
+    parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
+
+    search_vector = SearchVectorField(null=True)
+    def __str__(self):
+        return "%s (%s)" % (self.name, self.citation)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Process.objects.update(
+            search_vector = (SearchVector('name', weight='A') +
+                             SearchVector('citation', weight='B') +
+                             SearchVector('description', weight='C') +
+                             SearchVector('category__name', weight='D'))
+        )
+
+
+class Step(models.Model):
+    name = models.CharField(max_length=255)
+    method = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    processes = models.ManyToManyField('Process', related_query_name='steps', blank=True)
+
+    parameters = models.ManyToManyField('Value', related_query_name='steps', blank=True)
+
+    search_vector = SearchVectorField(null=True)
+    def __str__(self):
+        return '%s -> %s' % (self.name, self.method)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'method'], name='One entry per name-method pair')
+            ]
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Step.objects.update(
+            search_vector= (SearchVector('name', weight='A') +
+                            SearchVector('method', weight='B') +
+                            SearchVector('description', weight='C'))
+        )
+
+class Result(models.Model):
+    """
+    Some kind of result from a ComputationalPipeline
+    """
+    list_display = ('source_software', 'type', 'source_step', 'processes', 'replicates', 'parameters', 'uuid')
+    uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
+    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
+    source_software = models.CharField(max_length=255, verbose_name="Source Software", blank=True)
+    type = models.CharField(max_length=255, verbose_name="Result Type")
+    # This Result came from this process, but ReplicateParameters and ResultParameters override its Parameters, if there is overlap
+    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    # This process result is from this step
+    source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
+    # Replicates that this thing is the result for
+    replicates = models.ManyToManyField('Replicate', related_name='replicates', related_query_name="results", verbose_name="Replicates", blank=True)
+    
+    values = models.ManyToManyField('Value', related_name="results", blank=True)
+
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Result.objects.update(
+            search_vector= (SearchVector('source_software', weight='A') +
+                            SearchVector('result_type', weight='B') +
+                            SearchVector('uuid', weight='C'))
+        )
+
+
+### Key-Value storage for objects
+
+class Value(models.Model):
+    PARAMETER = 'PA'
+    METADATA = 'MD'
+    MEASURE = 'ME'
+    VALUE_TYPES = (
+            (PARAMETER, 'Parameter'),
+            (METADATA, 'Metadata'),
+            (MEASURE, 'Measure'))
+    name = models.CharField(max_length=512)
+    value_type = models.CharField(max_length=2, choices=VALUE_TYPES)
+    # This generic relation links to a polymorphic Val class
+    # Allowing Value to be str, int, float, datetime, etc.
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey()
+
+class StrVal(models.Model):
+    value = models.TextField()
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="str")
+
+class IntVal(models.Model):
+    value = models.IntegerField()
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="int")
+
+class FloatVal(models.Model):
+    value = models.FloatField()
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="float")
+
+class DatetimeVal(models.Model):
+    value = models.DateTimeField()
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="date")
+
+#This is if the input parameter is another result, ie. another artifact searched by UUID
+class ResultVal(models.Model):
+    value = models.ForeignKey('Result', on_delete=models.CASCADE)
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="result")
+
 
 
 class UserProfile(models.Model):
@@ -84,362 +318,6 @@ class ErrorMessage(models.Model):
     """
     uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
     error_message = models.CharField(max_length = 1000, null=True) #???? Maybe store as a textfile????
-
-
-class Sample(models.Model):
-    """
-    Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
-    """
-    name = models.CharField(max_length=255,unique=True)
-    investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
-
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        Sample.objects.update(
-            search_vector = (SearchVector('name', weight= 'A') #+
-                             # Should be investigation name, not pk.
-                             # SearchVector('investigation', weight = 'B')
-                             )
-        )
-        refresh_automated_report("sample", pk=self.pk)
-
-class SampleMetadata(models.Model):
-    """
-    Stores arbitrary metadata in key-value pairs
-    """
-    key = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
-    sample = models.ForeignKey('Sample', on_delete=models.CASCADE)  # fk 3
-
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['sample', 'key'], name='One entry per sample-metadata key pair')
-            ]
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        SampleMetadata.objects.update(
-            search_vector = (SearchVector('key', weight='A') +
-                              SearchVector('value', weight='B'))
-        )
-
-class BiologicalReplicate(models.Model):
-    """
-    A sample resulting from a biological analysis of a collected sample.
-    If a poo sample is a sample, the DNA extracted and amplified with primer
-    set A is a BiologicalReplicate of that sample
-    """
-    name = models.CharField(max_length=255,unique=True)
-    sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='sample')  # fk 1
-    #sequence_file = models.ManyToManyField('Document') # store the location of the sequence file(s)
-    biological_replicate_protocol = models.ForeignKey('BiologicalReplicateProtocol', on_delete=models.CASCADE)  # fk 5
-    
-
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        BiologicalReplicate.objects.update(
-            search_vector = (SearchVector('name', weight='A') #+
-                            #  SearchVector('sample', weight='B') +
-                            # SearchVector should use the sample NAME, not id. will need to query it....
-                            # SearchVector('biological_replicate_protocol', weight='D') #+
-                              #SearchVector('investigation', weight='C')
-                              )
-        )
-class BiologicalReplicateMetadata(models.Model):
-    """
-    Metadata for the biological sample (PCR primers, replicate #, storage method, etc.)
-    Basically anything that could change between a Sample and a BiologicalReplicate
-    goes in here
-    """
-    key = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
-    biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE) # fk 14
-
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        BiologicalReplicateMetadata.objects.update(
-            search_vector = (SearchVector('key', weight='A') +
-                              SearchVector('value', weight='B')#+
-                             # SearchVector('BiologicalReplicate', weight='C')
-                             )
-        )
-
-
-#We can get all Measures with .objects.get, and if its
-#a StrMeasure, then use measure.strmeasure.value to get the value, etc.
-class Measure(models.Model):
-    pipeline_result = models.ForeignKey('PipelineResult', on_delete=models.CASCADE)
-    name = models.CharField(max_length=512)
-    description = models.CharField(max_length=512)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
-    object_id = models.PositiveIntegerField(blank=True, null=True)
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-class StrMeasure(models.Model):
-    #TextField rather than CharField so we can store
-    #things like newick strings
-    value = models.TextField()
-    val_obj = GenericRelation(Measure, object_id_field="object_id", 
-                                       related_query_name="str")
-
-class IntMeasure(models.Model):
-    value = models.IntegerField()
-    val_obj = GenericRelation(Measure, object_id_field="object_id", 
-                                       related_query_name="int")
-
-class FloatMeasure(models.Model):
-    value = models.FloatField()
-    val_obj = GenericRelation(Measure, object_id_field="object_id", 
-                                       related_query_name="float")
-
-class DatetimeMeasure(models.Model):
-    value = models.DateTimeField()
-    val_obj = GenericRelation(Measure, object_id_field="object_id", 
-                                       related_query_name="datetime")
-
-class FeatureMeasure(models.Model):
-    #Should "feature" aka taxon aka OTU aka ASV be its own class?
-    features = models.TextField()
-    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
-
-class SampleMeasure(models.Model):
-    samples = models.ManyToManyField('Sample', related_name='sample_measure')
-    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
-
-class ReplicateMeasure(models.Model):
-    replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicate_measure')
-    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
-
-class InvestigationMeasure(models.Model):
-    investigations = models.ManyToManyField('Investigation', related_name='investigation_measure')
-    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
-
-class FeatureReplicateMeasure(models.Model):
-    #This is a measure that links to both a replicate (or replicates) and a feature
-    #e.g., abundance in a replicate
-    replicates = models.ManyToManyField('BiologicalReplicate', related_name='feature_replicate_measure')
-    features = models.TextField()
-    measure = models.ForeignKey('Measure', on_delete=models.CASCADE)
-
-#UNUSED, tagged for removal
-class Document(models.Model):  #file
-    """
-    Store information to locate arbitrary files
-    """
-    md5_hash = models.CharField(max_length=255)
-    document = models.FileField()
-    #We can get size and location through the FileSystem manager in Django
-
-
-class ProtocolParameterDeviation(models.Model):
-    """
-    Keep track of when a BiologicalReplicate isn't done exactly as SOP
-    """
-    # Identifies which replicate is deviating
-    biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE)  # fk 9
-    # Stores the default
-    protocol_step = models.ForeignKey('ProtocolStep', on_delete=models.CASCADE) # fk ??
-    # Comment expanding on what the deviation was
-    description = models.TextField()
-    # Stores the deviation from the default
-    value = models.TextField()
-
-
-class BiologicalReplicateProtocol(models.Model):
-    """
-    A list of the steps that the biological sample was processed with
-    """
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField()
-    citation = models.TextField() # should we include citations, or just have that in description?
-
-    search_vector = SearchVectorField(null=True)
-    def __str__(self):
-        return "%s (%s)" % (self.name, self.citation)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        BiologicalReplicateProtocol.objects.update(
-            search_vector = (SearchVector('name', weight='A') +
-                             SearchVector('citation', weight='B') +
-                             SearchVector('description', weight='C'))
-        )
-class ProtocolStep(models.Model):
-    """
-    Names and descriptions of the protocol steps and methods, e.g., stepname = 'amplification', method='pcr'
-    """
-    biological_replicate_protocols = models.ManyToManyField('BiologicalReplicateProtocol', related_name="steps")
-    name = models.CharField(max_length=255)
-    method = models.CharField(max_length=255)
-    search_vector = SearchVectorField(null=True)
-    def __str__(self):
-        return '%s -> %s' % (self.name, self.method)
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['name', 'method'], name='One entry per name-method pair')
-            ]
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        ProtocolStep.objects.update(
-            search_vector= (SearchVector('name', weight='A') +
-                            SearchVector('method', weight='B'))
-        )
-
-class ProtocolStepParameter(models.Model):
-    """
-    The default parameters for each protocol step
-    """
-    protocol_step = models.ForeignKey('ProtocolStep',
-                                             on_delete=models.CASCADE, verbose_name="Protocol Step")
-    name = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        constraints = [
-                models.UniqueConstraint(fields=['protocol_step', 'name'],
-                    name='One entry per protocol step, parameter name pair')
-            ]
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        ProtocolStepParameter.objects.update(
-            search_vector = (SearchVector('name', weight='A') +
-                              SearchVector('description', weight='B') +
-                              SearchVector('value', weight='C'))
-        )
-
-class ProtocolStepParameterDeviation(models.Model):
-    """
-    The deviations from the defaults, attached to a specific Replicate
-    """
-    protocol_step_parameter = models.ForeignKey('ProtocolStepParameter', on_delete=models.CASCADE)
-    biological_replicate = models.ForeignKey('BiologicalReplicate', on_delete=models.CASCADE)
-    new_value = models.CharField(max_length=255)
-    comment = models.TextField(blank=True)
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        ProtocolStepParameterDeviation.objects.update(
-            search_vector = (SearchVector('protocol_step_parameter', weight='A')+
-                             SearchVector('new_value', weight='B')+
-                             SearchVector('comment', weight='C'))
-        )
-class PipelineResult(models.Model):
-    """
-    Some kind of result from a ComputationalPipeline
-    """
-    list_display = ('source_software', 'result_type', 'replicates', 'pipeline_step')
-    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name")
-    source_software = models.CharField(max_length=255, verbose_name="Source Software")
-    result_type = models.CharField(max_length=255, verbose_name="Result Type")
-    computational_pipelines = models.ManyToManyField('ComputationalPipeline', related_name='pipelines', verbose_name="Pipelines")
-    # This pipeline result is
-    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE, verbose_name="Pipeline Step")
-    replicates = models.ManyToManyField('BiologicalReplicate', related_name='replicates', verbose_name="Replicates")
-
-
-class PipelineDeviation(models.Model):
-    """
-    Keep track of when an object's provenance involves deviations in the listed SOP
-    """
-    pipeline_result = models.ForeignKey('PipelineResult', on_delete=models.CASCADE)  # fk 11
-    pipeline_parameter = models.ForeignKey('PipelineStepParameter', on_delete=models.CASCADE) # fk ??
-    value = models.CharField(max_length=255)
-    #TODO: Search Vectors that incorporate FK values.
-    #Doing this directly will yield search results on the FK integer value, need
-    #to implement queryset optimization to allow reference to FK model properties.
-
-
-class ComputationalPipeline(models.Model):
-    """
-    Stores the steps and default parameters for a pipeline
-    """
-    name = models.CharField(max_length=255)
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        ComputationalPipeline.objects.update(
-            search_vector = (SearchVector('name', weight='A'))
-        )
-
-
-class PipelineStep(models.Model):
-    """
-    Describes a single step in the computational pipeline.
-    These can be programatically defined by QIIME's transformations.
-    """
-    # many to many
-    pipelines = models.ManyToManyField('ComputationalPipeline', related_name="steps")
-    method = models.CharField(max_length=255)
-    action = models.CharField(max_length=255)
-    search_vector = SearchVectorField(null=True)
-    def __str__(self):
-        return '%s -> %s' % (self.method, self.action)
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['method', 'action'], name='One entry per action-method pair')
-            ]
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        PipelineStep.objects.update(
-            search_vector = (SearchVector('method', weight='A') +
-                             SearchVector('action', weight='B'))
-        )
-
-class PipelineStepParameter(models.Model):
-    """
-    The default parameters for each step, for this pipeline
-    """
-    pipeline_step = models.ForeignKey('PipelineStep', on_delete=models.CASCADE)  # fk 13
-    name = models.CharField(max_length=255)
-    value = models.CharField(max_length=255)
-    class Meta:
-        constraints = [
-                models.UniqueConstraint(fields=['pipeline_step', 'name'],
-                    name='One entry per pipeline step, parameter name pair')
-            ]
-
 
 
 ##Function for search.

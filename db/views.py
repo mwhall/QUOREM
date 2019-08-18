@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic import ListView
+from django.views.generic.edit import CreateView
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.messages import get_messages
@@ -29,24 +30,19 @@ import io
 
 from .formatters import guess_filetype
 from .models import (
-        Sample, SampleMetadata, Investigation, BiologicalReplicateProtocol,
-        ProtocolStep, BiologicalReplicate, BiologicalReplicateMetadata,
-        ComputationalPipeline, PipelineStep, PipelineStepParameter,
+        Sample, Investigation, Process, Replicate,
+        Step, Result, Feature,
         UploadInputFile, load_mixed_objects, UserProfile
 )
 
 from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
-    ProtocolForm, ProtocolDisplayWithInlineSteps,
-    ProtocolStepWithInlineParameters, ProtocolStepDisplayWithInlineParameters,
-    ProtocolWithInlineSteps,
-    PipelineForm, PipelineDisplayWithInlineSteps, PipelineResult,
-    PipelineStepWithInlineParameters, PipelineStepDisplayWithInlineParameters,
-    PipelineWithInlineSteps, ReplicateDisplayWithInlineMetadata,
-    ReplicateWithInlineMetadata, SampleDisplayWithInlineMetadata,
-    SampleWithInlineMetadata, UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
+    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps, 
+    ResultDisplayForm,
+    SampleDisplayForm, SampleForm, StepForm,
+    UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, PipelineResultDisplayWithInlineMeasures,
+    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
 )
 from .utils import barchart_html, trendchart_html
 
@@ -111,13 +107,6 @@ class UploadInputFileDetail(InlineDetailView):
     def get_heading(self):
         return "Upload File Details"
 
-class PipelineResultDetail(InlineDetailView):
-    pk_url_kwarg = 'pipelineresult_id'
-    form_with_inline_formsets = PipelineResultDisplayWithInlineMeasures
-    format_view_title = True
-    def get_heading(self):
-        return "Pipeline Result Details"
-
 class InvestigationList(ListSortingView):
     model = Investigation
     allowed_sort_orders = '__all__'
@@ -143,10 +132,11 @@ class InvestigationList(ListSortingView):
                 ' (<a href="{}"><span class="iconui iconui-edit"></span></a>',
                 reverse('investigation_update', kwargs={'investigation_id': obj.pk})
             ))
-            links.append(format_html(
-                ' <a href="{}"><span class="iconui iconui-file"></span></a>)',
-                reverse('investigation_metadata_detail', kwargs={'investigation_id': obj.pk})
-            ))
+        # TODO: Fix metadata display
+        #    links.append(format_html(
+        #        ' <a href="{}"><span class="iconui iconui-file"></span></a>)',
+        #        reverse('investigation_metadata_detail', kwargs={'investigation_id': obj.pk})
+        #    ))
         return links
 
     def get_display_value(self, obj, field):
@@ -159,7 +149,7 @@ class InvestigationList(ListSortingView):
     def get_bs_form_opts(self):
         return {
             'title': "All Investigations",
-            'view_title': "All Investigations2",
+            'view_title': "All Investigations",
             'submit_text': "Save Investigation",
         }
 
@@ -233,235 +223,136 @@ class SampleList(ListSortingView):
 
 class SampleDetail(InlineDetailView):
     pk_url_kwarg = 'sample_id'
-    form_with_inline_formsets = SampleDisplayWithInlineMetadata
+    form = SampleDisplayForm
 
 class SampleUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
     pk_url_kwarg = 'sample_id'
-    form_with_inline_formsets = SampleWithInlineMetadata
+    form = SampleForm
     def get_bs_form_opts(self):
         return {
             'submit_text': 'Save Sample'
         }
 
-class InvestigationMetadataDetail(ListSortingView):
-    model = SampleMetadata
-    allowed_sort_orders = '__all__'
-    grid_fields = ['sample__name', 'key', 'value']
-    #Override the queryset to return the investigation id requested
-    def get_heading(self):
-        return "Sample Metadata for Investigation \"%s\"" % (Investigation.objects.get(pk=self.kwargs['investigation_id']).name,)
-    def get_queryset(self):
-        return SampleMetadata.objects.filter(sample__investigation_id=self.kwargs['investigation_id'])
-
 class ReplicateList(ListSortingView):
-    model = BiologicalReplicate
+    model = Replicate
     allowed_sort_orders = '__all__'
-    grid_fields = ['name', 'sample']
+    grid_fields = ['name', 'sample', 'sample__investigation']
     def get_heading(self):
         return "Replicate List"
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('replicate_detail', kwargs={'replicate_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('replicate_update', kwargs={'replicate_id': obj.pk})
-            ))
-        return links
+#    def get_name_links(self, obj):
+#        links = [format_html(
+#            '<a href="{}">{}</a>',
+#            reverse('replicate_detail', kwargs={'replicate_id': obj.pk}),
+#            obj.name
+#        )]
+#        # is_authenticated is not callable in Django 2.0.
+#        if self.request.user.is_authenticated:
+#            links.append(format_html(
+#                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+#                reverse('replicate_update', kwargs={'replicate_id': obj.pk})
+#            ))
+#        return links
 
-    def get_sample_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-             reverse('sample_detail', kwargs={'sample_id': obj.sample.pk}),
-             obj.sample.name
-         )]
-        return links
+#    def get_sample_links(self, obj):
+#        links = [format_html(
+#            '<a href="{}">{}</a>',
+#             reverse('sample_detail', kwargs={'sample_id': obj.sample.pk}),
+#             obj.sample.name
+#         )]
+#        return links
 
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        elif field == 'sample':
-            links = self.get_sample_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
+#    def get_display_value(self, obj, field):
+#        if field == 'name':
+#            links = self.get_name_links(obj)
+#            return mark_safe(''.join(links))
+#        elif field == 'sample':
+#            links = self.get_sample_links(obj)
+#            return mark_safe(''.join(links))
+#        else:
+#            return super().get_display_value(obj, field)
 
-
-class ReplicateDetail(InlineDetailView):
-    pk_url_kwarg = 'replicate_id'
-    form_with_inline_formsets = ReplicateDisplayWithInlineMetadata
-
-class ReplicateUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'replicate_id'
-    form_with_inline_formsets = ReplicateWithInlineMetadata
-    def get_bs_form_opts(self):
-        return {
-            'submit_text': 'Save Replicate'
-        }
-
-
-class ProtocolList(ListSortingView):
-    model = BiologicalReplicateProtocol
+class FeatureList(ListSortingView):
+    model = Feature
     allowed_sort_orders = '__all__'
-    grid_fields = ['name', 'description', 'citation']
-    def get_heading(self):
-        return "Protocol List"
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('protocol_detail', kwargs={'protocol_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('protocol_update', kwargs={'protocol_id': obj.pk})
-            ))
-        return links
 
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
+#class ReplicateDetail(InlineDetailView):
+#    pk_url_kwarg = 'replicate_id'
+#    form_with_inline_formsets = ReplicateDisplayWithInlineMetadata
 
+#class ReplicateUpdate(BsTabsMixin, InlineCrudView):
+#    format_view_title = True
+#    pk_url_kwarg = 'replicate_id'
+#    form_with_inline_formsets = ReplicateWithInlineMetadata
+#    def get_bs_form_opts(self):
+#        return {
+#            'submit_text': 'Save Replicate'
+#        }
 
-class ProtocolStepList(ListSortingView):
-    model = ProtocolStep
+class StepList(ListSortingView):
+    model = Step
     allowed_sort_orders = '__all__'
     grid_fields = ['name', 'method']
     def get_heading(self):
-        return "Protocol Step List"
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('protocol_step_detail', kwargs={'protocol_step_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('protocol_step_update', kwargs={'protocol_step_id': obj.pk})
-            ))
-        return links
+        return "Step List"
+#    def get_name_links(self, obj):
+#        links = [format_html(
+#            '<a href="{}">{}</a>',
+#            reverse('step_detail', kwargs={'step_id': obj.pk}),
+#            obj.name
+#        )]
+#        # is_authenticated is not callable in Django 2.0.
+#        if self.request.user.is_authenticated:
+#            links.append(format_html(
+#                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+#                reverse('step_update', kwargs={'step_id': obj.pk})
+#            ))
+#        return links
 
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
+#    def get_display_value(self, obj, field):
+#        if field == 'name':
+#            links = self.get_name_links(obj)
+#            return mark_safe(''.join(links))
+#        else:
+#            return super().get_display_value(obj, field)
 
+class StepCreate(CreateView):
+    template_name = "base.htm"
+    model = Step
+    form_class = StepForm
 
-
-class ProtocolDetail(InlineDetailView):
-    pk_url_kwarg = 'protocol_id'
-    form_with_inline_formsets = ProtocolDisplayWithInlineSteps
-
-class ProtocolCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    pk_url_kwarg = 'protocol_id'
-    form_with_inline_formsets = ProtocolWithInlineSteps
-    def get_heading(self):
-        return "Create New Protocol"
-    def get_bs_form_opts(self):
-        return {
-            'title': 'Create Protocol',
-            'submit_text': 'Save Protocol',
-            'inline_title': 'Protocol Steps'
-        }
-
-    def get_success_url(self):
-        return reverse('protocol_detail', kwargs={'protocol_id': self.object.pk})
-
-class ProtocolUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'protocol_id'
-    form_with_inline_formsets = ProtocolWithInlineSteps
-    def get_bs_form_opts(self):
-        return {
-            'title': 'Update Protocol',
-            'submit_text': 'Save Protocol',
-        }
-
-    def get_success_url(self):
-        return reverse('protocol_detail', kwargs={'protocol_id': self.object.pk})
-
-
-class ProtocolStepDetail(InlineDetailView):
-    pk_url_kwarg = 'protocol_step_id'
-    form_with_inline_formsets = ProtocolStepDisplayWithInlineParameters
-
-class ProtocolStepCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    pk_url_kwarg = 'protocol_step_id'
-    form_with_inline_formsets = ProtocolStepWithInlineParameters
-    def get_heading(self):
-        return "Create New Protocol Step"
-    def get_bs_form_opts(self):
-        return {
-                'title': 'Create Protocol Step',
-                'submit_text': 'Save Protocol Step'
-                }
-
-    def get_success_url(self):
-        return reverse('protocol_step_detail', kwargs={'protocol_step_id': self.object.pk})
-
-class ProtocolStepUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'protocol_step_id'
-    form_with_inline_formsets = ProtocolStepWithInlineParameters
-    def get_bs_form_opts(self):
-        return {
-                'class': 'protocolstep',
-                'title': 'Update Protocol Step',
-                'submit_text': 'Save Protocol Step'
-                }
-
-    def get_success_url(self):
-        return reverse('protocol_step_detail', kwargs={'protocol_step_id': self.object.pk})
-
-class PipelineResultList(ListSortingView):
-    template_name='core/pipe_list.htm'
-    model = PipelineResult
+class ResultList(ListSortingView):
+    model = Result
     allowed_sort_orders = '__all__'
-    grid_fields = ['input_file', 'source_software', 'result_type', 'replicates', ['computational_pipelines', 'pipeline_step']]
+    grid_fields = ['input_file', 'source_software', 'type', 'replicates', ['process', 'source_step']]
     def get_heading(self):
-        return "Pipeline Result List"
+        return "Process Result List"
 
     def get_replicates_text(self, obj):
         return "Number matched: %d" % (len(obj.replicates.all()),)
 
 
     def get_file_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
-            obj.input_file.upload_file
-        )]
+        links = []
+        if obj.input_file is not None:
+            links = [format_html(
+                '<a href="{}">{}</a>',
+                reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
+                obj.input_file.upload_file
+            )]
         #can anonymous users download files???? For now, yes...
         #though the website 404s if not logged in.
         #Only succrss files can be downloaded.
-        if obj.input_file.upload_status == 'S':
-            links.append(format_html(
-                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
-                #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
-                "/" + obj.input_file.upload_file.url
-            ))
-            links.append(format_html(
-            ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
-            "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.input_file.upload_file.url
-            ))
+            if obj.input_file.upload_status == 'S':
+                links.append(format_html(
+                    ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
+                    #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
+                    "/" + obj.input_file.upload_file.url
+                ))
+                links.append(format_html(
+                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
+                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.input_file.upload_file.url
+                ))
         return links
 
     def get_display_value(self, obj, field):
@@ -474,30 +365,29 @@ class PipelineResultList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
-
     def get_table_attrs(self):
         return {
             'class': 'table table-bordered table-collapse display-block-condition custom-table',
-            'id' : 'pipeline_table',
+            'id' : 'process_table',
         }
 
-class PipelineList(ListSortingView):
-    model = ComputationalPipeline
+class ProcessList(ListSortingView):
+    model = Process
     allowed_sort_orders = '__all__'
     grid_fields = ['name']
     def get_heading(self):
-        return "Pipeline List"
+        return "Process List"
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('pipeline_detail', kwargs={'pipeline_id': obj.pk}),
+            reverse('process_detail', kwargs={'process_id': obj.pk}),
             obj.name
         )]
         # is_authenticated is not callable in Django 2.0.
         if self.request.user.is_authenticated:
             links.append(format_html(
                 ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('pipeline_update', kwargs={'pipeline_id': obj.pk})
+                reverse('process_update', kwargs={'process_id': obj.pk})
             ))
         return links
 
@@ -509,102 +399,41 @@ class PipelineList(ListSortingView):
             return super().get_display_value(obj, field)
 
 
-class PipelineStepList(ListSortingView):
-    model = PipelineStep
-    allowed_sort_orders = '__all__'
-    grid_fields = ['method', 'action']
-    def get_heading(self):
-        return "Pipeline Step List"
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('pipeline_step_detail', kwargs={'pipeline_step_id': obj.pk}),
-            obj.method
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('pipeline_step_update', kwargs={'pipeline_step_id': obj.pk})
-            ))
-        return links
+class ProcessDetail(InlineDetailView):
+    pk_url_kwarg = 'process_id'
+    form_with_inline_formsets = ProcessDisplayWithInlineSteps
 
-    def get_display_value(self, obj, field):
-        if field == 'method':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
-
-class PipelineDetail(InlineDetailView):
-    pk_url_kwarg = 'pipeline_id'
-    form_with_inline_formsets = PipelineDisplayWithInlineSteps
-
-class PipelineCreate(BsTabsMixin, InlineCreateView):
+class ProcessCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
-    pk_url_kwarg = 'pipeline_id'
-    form_with_inline_formsets = PipelineWithInlineSteps
+    pk_url_kwarg = 'process_id'
+    form_with_inline_formsets = ProcessWithInlineSteps
     def get_heading(self):
-        return "Create New Pipeline"
+        return "Create New Process"
     def get_bs_form_opts(self):
         return {
-            'title': 'Create Pipeline',
-            'submit_text': 'Save Pipeline',
-            'inline_title': 'Pipeline Steps'
+            'title': 'Create Process',
+            'submit_text': 'Save Process',
+            'inline_title': 'Process Steps'
         }
 
     def get_success_url(self):
-        return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
+        return reverse('process_detail', kwargs={'process_id': self.object.pk})
 
-class PipelineUpdate(BsTabsMixin, InlineCrudView):
+class ProcessUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
-    pk_url_kwarg = 'pipeline_id'
-    form_with_inline_formsets = PipelineWithInlineSteps
+    pk_url_kwarg = 'process_id'
+    form_with_inline_formsets = ProcessWithInlineSteps
     def get_bs_form_opts(self):
         return {
-            'title': 'Update Pipeline',
-            'submit_text': 'Save Pipeline',
+            'title': 'Update Process',
+            'submit_text': 'Save Process',
         }
 
     def get_success_url(self):
-        return reverse('pipeline_detail', kwargs={'pipeline_id': self.object.pk})
-"""
-class PipelineResultDetail(InlineDetailView):
-    pk_url_kwargs = 'pipeline_result_id'
-"""
-class PipelineStepDetail(InlineDetailView):
-    pk_url_kwarg = 'pipeline_step_id'
-    form_with_inline_formsets = PipelineStepDisplayWithInlineParameters
+        return reverse('process_detail', kwargs={'process_id': self.object.pk})
 
-class PipelineStepCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    pk_url_kwarg = 'pipeline_step_id'
-    form_with_inline_formsets = PipelineStepWithInlineParameters
-    def get_heading(self):
-        return "Create New Pipeline Step"
-    def get_bs_form_opts(self):
-        return {
-                'title': 'Create Pipeline Step',
-                'submit_text': 'Save Pipeline Step'
-                }
-
-    def get_success_url(self):
-        return reverse('pipeline_step_detail', kwargs={'pipeline_step_id': self.object.pk})
-
-class PipelineStepUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'pipeline_step_id'
-    form_with_inline_formsets = PipelineStepWithInlineParameters
-    def get_bs_form_opts(self):
-        return {
-                'class': 'pipelinestep',
-                'title': 'Update Pipeline Step',
-                'submit_text': 'Save Pipeline Step'
-                }
-
-    def get_success_url(self):
-        return reverse('pipeline_step_detail', kwargs={'pipeline_step_id': self.object.pk})
-
+class ResultDetail(InlineDetailView):
+    pk_url_kwargs = 'result_id'
 
 
 ###############################################################################
@@ -617,12 +446,11 @@ def search(request):
     ## (logic_model_type, db_model_type, user_facing_model_string)
     model_types= [('investigation', Investigation, 'Investigations'),
                   ('sample', Sample, 'Samples'),
-                  ('sampleMetadata', SampleMetadata, 'Sample Metadata'),
-                  ('biologicalReplicate', BiologicalReplicate, 'Biological Replicates'),
-                  ('biologicalReplicateMetadata', BiologicalReplicateMetadata, 'Biological Replicate Metadata'),
-                  ('protocol', BiologicalReplicateProtocol, 'Biological Replicate Protocols'),
-                  ('pipeline', ComputationalPipeline, 'Computational Pipeline'),
-                  ('pipelineStep', PipelineStep, 'Computational Pipeline Step' )]
+                  #('sampleMetadata', SampleMetadata, 'Sample Metadata'),
+                  ('replicate', Replicate, 'Replicates'),
+                  #('replicateMetadata', ReplicateMetadata, 'Replicate Metadata'),
+                  ('process', Process, 'Processs'),
+                  ('processStep', Step, 'Computational Process Step' )]
 
     ## Retrieve values from request
     #q or q2 is search term.
@@ -736,19 +564,19 @@ def search(request):
     #Find value ranges for relevant queries.
     value_range = None
     if selected['type'] == 'sampleMetadata':
-        metadata = SampleMetadata.objects.order_by('key').distinct('key')
+#        metadata = SampleMetadata.objects.order_by('key').distinct('key')
         if meta:
             value_range = {
-                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
+#                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+#                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
 
     elif selected['type'] == 'biologicalReplicateMetadata':
-        metadata = BiologicalReplicateMetadata.objects.order_by('key').distinct('key')
+        metadata = ReplicateMetadata.objects.order_by('key').distinct('key')
         if meta:
             value_range = {
-                'min': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-                'max': BiologicalReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
+#                'min': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
+#                'max': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
 
     else:
@@ -831,7 +659,7 @@ def ajax_aggregates_meta_view(request):
     exclude = request.GET.get('exclude')
     #get investigation specific meta data.
     #E.g. Inv -> Samples -> SampleMetadata
-    #     Inv -> Reps -> BiologicalReplicateMetadata
+    #     Inv -> Reps -> ReplicateMetadata
     qs = None
     type = None
 
@@ -839,21 +667,21 @@ def ajax_aggregates_meta_view(request):
         return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
 
     if model_choice == "1": #Samples
-        qs = SampleMetadata.objects.filter(
-            sample__in = Sample.objects.filter(
-            investigation__in = inv_id
-            )).order_by('key').distinct('key')
+#        qs = SampleMetadata.objects.filter(
+#            sample__in = Sample.objects.filter(
+#            investigation__in = inv_id
+#            )).order_by('key').distinct('key')
         #excludes are defined in each conditional to allow later flexibility
-        if exclude:
-            qs = qs.exclude(key=exclude)
+#        if exclude:
+#            qs = qs.exclude(key=exclude)
         type = "sample"
     elif model_choice == "2": #Bio Replicates
-        qs = BiologicalReplicateMetadata.objects.filter(
-            biological_replicate__in = (BiologicalReplicate.objects.filter(
-            sample__in = Sample.objects.filter(investigation__in = inv_id)
-            ))).order_by('key').distinct('key')
-        if exclude:
-            qs = qs.exclude(key=exclude)
+#        qs = ReplicateMetadata.objects.filter(
+#            biological_replicate__in = (Replicate.objects.filter(
+#            sample__in = Sample.objects.filter(investigation__in = inv_id)
+#            ))).order_by('key').distinct('key')
+#        if exclude:
+#            qs = qs.exclude(key=exclude)
         type = "replicate"
 #    elif model_choice == '3': #Computational something or other
     return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})

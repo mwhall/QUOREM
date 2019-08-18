@@ -19,19 +19,17 @@ from django.conf.urls import url
 from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
-from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, ProtocolStepFkWidgetGrid
+from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, StepFkWidgetGrid
 from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
-    InvestigationUpdate, InvestigationMetadataDetail,
-    ProtocolCreate, ProtocolDetail, ProtocolList, ProtocolUpdate,
-    ProtocolStepCreate, ProtocolStepDetail,
-    ProtocolStepList, ProtocolStepUpdate,
-    PipelineCreate, PipelineDetail, PipelineList, PipelineUpdate,
-    PipelineResultList, PipelineResultDetail,
-    PipelineStepCreate, PipelineStepDetail,
-    PipelineStepList, PipelineStepUpdate,
-    ReplicateDetail, ReplicateUpdate, ReplicateList,
-    SampleDetail, SampleList, SampleUpdate,  UploadList, UploadInputFileDetail,
+    InvestigationUpdate,
+    ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
+    ResultList,
+    StepList, StepCreate,
+    ReplicateList, FeatureList,
+#    ReplicateDetail, ReplicateUpdate, ReplicateList, ReplicateCreate,
+    SampleDetail, SampleList, SampleUpdate, #SampleCreate, 
+    UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
     #analysis page
@@ -90,94 +88,58 @@ urlpatterns = [
     re_path(r'replicate/all/$', ReplicateList.as_view(),
             name = 'replicate_all',
             kwargs = {'view_title': 'All Replicates'}),
-    re_path(r'replicate/(?P<replicate_id>\d+)/$', ReplicateDetail.as_view(),
-        name='replicate_detail',
-        kwargs={'view_title': 'Replicate Detail'}),
-    re_path(r'replicate/edit/(?P<replicate_id>\d+)/$', ReplicateUpdate.as_view(),
-        name='replicate_update',
-        kwargs={'view_title': 'Replicate Update', 'allow_anonymous': False}),
+#    re_path(r'replicate/(?P<replicate_id>\d+)/$', ReplicateDetail.as_view(),
+#        name='replicate_detail',
+#        kwargs={'view_title': 'Replicate Detail'}),
+#    re_path(r'replicate/edit/(?P<replicate_id>\d+)/$', ReplicateUpdate.as_view(),
+#        name='replicate_update',
+#        kwargs={'view_title': 'Replicate Update', 'allow_anonymous': False}),
 
+    re_path(r'feature/all/$', FeatureList.as_view(),
+            name = 'feature_all',
+            kwargs = {'view_title': 'All Features'}),
 
+    # Process Routing
+    re_path(r'process/(?P<process_id>\d+)/$', ProcessDetail.as_view(),
+        name='process_detail',
+        kwargs={'view_title': "Process Detail"}),
+    re_path(r'process/all/$', ProcessList.as_view(),
+        name='process_all',
+        kwargs={'view_title': "All Processs"}),
+    re_path(r'process/create/$', ProcessCreate.as_view(),
+        name = 'process_create',
+        kwargs={'view_title': "Create New Process", 'allow_anonymous': False}),
+    re_path(r'process/edit/(?P<process_id>\d+)/$', ProcessUpdate.as_view(),
+        name = 'process_update',
+        kwargs={'view_title': "Process Update", 'allow_anonymous': False}),
 
-    # Investigation Metadata Routing
-    re_path(r'investigation/metadata/(?P<investigation_id>\d+)/$', InvestigationMetadataDetail.as_view(),
-        name='investigation_metadata_detail',
-        kwargs={'view_title': 'Investigation Metadata'}),
+    # Result Routing
+    re_path(r'result/all/$', ResultList.as_view(),
+        name = 'result_all',
+        kwargs={'view_title': "Result List", 'alllow_anonymous': False}),
 
-    # Replicate Routing
-    # Replicates are added via the Sample edit page. Should there be replicate
-    # specific pages?
-
-    # Protocol Routing
-    re_path(r'protocol/(?P<protocol_id>\d+)/$', ProtocolDetail.as_view(),
-        name='protocol_detail',
-        kwargs={'view_title': "Protocol Detail"}),
-    re_path(r'protocol/all/$', ProtocolList.as_view(),
-        name='protocol_all',
-        kwargs={'view_title': "All Protocols"}),
-    re_path(r'protocol/create/$', ProtocolCreate.as_view(),
-        name = 'protocol_create',
-        kwargs={'view_title': "Create New Protocol", 'allow_anonymous': False}),
-    re_path(r'protocol/edit/(?P<protocol_id>\d+)/$', ProtocolUpdate.as_view(),
-        name = 'protocol_update',
-        kwargs={'view_title': "Protocol Update", 'allow_anonymous': False}),
-
-    # Protocol Step Routing
-    re_path(r'protocol/step/all/$', ProtocolStepList.as_view(),
-            name='protocol_step_all',
-            kwargs={'view_title': "All Protocol Steps"}),
-    re_path(r'protocol/step/create/$', ProtocolStepCreate.as_view(),
-        name = 'protocol_step_create',
-        kwargs={'view_title': "Create New Protocol Step", 'allow_anonymous': False}),
-    re_path(r'protocol/step/(?P<protocol_step_id>\d+)/$', ProtocolStepDetail.as_view(),
-        name = 'protocol_step_detail',
-        kwargs={'view_title': "Protocol Step Detail"}),
-    re_path(r'protocol/step/edit/(?P<protocol_step_id>\d+)/$', ProtocolStepUpdate.as_view(),
-        name = 'protocol_step_update',
-        kwargs = {'view_title': "Protocol Step Update", 'allow_anonymous': False}),
-
-    # Pipeline Routing
-    re_path(r'pipeline/(?P<pipeline_id>\d+)/$', PipelineDetail.as_view(),
-        name='pipeline_detail',
-        kwargs={'view_title': "Pipeline Detail"}),
-    re_path(r'pipeline/all/$', PipelineList.as_view(),
-        name='pipeline_all',
-        kwargs={'view_title': "All Pipelines"}),
-    re_path(r'pipeline/create/$', PipelineCreate.as_view(),
-        name = 'pipeline_create',
-        kwargs={'view_title': "Create New Pipeline", 'allow_anonymous': False}),
-    re_path(r'pipeline/edit/(?P<pipeline_id>\d+)/$', PipelineUpdate.as_view(),
-        name = 'pipeline_update',
-        kwargs={'view_title': "Pipeline Update", 'allow_anonymous': False}),
-    re_path(r'pipeline/result/all/$', PipelineResultList.as_view(),
-        name = 'pipeline_result_all',
-        kwargs={'view_title': "Pipeline Update", 'allow_anonymous': False}),
-    re_path(r'pipeline/result/(?P<pipelineresult_id>\d+)/$', PipelineResultDetail.as_view(),
-        name = 'pipelineresult_detail',
-        kwargs={'view_title': "Pipeline Result Detail", 'allow_anonymous': False}),
-
-    # Protocol Step Routing
-    re_path(r'pipeline/step/all/$', PipelineStepList.as_view(),
-            name='pipeline_step_all',
-            kwargs={'view_title': "All Pipeline Steps"}),
-    re_path(r'pipeline/step/create/$', PipelineStepCreate.as_view(),
-        name = 'pipeline_step_create',
-        kwargs={'view_title': "Create New Pipeline Step", 'allow_anonymous': False}),
-    re_path(r'pipeline/step/(?P<pipeline_step_id>\d+)/$', PipelineStepDetail.as_view(),
-        name = 'pipeline_step_detail',
-        kwargs={'view_title': "Pipeline Step Detail"}),
-    re_path(r'pipeline/step/edit/(?P<pipeline_step_id>\d+)/$', PipelineStepUpdate.as_view(),
-        name = 'pipeline_step_update',
-        kwargs = {'view_title': "Pipeline Step Update", 'allow_anonymous': False}),
+    # Process Step Routing
+    re_path(r'step/all/$', StepList.as_view(),
+            name='step_all',
+            kwargs={'view_title': "All Steps"}),
+#    re_path(r'step/create/$', StepCreate.as_view(),
+#        name = 'step_create',
+#        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
+#    re_path(r'process/step/(?P<process_step_id>\d+)/$', StepDetail.as_view(),
+#        name = 'process_step_detail',
+#        kwargs={'view_title': "Process Step Detail"}),
+#    re_path(r'process/step/edit/(?P<process_step_id>\d+)/$', StepUpdate.as_view(),
+#        name = 'process_step_update',
+#        kwargs = {'view_title': "Process Step Update", 'allow_anonymous': False}),
 
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
-    re_path(r'protocol-step-grid(?P<action>/?\w*)/$', ProtocolStepFkWidgetGrid.as_view(),
-        name='protocol_step_grid', kwargs={'ajax':True}),
-    re_path(r'sample-grid(?P<action>/?\w*)/$', SampleFkWidgetGrid.as_view(),
-        name='sample_grid', kwargs={'ajax':True}),
-    re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
-        name='replicate_grid', kwargs={'ajax':True}),
+#    re_path(r'process-step-grid(?P<action>/?\w*)/$', StepFkWidgetGrid.as_view(),
+#        name='process_step_grid', kwargs={'ajax':True}),
+#    re_path(r'sample-grid(?P<action>/?\w*)/$', SampleFkWidgetGrid.as_view(),
+#        name='sample_grid', kwargs={'ajax':True}),
+#    re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
+#        name='replicate_grid', kwargs={'ajax':True}),
 
     #### Search Result Routing
     path('search/', search, name='search-results'),

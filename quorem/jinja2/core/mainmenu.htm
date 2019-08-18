@@ -7,8 +7,11 @@
     'url': url('investigation_all'),
     'text': _('View All Investigations')},
     {
-    'url': url('investigation_create'),
-    'text': _('Create Investigation')},
+    'url': url('process_all'),
+    'text': _('View All Processes')},
+    {
+    'url': url('step_all'),
+    'text': _('View All Steps')},
     {
     'url': url('sample_all'),
     'text': _('View All Samples')},
@@ -16,20 +19,14 @@
     'url': url('replicate_all'),
     'text': _('View All Replicates')},
     {
-    'url': url('protocol_step_all'),
-    'text': _('View All Protocol Steps')},
+    'url': url('feature_all'),
+    'text': _('View All Features')},
     {
-    'url': url('protocol_all'),
-    'text': _('View All Protocols')},
+    'url': url('result_all'),
+    'text': _('View All Results')},
     {
-    'url': url('pipeline_all'),
-    'text': _('View All Pipelines')},
-    {
-    'url': url('pipeline_result_all'),
-    'text': _('View All Pipeline Results')},
-    {
-      'url':url('upload_all'),
-      'text':_('View Uploaded Files')},
+    'url':url('upload_all'),
+    'text':_('View Uploaded Files')},
   
 ] -%}
 {{ bs_nav_items(navs) }}

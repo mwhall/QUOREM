@@ -1,15 +1,12 @@
 from django import forms
-from django.conf import settings
-from django.db import models
-from django.forms.widgets import HiddenInput
 from django.forms.utils import flatatt
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    BiologicalReplicate, BiologicalReplicateMetadata, BiologicalReplicateProtocol,
-    ComputationalPipeline, PipelineStep, PipelineStepParameter, PipelineResult,
-    Investigation, ProtocolStep, ProtocolStepParameter, Sample, SampleMetadata,
-    UploadInputFile, UserProfile, ErrorMessage, Measure
+    Replicate, Process,
+    Step, Result, Value,
+    Investigation, Step, Sample,
+    UploadInputFile, UserProfile, ErrorMessage
 )
 
 from django_jinja_knockout.forms import (
@@ -131,29 +128,6 @@ UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(
                                                 min_num=0,
                                                 can_delete=False)
 
-class MeasureDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = Measure
-        fields = '__all__'
-
-MeasuresFormset = ko_inlineformset_factory(PipelineResult,
-                                            Measure,
-                                            form=MeasureDisplayForm,
-                                            extra=0,
-                                            min_num=0,
-                                            can_delete=False)
-
-class PipelineResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = PipelineResult
-        fields = '__all__'
-
-class PipelineResultDisplayWithInlineMeasures(FormWithInlineFormsets):
-    FormClass = PipelineResultDisplayForm
-    FormsetClasses = [MeasuresFormset]
-    def get_formset_inline_title(self, formset):
-        return "Measures"
-
 class UploadInputFileDisplayWithInlineErrors(FormWithInlineFormsets):
     FormClass = UploadInputFileDisplayForm
     FormsetClasses =[UploadInputFileDisplayErrorFormset]
@@ -166,24 +140,22 @@ class UserWithInlineUploads(FormWithInlineFormsets):
     def get_formset_inline_title(self, formset):
         return "User Uploads"
 
+class NameLabelChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return "%s" % (obj.name,)
+
+#### Investigation Forms
 
 class InvestigationForm(RendererModelForm):
     class Meta:
         model = Investigation
-        #fields = '__all__'
-        exclude = ['search_vector']
+        exclude = ['search_vector', 'values']
 
 class InvestigationDisplayForm(RendererModelForm,
                                metaclass=DisplayModelMetaclass):
     class Meta:
         model = Investigation
-        #fields = '__all__'
         exclude = ['search_vector']
-
-
-class NameLabelChoiceField(forms.ModelChoiceField):
-    def label_from_instance(self, obj):
-        return "%s" % (obj.name,)
 
 class SampleForm(RendererModelForm):
     investigation = NameLabelChoiceField(queryset = Investigation.objects.all())
@@ -205,116 +177,42 @@ class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=Displ
 
 class ReplicateForm(RendererModelForm):
     class Meta:
-        model = BiologicalReplicate
+        model = Replicate
         exclude = ['search_vector']
 
 class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
-        model = BiologicalReplicate
-        #fields = '__all__'
+        model = Replicate
         exclude = ['search_vector']
 
-class SampleMetadataForm(RendererModelForm):
+class ProcessForm(RendererModelForm):
     class Meta:
-        model = SampleMetadata
-        #fields = '__all__'
+        model = Process
         exclude = ['search_vector']
 
-class SampleMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+class ProcessDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
-        model = SampleMetadata
+        model = Process
         exclude = ['search_vector']
 
-class ReplicateMetadataForm(RendererModelForm):
+class StepForm(RendererModelForm):
+#    step = NameLabelChoiceField(queryset=Step.objects.all())
+#    step.label = "Process Step"
     class Meta:
-        model = BiologicalReplicateMetadata
-        fields = '__all__'
-
-class ReplicateMetadataDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = BiologicalReplicateMetadata
+        model = Step
         exclude = ['search_vector']
 
-
-class ProtocolForm(RendererModelForm):
+class StepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
-        model = BiologicalReplicateProtocol
+        model = Step
         exclude = ['search_vector']
 
-class ProtocolDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+# No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
+
+class ResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
-        model = BiologicalReplicateProtocol
+        model = Result
         exclude = ['search_vector']
-
-class PipelineForm(RendererModelForm):
-    class Meta:
-        model = ComputationalPipeline
-        fields = '__all__'
-
-class PipelineDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = ComputationalPipeline
-        fields = '__all__'
-
-
-
-class ProtocolStepForm(RendererModelForm):
-    protocolstep = NameLabelChoiceField(queryset=ProtocolStep.objects.all())
-    protocolstep.label = "Protocol Step"
-    class Meta:
-        model = ProtocolStep
-        #fields = '__all__'
-        exclude = ['search_vector']
-    def __init__(self, *args, **kwargs):
-        super(ProtocolStepForm, self).__init__(*args, **kwargs)
-        if 'biological_replicate_protocols' in self.fields:
-            self.fields.pop('biological_replicate_protocols')
-            self.fields.pop('protocolstep')
-
-class ProtocolStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = ProtocolStep
-        #fields = '__all__'
-        exclude = ['search_vector']
-
-class ProtocolStepParameterForm(RendererModelForm):
-    class Meta:
-        model = ProtocolStepParameter
-        #fields = '__all__'
-        exclude = ['search_vector']
-
-class ProtocolStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = ProtocolStepParameter
-        #fields = '__all__'
-        exclude = ['search_vector']
-
-class PipelineStepForm(RendererModelForm):
-    pipelinestep = NameLabelChoiceField(queryset=PipelineStep.objects.all())
-    pipelinestep.label = "Pipeline Step"
-    class Meta:
-        model = PipelineStep
-        fields = '__all__'
-    def __init__(self, *args, **kwargs):
-        super(PipelineStepForm, self).__init__(*args, **kwargs)
-        if 'pipelines' in self.fields:
-            self.fields.pop('pipelines')
-            self.fields.pop('pipelinestep')
-
-class PipelineStepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = PipelineStep
-        fields = '__all__'
-
-class PipelineStepParameterForm(RendererModelForm):
-    class Meta:
-        model = PipelineStepParameter
-        fields = '__all__'
-
-class PipelineStepParameterDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = PipelineStepParameter
-        fields = '__all__'
 
 # Inline/Compound Forms
 
@@ -323,6 +221,7 @@ InvestigationSampleFormset = ko_inlineformset_factory(Investigation,
                                                       form=SampleForm,
                                                       extra=0,
                                                       min_num=0)
+
 InvestigationDisplaySampleFormset = ko_inlineformset_factory(
                                                  Investigation,
                                                  Sample,
@@ -343,145 +242,34 @@ class InvestigationDisplayWithInlineSamples(FormWithInlineFormsets):
      def get_formset_inline_title(self, formset):
          return "Samples"
 
-SampleDisplayMetadataFormset = ko_inlineformset_factory(Sample,
-                                                 SampleMetadata,
-                                                 form=SampleMetadataDisplayForm)
-
 SampleDisplayReplicateFormset = ko_inlineformset_factory(Sample,
-                                                      BiologicalReplicate,
+                                                      Replicate,
                                                       form=ReplicateDisplayForm)
 
-SampleMetadataFormset = ko_inlineformset_factory(Sample, SampleMetadata,
-                                                 form=SampleMetadataForm,
-                                                 extra=0,
-                                                 min_num=0)
-
-SampleReplicateFormset = ko_inlineformset_factory(Sample, BiologicalReplicate,
+SampleReplicateFormset = ko_inlineformset_factory(Sample, Replicate,
                                                   form=ReplicateForm,
                                                   extra=0, min_num=0)
 
-class SampleWithInlineMetadata(FormWithInlineFormsets):
-    FormClass = SampleForm
-    FormsetClasses = [SampleMetadataFormset]
+StepDisplayFormset = ko_inlineformset_factory(Process,
+                                              Step.processes.through,
+                                              form=StepDisplayForm)
+
+StepFormset = ko_inlineformset_factory(Process,
+                                       Step.processes.through,
+                                       form=StepForm,
+                                       extra=0, min_num=0)
+
+class ProcessDisplayWithInlineSteps(FormWithInlineFormsets):
+    FormClass = ProcessDisplayForm
+    FormsetClasses = [StepDisplayFormset]
     def get_formset_inline_title(self, formset):
-        return "Sample Metadata"
+        return "Process Step"
 
-class SampleDisplayWithInlineMetadata(FormWithInlineFormsets):
-    FormClass = SampleDisplayForm
-    FormsetClasses = [SampleDisplayReplicateFormset, \
-                      SampleDisplayMetadataFormset]
+class ProcessWithInlineSteps(FormWithInlineFormsets):
+    FormClass = ProcessForm
+    FormsetClasses = [StepFormset]
     def get_formset_inline_title(self, formset):
-        if formset.model == BiologicalReplicate:
-            return "Biological Replicates"
-        return "Sample Metadata"
-
-ReplicateDisplayMetadataFormset = ko_inlineformset_factory(BiologicalReplicate,
-                                                 BiologicalReplicateMetadata,
-                                                 form=ReplicateMetadataDisplayForm)
-
-ReplicateMetadataFormset = ko_inlineformset_factory(BiologicalReplicate, BiologicalReplicateMetadata,
-                                                 form=ReplicateMetadataForm,
-                                                 extra=0,
-                                                 min_num=0)
-
-class ReplicateWithInlineMetadata(FormWithInlineFormsets):
-    FormClass = ReplicateForm
-    FormsetClasses = [ReplicateMetadataFormset]
-    def get_formset_inline_title(self, formset):
-        return "Replicate Metadata"
-
-class ReplicateDisplayWithInlineMetadata(FormWithInlineFormsets):
-    FormClass = ReplicateDisplayForm
-    FormsetClasses = [ReplicateDisplayMetadataFormset]
-    def get_formset_inline_title(self, formset):
-        if formset.model == BiologicalReplicate:
-            return "Biological Replicates"
-        return "Sample Metadata"
-
-ProtocolStepDisplayFormset = ko_inlineformset_factory(BiologicalReplicateProtocol,
-                                                      ProtocolStep.biological_replicate_protocols.through,
-                                                      form=ProtocolStepDisplayForm)
-
-ProtocolStepFormset = ko_inlineformset_factory(BiologicalReplicateProtocol,
-                                               ProtocolStep.biological_replicate_protocols.through,
-                                               form=ProtocolStepForm,
-                                               extra=0, min_num=0)
-
-class ProtocolDisplayWithInlineSteps(FormWithInlineFormsets):
-    FormClass = ProtocolDisplayForm
-    FormsetClasses = [ProtocolStepDisplayFormset]
-    def get_formset_inline_title(self, formset):
-        return "Protocol Step"
-
-class ProtocolWithInlineSteps(FormWithInlineFormsets):
-    FormClass = ProtocolForm
-    FormsetClasses = [ProtocolStepFormset]
-    def get_formset_inline_title(self, formset):
-        return "Protocol Steps"
-
-ProtocolStepParameterDisplayFormset = ko_inlineformset_factory(ProtocolStep,
-                                                      ProtocolStepParameter,
-                                                      form = ProtocolStepParameterDisplayForm)
-
-ProtocolStepParameterFormset = ko_inlineformset_factory(ProtocolStep,
-                                                        ProtocolStepParameter,
-                                                        form = ProtocolStepParameterForm,
-                                                        extra=0, min_num=0)
-
-class ProtocolStepWithInlineParameters(FormWithInlineFormsets):
-    FormClass = ProtocolStepForm
-    FormsetClasses = [ProtocolStepParameterFormset]
-    def get_formset_inline_title(self, formset):
-        return "Protocol Step Parameter"
-
-class ProtocolStepDisplayWithInlineParameters(FormWithInlineFormsets):
-    FormClass = ProtocolStepDisplayForm
-    FormsetClasses = [ProtocolStepParameterDisplayFormset]
-    def get_formset_inline_title(self, formset):
-        return "Protocol Step Parameters"
-
-
-PipelineStepDisplayFormset = ko_inlineformset_factory(ComputationalPipeline,
-                                                      PipelineStep.pipelines.through,
-                                                      form=PipelineStepDisplayForm)
-
-PipelineStepFormset = ko_inlineformset_factory(ComputationalPipeline,
-                                               PipelineStep.pipelines.through,
-                                               form=ProtocolStepForm,
-                                               extra=0, min_num=0)
-
-class PipelineDisplayWithInlineSteps(FormWithInlineFormsets):
-    FormClass = PipelineDisplayForm
-    FormsetClasses = [PipelineStepDisplayFormset]
-    def get_formset_inline_title(self, formset):
-        return "Pipeline Step"
-
-class PipelineWithInlineSteps(FormWithInlineFormsets):
-    FormClass = PipelineForm
-    FormsetClasses = [PipelineStepFormset]
-    def get_formset_inline_title(self, formset):
-        return "Pipeline Steps"
-
-PipelineStepParameterDisplayFormset = ko_inlineformset_factory(PipelineStep,
-                                                      PipelineStepParameter,
-                                                      form = PipelineStepParameterDisplayForm)
-
-PipelineStepParameterFormset = ko_inlineformset_factory(PipelineStep,
-                                                        PipelineStepParameter,
-                                                        form = PipelineStepParameterForm,
-                                                        extra=0, min_num=0)
-
-class PipelineStepWithInlineParameters(FormWithInlineFormsets):
-    FormClass = PipelineStepForm
-    FormsetClasses = [PipelineStepParameterFormset]
-    def get_formset_inline_title(self, formset):
-        return "Pipeline Step Parameter"
-
-class PipelineStepDisplayWithInlineParameters(FormWithInlineFormsets):
-    FormClass = PipelineStepDisplayForm
-    FormsetClasses = [PipelineStepParameterDisplayFormset]
-    def get_formset_inline_title(self, formset):
-        return "Pipeline Step Parameters"
+        return "Process Steps"
 
 ##### Search form
 class SearchBarForm(forms.Form):
@@ -513,9 +301,9 @@ class AggregatePlotForm(forms.Form):
 # Custom Field Choice for rendering form
 class CustomModelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
-        if type(obj) is SampleMetadata or type(obj) is BiologicalReplicateMetadata:
-            return obj.key
-        else:
+        #if type(obj) is SampleMetadata or type(obj) is ReplicateMetadata:
+        #    return obj.key
+        #else:
             return super().label_from_instance(obj)
 
 #Form for barcharts. Maybe pie charts someday!
