@@ -60,13 +60,3 @@ def parse_csv_or_tsv(table_file):
     else:
         table = ttable
     return table
-
-def format_artifact(artifact_file):
-    #Using q2_extractor, rip the useful bits
-    #out of a QIIME artifact and format it for
-    #the models
-
-    #QIIME artifacts should have a checksums.md5 , we should look for it....
-    #Or maybe find the metadata.yaml file.
-
-    pass
