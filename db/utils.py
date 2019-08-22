@@ -11,6 +11,7 @@ def barchart_html(agg, inv, model, meta):
     metaType = None
 
     investigations = models.Investigation.objects.filter(pk__in=inv)
+    inv_titles = [i.name for i in investigations]
     #Assign aggregate operation
     if agg == '1':
         Operation = Count
@@ -61,7 +62,7 @@ def barchart_html(agg, inv, model, meta):
 
         figure = go.Figure(data=data, layout=layout)
         return to_html(figure, full_html=False), {'agg':title,
-                                                  'inv': 'TODO investigations',
+                                                  'inv': inv_titles,
                                                   'type':model_choice,
                                                   'meta':meta}
     return None
@@ -69,8 +70,8 @@ def barchart_html(agg, inv, model, meta):
 #Code for trendline/scatterplot
 def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operation):
     #To save code, use a dict that maps numerical field vals to django model
-    cat_map = {'1': (models.Sample, models.SampleMetadata, 'sample__in'),
-               '2': (models.BiologicalReplicate, models.BiologicalReplicateMetadata, 'biological_replicate__in'),
+    cat_map = {'1': (models.Sample, models.SampleMetadata, 'sample__in', "Sample"),
+               '2': (models.BiologicalReplicate, models.BiologicalReplicateMetadata, 'biological_replicate__in', "Biological Replicate"),
               }
     op_map = {'1': 'markers', '2': 'lines+markers'}
 
@@ -79,8 +80,8 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
     xqs = None
     yqs = None
 
-    x_type, x_subtype, x_search = cat_map[x_val_category]
-    y_type, y_subtype, y_search = cat_map[y_val_category]
+    x_type, x_subtype, x_search, x_cat = cat_map[x_val_category]
+    y_type, y_subtype, y_search, y_cat = cat_map[y_val_category]
 
     #For now,there are no cases that don't have subtypes. Later, however, we might
     #expect those cases and will make the code execute condiitionally.
@@ -120,4 +121,9 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                     xaxis={'title':x_val},
                     yaxis={'title':y_val})
     fig.layout = layout
-    return to_html(fig, full_html=False)
+    return to_html(fig, full_html=False), {'style': op_map[operation],
+                                           'inv': [i.name for i in models.Investigation.objects.filter(pk__in=invs)],
+                                           'x_cat': x_cat,
+                                           'x_val': x_val,
+                                           'y_cat': y_cat,
+                                           'y_val': y_val}

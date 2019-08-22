@@ -28,7 +28,12 @@
             <p>Aggregate operation: {{ choices.agg }}</p>
           </li>
           <li class='list-group-item'>
-            <p>Investigation: {{ choices.inv }}</p>
+            <p>Investigation(s):</p>
+            <ul>
+              {% for i in choices.inv %}
+              <li>{{ i }}</li>
+              {% endfor %}
+            </ul>
           </li>
           <li class='list-group-item'>
             <p>Query Object: {{ choices.type }}</p>
@@ -36,6 +41,8 @@
           <li class='list-group-item'>
             <p>Data Filter: {{ choices.meta }}</p>
           </li>
+          <a href="{{ url( 'plot_aggregate' ) }}"
+           class="bg-success text-white list-group-item list-group-item-action btn-success">Choose Different Parameters</a>
         </ul>
       </div>
     </div>
