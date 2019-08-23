@@ -92,6 +92,7 @@ def process_table(infile):
 def process_qiime_artifact(infile, upfile):
     q2e = q2Extractor(infile)
     parameter_table_str, file_table_str = q2e.get_provenance()
+    print("q2e get_provencance finished")
     #Validate the parameter_table, to check that all the steps are in the DB
     #If it matches perfectly to n, assign this artifact to those n pipelines
     #if it matches none, assign it to the closest one(s) and make a deviation
@@ -129,6 +130,7 @@ def process_qiime_artifact(infile, upfile):
         except Exception as e:
             print(e)
             raise Exception("Something else went wrong")
+    print("right before scrape_measures")
     scrape_measures(q2e, pipelineresult)
     return "Success"
 
@@ -137,8 +139,11 @@ def scrape_measures(q2e, pipeline_result):
     #Suck the goodies out of the artifacts that we know how to import
     result_type = q2e.type
     try:
+        print("try block")
         data = q2e.extract_measures()
+        print("q2e extract measures finished")
     except NotImplementedError:
+        print("not implemented")
         raise NotImplementedError("q2_extractor does not know how to extract measures from this file")
     #Tuple description:
     #  (name: The name of the measure,
@@ -150,6 +155,7 @@ def scrape_measures(q2e, pipeline_result):
     #  )
     #TODO: Move to a separate function so others can call the measure saving software without
     #all of this q2e context
+    print("after try/catch, befure iteration")
     for measure_tuple in data:
         name = measure_tuple[0]
         description = measure_tuple[1]
