@@ -1,0 +1,13 @@
+investigation_id	sample_id	value_type	species	sex	source_site
+An exploration of gnomish genomics	GreenOoze1	MD	ooze	male	pseudopod
+An exploration of gnomish genomics	GreenOoze2	MD	ooze	female	pseudopod
+An exploration of gnomish genomics	Troll1	MD	troll	male	foot
+An exploration of gnomish genomics	Troll2	MD	troll	female	foot
+An exploration of gnomish genomics	Dwarf1	MD	dwarf	male	beard
+An exploration of gnomish genomics	Dwarf2	MD	dwarf	female	beard
+An exploration of gnomish genomics	Orc1	MD	orc	male	skin
+An exploration of gnomish genomics	Orc2	MD	orc	female	skin
+An exploration of gnomish genomics	Elf1	MD	elf	male	ear
+An exploration of gnomish genomics	Elf2	MD	elf	female	ear
+An exploration of gnomish genomics	Goblin1	MD	goblin	male	toenail
+An exploration of gnomish genomics	Goblin2	MD	goblin	female	toenail

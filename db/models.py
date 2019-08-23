@@ -47,7 +47,7 @@ class Investigation(models.Model):
 class Feature(models.Model):
     name = models.CharField(max_length=255)
     sequence = models.TextField(null=True, blank=True)
-    taxonomy = models.ManyToManyField('Value', related_name='taxonomy', blank=True)
+    annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
     first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True)
     observed_results = models.ManyToManyField('Result', related_name='observed_results')
     observed_replicates = models.ManyToManyField('Replicate', related_name='observed_replicates')
@@ -69,7 +69,7 @@ class Feature(models.Model):
     def update_search_vector(self):
         Feature.objects.update(
             search_vector = (SearchVector('name', weight= 'A') +
-                             SearchVector(StringAgg('taxonomy__str', delimiter=' '), weight='B'))
+                             SearchVector(StringAgg('annotation__str', delimiter=' '), weight='B'))
         )
 
 
@@ -173,9 +173,9 @@ class Step(models.Model):
     name = models.CharField(max_length=255)
     method = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    processes = models.ManyToManyField('Process', related_query_name='steps', blank=True)
+    processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
-    parameters = models.ManyToManyField('Value', related_query_name='steps', blank=True)
+    parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
 
     search_vector = SearchVectorField(null=True)
     def __str__(self):
@@ -197,6 +197,35 @@ class Step(models.Model):
                             SearchVector('method', weight='B') +
                             SearchVector('description', weight='C'))
         )
+
+class Analysis(models.Model):
+    # This is an instantiation/run of a Process and its Steps
+    name = models.CharField(max_length=255)
+    date = models.DateTimeField(blank=True)
+    location = models.CharField(max_length=255, blank=True)
+    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    # Just in case this analysis had any extra steps, they can be defined and tagged here
+    # outside of a Process
+    extra_steps = models.ManyToManyField('Step')
+    # Run-specific parameters can go in here, but I guess Measures can too
+    values = models.ManyToManyField('Value', related_name='analyses')
+
+    search_vector = SearchVectorField(null=True)
+    class Meta:
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def update_search_vector(self):
+        Analysis.objects.update(
+            search_vector= (SearchVector('name', weight='A') +
+                            SearchVector('date', weight='B') +
+                            SearchVector('location', weight='C'))
+        )
+
 
 class Result(models.Model):
     """
@@ -250,6 +279,9 @@ class Value(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey()
+
+    def __str__(self):
+        return self.name + ": " + str(self.content_object.value)
 
 class StrVal(models.Model):
     value = models.TextField()

@@ -1,0 +1,25 @@
+investigation_id	sample_id	replicate_id	process_id	value_type	replicate	extraction_concentration
+An exploration of gnomish genomics	GreenOoze1	GO1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.1
+An exploration of gnomish genomics	GreenOoze2	GO2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.31
+An exploration of gnomish genomics	Troll1	T1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.41
+An exploration of gnomish genomics	Troll2	T2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.51
+An exploration of gnomish genomics	Dwarf1	D1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.58
+An exploration of gnomish genomics	Dwarf2	D2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.43
+An exploration of gnomish genomics	Orc1	O1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.46
+An exploration of gnomish genomics	Orc2	O2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	1.23
+An exploration of gnomish genomics	Elf1	E1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.57
+An exploration of gnomish genomics	Elf2	E2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.94
+An exploration of gnomish genomics	Goblin1	G1_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.51
+An exploration of gnomish genomics	Goblin2	G2_1	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	1	0.67
+An exploration of gnomish genomics	GreenOoze1	GO1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.3
+An exploration of gnomish genomics	GreenOoze2	GO2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.34
+An exploration of gnomish genomics	Troll1	T1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.22
+An exploration of gnomish genomics	Troll2	T2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.67
+An exploration of gnomish genomics	Dwarf1	D1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.18
+An exploration of gnomish genomics	Dwarf2	D2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.42
+An exploration of gnomish genomics	Orc1	O1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.86
+An exploration of gnomish genomics	Orc2	O2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.44
+An exploration of gnomish genomics	Elf1	E1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.23
+An exploration of gnomish genomics	Elf2	E2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.17
+An exploration of gnomish genomics	Goblin1	G1_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.57
+An exploration of gnomish genomics	Goblin2	G2_2	Dr. Fizzsprocket's experimental metagnomics pipeline	MD	2	0.09
