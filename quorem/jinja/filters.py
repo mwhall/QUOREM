@@ -53,6 +53,7 @@ def page_url(context, page_num):
 def add_facet(context, changes):
     ctx = context['request'].GET.copy()
     for key in changes.keys():
+        print(key)
         ctx[key] = changes[key]
     return '?' + ctx.urlencode()
 

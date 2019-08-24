@@ -31,13 +31,13 @@ import io
 from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Replicate,
-        Step, Result, Feature,
+        Step, Result, Feature, Value,
         UploadInputFile, load_mixed_objects, UserProfile
 )
 
 from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
-    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps, 
+    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps,
     ResultDisplayForm,
     SampleDisplayForm, SampleForm, StepForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
@@ -482,7 +482,8 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(key=meta)
+            print(qs)
+            qs = qs.filter(values__name=meta) #m2m relation
             if min_selected and max_selected:
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
@@ -562,25 +563,34 @@ def search(request):
     }
 
     #Find value ranges for relevant queries.
+
+    ###########################################################################
+    ### TODO: With new db, this if/else can be replaced with generic statements.
     value_range = None
-    if selected['type'] == 'sampleMetadata':
+    if selected['type'] == 'sample':
 #        metadata = SampleMetadata.objects.order_by('key').distinct('key')
+        #metadata = Value.objects.filter(object_id__in=Sample.objects.all()).filter(value_type='MD').order_by('name').distinct('name')
+        metadata = Value.objects.filter(samples__in=Sample.objects.all()).order_by('name').distinct('name')
         if meta:
             value_range = {
 #                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
 #                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
 
-    elif selected['type'] == 'biologicalReplicateMetadata':
-        metadata = ReplicateMetadata.objects.order_by('key').distinct('key')
+    elif selected['type'] == 'replicate':
+        metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
         if meta:
             value_range = {
 #                'min': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
 #                'max': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
             }
+    elif selected['type'] == 'processStep':
+        metadata = Value.objects.filter(steps__in=Step.objects.all()).order_by('name').distinct('name')
 
     else:
         metadata = None
+    #/TODO
+    ###########################################################################
 
     #remove empty keys if there are any
     selected = {

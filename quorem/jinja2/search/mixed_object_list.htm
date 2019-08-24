@@ -18,48 +18,29 @@
       <p class="mb-1">Investigation: {{ item.obj.investigation.name|highlight(q) }}</p>
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>
-    {% elif item.type == 'sampleMetadata' %}
-    <a class="list-group-item list-group-item-action flex-column align-items-start"
-    href="/sample/{{ item.obj.sample_id }}">
-      <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Sample Metadata for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
-      </div>
-      <p class="mb-1">Description: {{ item.obj.key|highlight(q) }}</p>
-      <p class="mb-1">Value: {{ item.obj.value|highlight(q) }}</p>
-    </a>
-    {% elif item.type == 'protocol' %}
-    <a class="list-group-item list-group-item-action flex-column align-items-start"
-    href="/protocol/{{ item.obj.pk }}">
-      <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Protocol: {{ item.obj.name|highlight(q) }}</h5>
-      </div>
-      <p class="mb-1">Citation: {{ item.obj.citation|highlight(q) }}</p>
-      <p class="mb-1">Description: {{ item.obj.description|highlight(q) }}</p>
-    </a>
-    {% elif item.type == 'biologicalReplicate' %}
+    {% elif item.type == 'replicate' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/sample/{{ item.obj.sample.pk }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Biological Replicate {{ item.obj.name|highlight(q) }} for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
+        <h5 class="mb-1">Replicate {{ item.obj.name|highlight(q) }} for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
       </div>
-      <p class="mb-1">Currently, BioRep info is all foreign key models. Search result
-                      formatting does not currently account for this, but will soon. </p>
+      <p class="mb-1">TODO: put some info from replicate model here, in the search results. </p>
     </a>
-    {% elif item.type == 'pipeline' %}
+    {% elif item.type == 'process' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
-    href="/pipeline/{{ item.obj.pk }}">
+    href="/process/{{ item.obj.pk }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Computational Pipeline {{ item.obj.name|highlight(q) }}</h5>
+        <h5 class="mb-1">Process: {{ item.obj.name|highlight(q) }}</h5>
       </div>
-      <p class="mb-1"> Additional info for computational pipeline will be placed here at a later iteration. </p>
+      <p class="mb-1">{{ item.obj.description }} </p>
     </a>
-    {% elif item.type == 'pipelineStep' %}
+    {% elif item.type == 'processStep' %}
     <a class="list-group-item list-group-item-action flex-column align-items start"
-    href="/pipeline/step/{{ item.obj.pk }}">
+    href="/process/step/{{ item.obj.pk }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Step in computational pipeline: {{ item.obj.method|highlight(q) }} </h5>
+        <h5 class="mb-1">Process step {{ item.obj.name }} </h5>
       </div>
-      <p class="mb-1"> Action: {{ item.obj.action|highlight(q) }}</p>
+      <p class="mb-1"> {{ item.obj.description }}</p>
     </a>
     {% endif %}
   {% endfor %}
