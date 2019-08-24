@@ -190,5 +190,12 @@ def report_success(upfile):
     #update just calls super.save() because vanilla save() has been overridden
     #to trigger a file upload process.
     upfile.update()
+    #update the search vectors
+    model_list = [Investigation, Sample, Replicate, Process, Step, Analysis, Result, Value]
+    for model in model_list:
+        try:
+            model.update_search_vector()
+        except:
+            continue
     errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
     errorMessage.save()
