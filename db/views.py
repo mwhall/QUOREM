@@ -54,7 +54,7 @@ import zipfile
 from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
 
@@ -489,7 +489,8 @@ def search(request):
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
 
         if q:
-            qs = qs.filter(search_vector = query)
+            #icontains for partial matching. =query for SearchQuery functionality
+            qs = qs.filter(Q(search_vector__icontains=q) | Q(search_vector = query))
             qs = qs.annotate(rank=rank_annotation)
         return qs.order_by()
 
