@@ -442,6 +442,9 @@ class ResultDetail(InlineDetailView):
 
 #A simple function based view to GET the search bar form
 def search(request):
+    value_range = None
+    meta_type = None
+    facets = None
     ##MODEL INFO:::
     ## (logic_model_type, db_model_type, user_facing_model_string)
     model_types= [('investigation', Investigation, 'Investigations'),
@@ -461,9 +464,11 @@ def search(request):
     ##From search form
     selected_type = request.GET.get('type', '')
     meta = request.GET.get('meta', '')
-    min_selected = request.GET.get('min_value', '')
-    max_selected = request.GET.get('max_value', '')
-
+#    min_selected = request.GET.get('min_value', '')
+#    max_selected = request.GET.get('max_value', '')
+    str_facets = request.GET.get("string_facets", '').split(sep=',')
+    if str_facets[0] == '':
+        str_facets = None
     #initialize vars for query
     query = None
     rank_annotation = None
@@ -482,13 +487,18 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            print(qs)
             qs = qs.filter(values__name=meta) #m2m relation
+            """
             if min_selected and max_selected:
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
+            """
+            if str_facets:
+                print("string facets was true")
+                qs = qs.filter(values__str__value__in=str_facets)
 
         if q:
+            #SearchQuery matches with stemming, but not partial string matching.
             #icontains for partial matching. =query for SearchQuery functionality
             qs = qs.filter(Q(search_vector__icontains=q) | Q(search_vector = query))
             qs = qs.annotate(rank=rank_annotation)
@@ -519,7 +529,6 @@ def search(request):
             type_counts_raw[frontend_string] = {'count': type_count,
                                                 'name': type_name}
         qs = qs.union(this_qs.values(*values))
-        #this_qs.annotate(n=models.Count('pk')) #why is this here? delete bu August if no bugs come up.
 
     if q:
         qs = qs.order_by('-rank')
@@ -567,24 +576,24 @@ def search(request):
 
     ###########################################################################
     ### TODO: With new db, this if/else can be replaced with generic statements.
-    value_range = None
+
     if selected['type'] == 'sample':
 #        metadata = SampleMetadata.objects.order_by('key').distinct('key')
         #metadata = Value.objects.filter(object_id__in=Sample.objects.all()).filter(value_type='MD').order_by('name').distinct('name')
         metadata = Value.objects.filter(samples__in=Sample.objects.all()).order_by('name').distinct('name')
         if meta:
-            value_range = {
-#                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-#                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
-            }
+            vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
+            meta_type = vals[0].content_type.name
+            facets = list(set([v.content_object.value for v in vals]))
+
 
     elif selected['type'] == 'replicate':
         metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
         if meta:
-            value_range = {
-#                'min': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-#                'max': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
-            }
+            vals = Value.objects.filter(replicates__in=Replicate.objects.all()).filter(name=meta)
+            meta_type = vals[0].content_type.name
+            facets = list(set([v.content_object.value for v in vals]))
+
     elif selected['type'] == 'processStep':
         metadata = Value.objects.filter(steps__in=Step.objects.all()).order_by('name').distinct('name')
 
@@ -611,9 +620,13 @@ def search(request):
         'type': selected_type,
         'metadata':metadata,
         'meta': meta,
-        'value_range': value_range,
-        'min_value': min_selected,
-        'max_value': max_selected,
+        'meta_type': meta_type,
+        'facets': facets,
+        #selected values
+        'string_facets': str_facets,
+    #    'value_range': value_range,
+    #    'min_value': min_selected,
+    #    'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })

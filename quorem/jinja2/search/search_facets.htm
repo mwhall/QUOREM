@@ -56,4 +56,16 @@
       <div id="slider-range"></div>
     </div>
     {% endif %}
+    {% if meta_type=="str val" %}
+    <div class="card-header bg-warning">
+    </div>
+    <div class="card-body">
+      <h5>Restrict Query</h5>
+      <select id="select" multiple>
+        {% for val in facets %}
+        <option value="{{ val }}">{{ val }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
   </div>

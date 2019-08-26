@@ -33,6 +33,8 @@
               {% if value_range %}
                 <input type="hidden" id="min" name="min_value">
                 <input type="hidden" id="max" name="max_value">
+              {% elif meta_type == "str val" %}
+                <input type="hidden" id="stringfacets" name="string_facets">
               {% endif %}
             {% endif %}
           </div>
@@ -42,17 +44,21 @@
         {% if selected %}
         <p>Filters:</p>
           {% if selected.type %}
-            <a href="{{ ['type', 'meta', 'min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-primary">
+            <a href="{{ ['type', 'meta', 'min_value', 'max_value', 'string_facets']|remove_facet() }}" class="btn btn-outline-primary">
               {{ selected.type }}  <span>&times;</span>
             </a><br>
             {% if meta %}
-              <a href="{{ ['meta', 'min_sel', 'max_sel']|remove_facet() }}" class="btn btn-outline-success">
+              <a href="{{ ['meta', 'min_sel', 'max_sel', 'string_facets']|remove_facet() }}" class="btn btn-outline-success">
                 {{ meta }} <span>&times;</span>
               </a><br>
               {% if min_value and max_value %}
                 <a href="{{ ['min_value', 'max_value']|remove_facet() }}" class="btn btn-outline-warning">
                   Range: {{ min_value }} - {{ max_value }} <span>&times;</span>
                 </a><br>
+              {% endif %}
+              {% if string_facets %}
+                <a href="{{ ['string_facets']|remove_facet() }}" class="btn btn-outline-warning">
+                  {{ string_facets }} <span>&times;</span></a><br>
               {% endif %}
             {% endif %}
           {% endif %}
@@ -77,6 +83,7 @@
     {% block bottom_scripts -%}
     {% endblock bottom_scripts -%}
     <script src="{{ static('/js/jquery-ui.js') }}"></script>
+    <!-- javascript populates a hidden form with selected facets -->
     {% if value_range %}
     <script>
     $( function() {
@@ -94,6 +101,16 @@
       $( "#amount" ).val( $( "#slider-range" ).slider( "values", 0 ) +
       " - " + $( "#slider-range" ).slider( "values", 1 ) );
     } );
+    </script>
+    {% elif meta_type == "str val" %}
+    <script>
+    $(' #select' ).change( function() {
+      var values = [];
+      $.each($("#select option:selected"), function(){
+        values.push($(this).val());
+      });
+      $("#stringfacets").val(values);
+    })
     </script>
     {% endif %}
   </body>
