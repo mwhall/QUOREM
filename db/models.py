@@ -238,11 +238,12 @@ class Result(models.Model):
     type = models.CharField(max_length=255, verbose_name="Result Type")
     # This Result came from this process, but ReplicateParameters and ResultParameters override its Parameters, if there is overlap
     process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    analysis = models.ForeignKey('Analysis', on_delete=models.CASCADE)
     # This process result is from this step
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
     # Replicates that this thing is the result for
     replicates = models.ManyToManyField('Replicate', related_name='replicates', related_query_name="results", verbose_name="Replicates", blank=True)
-    
+
     values = models.ManyToManyField('Value', related_name="results", blank=True)
 
     search_vector = SearchVectorField(null=True)
