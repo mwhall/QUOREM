@@ -449,9 +449,7 @@ def search(request):
     ## (logic_model_type, db_model_type, user_facing_model_string)
     model_types= [('investigation', Investigation, 'Investigations'),
                   ('sample', Sample, 'Samples'),
-                  #('sampleMetadata', SampleMetadata, 'Sample Metadata'),
                   ('replicate', Replicate, 'Replicates'),
-                  #('replicateMetadata', ReplicateMetadata, 'Replicate Metadata'),
                   ('process', Process, 'Processs'),
                   ('processStep', Step, 'Computational Process Step' )]
 
@@ -487,7 +485,7 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(values__name=meta) #m2m relation
+            qs = qs.filter(values__name=meta) #only works with samples
             """
             if min_selected and max_selected:
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
@@ -578,8 +576,6 @@ def search(request):
     ### TODO: With new db, this if/else can be replaced with generic statements.
 
     if selected['type'] == 'sample':
-#        metadata = SampleMetadata.objects.order_by('key').distinct('key')
-        #metadata = Value.objects.filter(object_id__in=Sample.objects.all()).filter(value_type='MD').order_by('name').distinct('name')
         metadata = Value.objects.filter(samples__in=Sample.objects.all()).order_by('name').distinct('name')
         if meta:
             vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
