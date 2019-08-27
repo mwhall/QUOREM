@@ -31,13 +31,13 @@ import io
 from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Replicate,
-        Step, Result, Feature,
+        Step, Result, Feature, Value,
         UploadInputFile, load_mixed_objects, UserProfile
 )
 
 from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
-    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps, 
+    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps,
     ResultDisplayForm,
     SampleDisplayForm, SampleForm, StepForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
@@ -54,7 +54,7 @@ import zipfile
 from django.contrib.postgres.search import(
     SearchQuery, SearchRank, SearchVector)
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
 
@@ -442,13 +442,14 @@ class ResultDetail(InlineDetailView):
 
 #A simple function based view to GET the search bar form
 def search(request):
+    value_range = None
+    meta_type = None
+    facets = None
     ##MODEL INFO:::
     ## (logic_model_type, db_model_type, user_facing_model_string)
     model_types= [('investigation', Investigation, 'Investigations'),
                   ('sample', Sample, 'Samples'),
-                  #('sampleMetadata', SampleMetadata, 'Sample Metadata'),
                   ('replicate', Replicate, 'Replicates'),
-                  #('replicateMetadata', ReplicateMetadata, 'Replicate Metadata'),
                   ('process', Process, 'Processs'),
                   ('processStep', Step, 'Computational Process Step' )]
 
@@ -461,9 +462,11 @@ def search(request):
     ##From search form
     selected_type = request.GET.get('type', '')
     meta = request.GET.get('meta', '')
-    min_selected = request.GET.get('min_value', '')
-    max_selected = request.GET.get('max_value', '')
-
+#    min_selected = request.GET.get('min_value', '')
+#    max_selected = request.GET.get('max_value', '')
+    str_facets = request.GET.get("string_facets", '').split(sep=',')
+    if str_facets[0] == '':
+        str_facets = None
     #initialize vars for query
     query = None
     rank_annotation = None
@@ -482,13 +485,20 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(key=meta)
+            qs = qs.filter(values__name=meta) #only works with samples
+            """
             if min_selected and max_selected:
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
+            """
+            if str_facets:
+                print("string facets was true")
+                qs = qs.filter(values__str__value__in=str_facets)
 
         if q:
-            qs = qs.filter(search_vector = query)
+            #SearchQuery matches with stemming, but not partial string matching.
+            #icontains for partial matching. =query for SearchQuery functionality
+            qs = qs.filter(Q(search_vector__icontains=q) | Q(search_vector = query))
             qs = qs.annotate(rank=rank_annotation)
         return qs.order_by()
 
@@ -517,7 +527,6 @@ def search(request):
             type_counts_raw[frontend_string] = {'count': type_count,
                                                 'name': type_name}
         qs = qs.union(this_qs.values(*values))
-        #this_qs.annotate(n=models.Count('pk')) #why is this here? delete bu August if no bugs come up.
 
     if q:
         qs = qs.order_by('-rank')
@@ -562,25 +571,32 @@ def search(request):
     }
 
     #Find value ranges for relevant queries.
-    value_range = None
-    if selected['type'] == 'sampleMetadata':
-#        metadata = SampleMetadata.objects.order_by('key').distinct('key')
-        if meta:
-            value_range = {
-#                'min': SampleMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-#                'max': SampleMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
-            }
 
-    elif selected['type'] == 'biologicalReplicateMetadata':
-        metadata = ReplicateMetadata.objects.order_by('key').distinct('key')
+    ###########################################################################
+    ### TODO: With new db, this if/else can be replaced with generic statements.
+
+    if selected['type'] == 'sample':
+        metadata = Value.objects.filter(samples__in=Sample.objects.all()).order_by('name').distinct('name')
         if meta:
-            value_range = {
-#                'min': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Min('value'))['value__min'],
-#                'max': ReplicateMetadata.objects.filter(key=meta).aggregate(models.Max('value'))['value__max'],
-            }
+            vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
+            meta_type = vals[0].content_type.name
+            facets = list(set([v.content_object.value for v in vals]))
+
+
+    elif selected['type'] == 'replicate':
+        metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
+        if meta:
+            vals = Value.objects.filter(replicates__in=Replicate.objects.all()).filter(name=meta)
+            meta_type = vals[0].content_type.name
+            facets = list(set([v.content_object.value for v in vals]))
+
+    elif selected['type'] == 'processStep':
+        metadata = Value.objects.filter(steps__in=Step.objects.all()).order_by('name').distinct('name')
 
     else:
         metadata = None
+    #/TODO
+    ###########################################################################
 
     #remove empty keys if there are any
     selected = {
@@ -600,9 +616,13 @@ def search(request):
         'type': selected_type,
         'metadata':metadata,
         'meta': meta,
-        'value_range': value_range,
-        'min_value': min_selected,
-        'max_value': max_selected,
+        'meta_type': meta_type,
+        'facets': facets,
+        #selected values
+        'string_facets': str_facets,
+    #    'value_range': value_range,
+    #    'min_value': min_selected,
+    #    'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })

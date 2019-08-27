@@ -34,8 +34,8 @@
 <!-- If a facet is not selected, render options. -->
         {% for k in metadata %}
           <li class="list-group-item">
-            <a href="{{ {'meta': k.key}|add_facet() }}" class="metadata">
-              {{ k.key }}
+            <a href="{{ {'meta': k.name}|add_facet() }}" class="metadata">
+              {{ k.name }}
             </a>
           </li>
         {% endfor %}
@@ -54,6 +54,18 @@
         <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
       </p>
       <div id="slider-range"></div>
+    </div>
+    {% endif %}
+    {% if meta_type=="str val" %}
+    <div class="card-header bg-warning">
+    </div>
+    <div class="card-body">
+      <h5>Restrict Query</h5>
+      <select id="select" multiple>
+        {% for val in facets %}
+        <option value="{{ val }}">{{ val }}</option>
+        {% endfor %}
+      </select>
     </div>
     {% endif %}
   </div>
