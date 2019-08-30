@@ -462,8 +462,9 @@ def search(request):
     ##From search form
     selected_type = request.GET.get('type', '')
     meta = request.GET.get('meta', '')
-#    min_selected = request.GET.get('min_value', '')
-#    max_selected = request.GET.get('max_value', '')
+    min_selected = request.GET.get('min_value', '')
+    max_selected = request.GET.get('max_value', '')
+    print(min_selected, " ", max_selected)
     str_facets = request.GET.get("string_facets", '').split(sep=',')
     if str_facets[0] == '':
         str_facets = None
@@ -486,11 +487,13 @@ def search(request):
         #Filter metadata ranges
         if meta:
             qs = qs.filter(values__name=meta) #only works with samples
-            """
+
             if min_selected and max_selected:
+                """
                 qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
                     num_val__lte=max_selected).filter(num_val__gte=min_selected)
-            """
+                """
+                qs = qs.filter(values__float__value__lte=max_selected).filter(values__float__value__gte=min_selected)
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
@@ -621,8 +624,8 @@ def search(request):
         #selected values
         'string_facets': str_facets,
     #    'value_range': value_range,
-    #    'min_value': min_selected,
-    #    'max_value': max_selected,
+        'min_value': min_selected,
+        'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })
