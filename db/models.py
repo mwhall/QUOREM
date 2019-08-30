@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.shortcuts import redirect
 
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -16,13 +15,14 @@ from quorem.wiki import refresh_automated_report
 
 User = get_user_model()
 
+
 class Investigation(models.Model):
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
 
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
-
+    categories = models.ManyToManyField('Category', related_name='investigations', blank=True)
     #Stuff for searching
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -50,9 +50,10 @@ class Feature(models.Model):
     annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
     first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True)
     observed_results = models.ManyToManyField('Result', related_name='observed_results')
-    observed_replicates = models.ManyToManyField('Replicate', related_name='observed_replicates')
+    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples')
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
+    categories = models.ManyToManyField('Category', related_name="features", blank=True)
 
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -69,7 +70,7 @@ class Feature(models.Model):
     def update_search_vector(self):
         Feature.objects.update(
             search_vector = (SearchVector('name', weight= 'A') +
-                             SearchVector(StringAgg('annotation__str', delimiter=' '), weight='B'))
+                             SearchVector(StringAgg('annotations__str', delimiter=' '), weight='B'))
         )
 
 
@@ -79,9 +80,12 @@ class Sample(models.Model):
     """
     name = models.CharField(max_length=255,unique=True)
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
+    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
+
+    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
-
+    categories = models.ManyToManyField('Category', related_name='samples', blank=True)
     search_vector = SearchVectorField(null=True)
     class Meta:
         indexes = [
@@ -103,51 +107,17 @@ class Sample(models.Model):
         )
 #        refresh_automated_report("sample", pk=self.pk)
 
-class Replicate(models.Model):
-    """
-    A sample resulting from a biological analysis of a collected sample.
-    If a poo sample is a sample, the DNA extracted and amplified with primer
-    set A is a Replicate of that sample
-    """
-    name = models.CharField(max_length=255,unique=True)
-    sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='sample')  # fk 1
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)  # fk 5
-
-    values = models.ManyToManyField('Value', related_name="replicates", blank=True)
    
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-    @classmethod
-    def update_search_vector(self):
-        Replicate.objects.update(
-            search_vector = (SearchVector('name', weight='A') +
-                             SearchVector('sample__name', weight='B') +
-                             SearchVector('process__name', weight='C') +
-                             SearchVector('sample__investigation__name', weight='D')
-                              )
-        )
-
-# This allows the users to define a process as they wish
-# Could be split into "wet-lab process" and "computational process"
-# or alternatively, "amplicon", "metagenomics", "metabolomics", "physical chemistry", etc.
-class ProcessCategory(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField()
-    
 
 class Process(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
-    category = models.ForeignKey('ProcessCategory', on_delete=models.CASCADE)
     citation = models.TextField(blank=True)
 
+    upstream = models.ManyToManyField('self', related_name="downstream", blank=True)
+
     parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
+    categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
     search_vector = SearchVectorField(null=True)
     def __str__(self):
@@ -171,12 +141,13 @@ class Process(models.Model):
 
 class Step(models.Model):
     name = models.CharField(max_length=255)
-    method = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
-    parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
+    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
 
+    parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
+    categories = models.ManyToManyField('Category', related_name='steps', blank=True)
     search_vector = SearchVectorField(null=True)
     def __str__(self):
         return '%s -> %s' % (self.name, self.method)
@@ -209,7 +180,7 @@ class Analysis(models.Model):
     extra_steps = models.ManyToManyField('Step')
     # Run-specific parameters can go in here, but I guess Measures can too
     values = models.ManyToManyField('Value', related_name='analyses')
-
+    categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
     search_vector = SearchVectorField(null=True)
     class Meta:
         indexes = [
@@ -229,22 +200,23 @@ class Analysis(models.Model):
 
 class Result(models.Model):
     """
-    Some kind of result from a ComputationalPipeline
+    Some kind of result from an analysis
     """
-    list_display = ('source_software', 'type', 'source_step', 'processes', 'replicates', 'parameters', 'uuid')
+    list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'parameters', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
-    source_software = models.CharField(max_length=255, verbose_name="Source Software", blank=True)
+    source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True)
     type = models.CharField(max_length=255, verbose_name="Result Type")
-    # This Result came from this process, but ReplicateParameters and ResultParameters override its Parameters, if there is overlap
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)
     analysis = models.ForeignKey('Analysis', on_delete=models.CASCADE)
     # This process result is from this step
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
-    # Replicates that this thing is the result for
-    replicates = models.ManyToManyField('Replicate', related_name='replicates', related_query_name="results", verbose_name="Replicates", blank=True)
+    # Samples that this thing is the result for
+    samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
+
+    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
+    categories = models.ManyToManyField('Category', related_name='results', blank=True)
 
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -262,7 +234,19 @@ class Result(models.Model):
                             SearchVector('uuid', weight='C'))
         )
 
-
+# This allows the users to define a process as they wish
+# Could be split into "wet-lab process" and "computational process"
+# or alternatively, "amplicon", "metagenomics", "metabolomics", "physical chemistry", etc.
+class Category(models.Model):
+    #This tracks which model this category associates with
+    category_of = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'category_of'], name='Only one category of each name per model')
+            ]
+ 
 ### Key-Value storage for objects
 
 class Value(models.Model):
