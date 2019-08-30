@@ -92,6 +92,7 @@ def process_table(infile):
 def process_qiime_artifact(infile, upfile):
     q2e = q2Extractor(infile)
     parameter_table_str, file_table_str = q2e.get_provenance()
+    print("q2e get_provencance finished")
     #Validate the parameter_table, to check that all the steps are in the DB
     #If it matches perfectly to n, assign this artifact to those n pipelines
     #if it matches none, assign it to the closest one(s) and make a deviation
@@ -148,8 +149,11 @@ def scrape_measures(q2e, pipeline_result):
     #Suck the goodies out of the artifacts that we know how to import
     result_type = q2e.type
     try:
+        print("try block")
         data = q2e.extract_measures()
+        print("q2e extract measures finished")
     except NotImplementedError:
+        print("not implemented")
         raise NotImplementedError("q2_extractor does not know how to extract measures from this file")
     #Tuple description:
     #  (name: The name of the measure,
@@ -161,6 +165,7 @@ def scrape_measures(q2e, pipeline_result):
     #  )
     #TODO: Move to a separate function so others can call the measure saving software without
     #all of this q2e context
+    print("after try/catch, befure iteration")
     for measure_tuple in data:
         name = measure_tuple[0]
         description = measure_tuple[1]
@@ -185,5 +190,13 @@ def report_success(upfile):
     #update just calls super.save() because vanilla save() has been overridden
     #to trigger a file upload process.
     upfile.update()
+    #update the search vectors
+    model_list = [Investigation, Sample, Replicate, Process, Step, Analysis, Result, Value]
+    for model in model_list:
+        try:
+            model.update_search_vector()
+            print(model, " sv updated")
+        except:
+            continue
     errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
     errorMessage.save()

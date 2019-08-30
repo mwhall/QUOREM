@@ -60,7 +60,6 @@ def add_facet(context, changes):
 def remove_facet(context, keys):
     ctx = context['request'].GET.copy()
     for key in keys:
-        print(key)
         if key in ctx:
             ctx.pop(key)
     return '?' + ctx.urlencode()
