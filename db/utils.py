@@ -5,10 +5,15 @@ from . import models
 
 #Code for barchart from plot_aggregate
 def barchart_html(agg, inv, model, meta):
+    # Use a dict to map query result to necessary query expression.
+    #This is based on types defined by models.Value
+    mapping = {'str val': 'str__value',
+               'float val': 'float__value',}
+
     Operation = None
     title = None
-    type = None
-    metaType = None
+    v_type = None #value type
+    v_raw = None #raw qs of values
 
     investigations = models.Investigation.objects.filter(pk__in=inv)
     inv_titles = [i.name for i in investigations]
@@ -23,48 +28,55 @@ def barchart_html(agg, inv, model, meta):
     if model == '1':
         type = models.Sample
         model_choice = "Sample"
-        metaType = models.SampleMetadata
+#        metaType = models.SampleMetadata
     elif model == '2':
-        type = models.BiologicalReplicate
-        model_choice = "Biological Replicate"
-        metaType = models.BiologicalReplicateMetadata
-    #using this conditional will allow later additions to this method.
-    if metaType:
-        #create qs for each selected investigation
-        sets = []
-        for inv in investigations:
+        type = models.Replicate
+        model_choice = "Replicate"
+#        metaType = models.BiologicalReplicateMetadata
+
+    #create a qs for each investigation. This will allow comparison accorss invs.
+
+    sets = []
+    for inv in investigations:
+        if model_choice=="Sample":
+            v_raw = models.Value.objects.filter(samples__in=models.Sample.objects.filter(investigation=inv)).filter(name=meta)
+            v_type = v_raw[0].content_type.name
+            filter = mapping[v_type]
+            print(filter)
             sets.append({'title': inv.name,
-                         'data': metaType.objects.filter(sample__in=models.Sample.objects.filter(investigation=inv)).filter(key=meta).values('value').order_by(
-                'value').annotate(agg=Operation('value'))})
+                         'data': v_raw.values(filter).order_by(filter).annotate(agg=Operation(filter))
+                         })
 
-        #create values for plotly
-        graph_values = []
-        for qs in sets:
-            graph_values.append(
-                {'x': [s['value'] for s in qs['data']],
-                 'y': [s['agg'] for s in qs['data']],
-                 'title': qs['title']}
-            )
 
-        data = []
-        for bar in graph_values:
-            data.append(go.Bar(
-                x=bar['x'],
-                y=bar['y'],
-                text=bar['y'],
-                textposition = 'auto',
-                name=bar['title'],
-            ))
+    #create values for plotly
+    graph_values = []
+    for qs in sets:
+        print(qs)
+        graph_values.append(
+            {'x': [s[filter] for s in qs['data']],
+             'y': [s['agg'] for s in qs['data']],
+             'title': qs['title']}
+        )
 
-        layout = go.Layout(title=(title + " by  " + meta),
-                           xaxis={'title': meta},
-                           yaxis={'title': title})
+    data = []
+    for bar in graph_values:
+        data.append(go.Bar(
+            x=bar['x'],
+            y=bar['y'],
+            text=bar['y'],
+            textposition = 'auto',
+            name=bar['title'],
+        ))
 
-        figure = go.Figure(data=data, layout=layout)
-        return to_html(figure, full_html=False), {'agg':title,
-                                                  'inv': inv_titles,
-                                                  'type':model_choice,
-                                                  'meta':meta}
+    layout = go.Layout(title=(title + " by  " + meta),
+                       xaxis={'title': meta},
+                       yaxis={'title': title})
+
+    figure = go.Figure(data=data, layout=layout)
+    return to_html(figure, full_html=False), {'agg':title,
+                                              'inv': inv_titles,
+                                              'type':model_choice,
+                                              'meta':meta}
     return None
 
 #Code for trendline/scatterplot

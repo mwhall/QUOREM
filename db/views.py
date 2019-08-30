@@ -697,6 +697,7 @@ def ajax_aggregates_meta_view(request):
         #excludes are defined in each conditional to allow later flexibility
 #        if exclude:
 #            qs = qs.exclude(key=exclude)
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
         type = "sample"
     elif model_choice == "2": #Bio Replicates
 #        qs = ReplicateMetadata.objects.filter(
