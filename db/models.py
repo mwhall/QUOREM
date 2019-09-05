@@ -114,7 +114,7 @@ class Replicate(models.Model):
     process = models.ForeignKey('Process', on_delete=models.CASCADE)  # fk 5
 
     values = models.ManyToManyField('Value', related_name="replicates", blank=True)
-   
+
     search_vector = SearchVectorField(null=True)
     class Meta:
         indexes = [
@@ -139,7 +139,7 @@ class Replicate(models.Model):
 class ProcessCategory(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField()
-    
+
 
 class Process(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -242,7 +242,7 @@ class Result(models.Model):
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
     # Replicates that this thing is the result for
     replicates = models.ManyToManyField('Replicate', related_name='replicates', related_query_name="results", verbose_name="Replicates", blank=True)
-    
+
     values = models.ManyToManyField('Value', related_name="results", blank=True)
 
     search_vector = SearchVectorField(null=True)
@@ -279,6 +279,7 @@ class Value(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey()
+    
 
     def __str__(self):
         return self.name + ": " + str(self.content_object.value)
