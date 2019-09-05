@@ -265,7 +265,6 @@ class Value(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey()
 
-
     def __str__(self):
         return self.name + ": " + str(self.content_object.value)
 
