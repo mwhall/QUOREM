@@ -311,12 +311,12 @@ class AggregatePlotInvestigation(forms.Form):
     AGG_CHOICES = (
         ('1', 'Count'),
         ('2', 'Mean'),
-    #    ('3', 'Median'),
+        ('3', 'Stack'),
     )
     MODEL_CHOICES = (
         ('', '----------'),
         ('1', 'Samples'),
-        ('2', 'Biological Replicates'),
+    #    ('2', 'Biological Replicates'),
     #    ('3', 'Computational Pipelines'),
 
     )
@@ -325,7 +325,7 @@ class AggregatePlotInvestigation(forms.Form):
                                       label="Select Investigation(s)")
     modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
     #metaValueField will be populated by AJAX call to ajax_model_options view
-    metaValueField = forms.CharField(widget=forms.Select, label="Select X Value")
+    metaValueField = forms.CharField(widget=forms.SelectMultiple, label="Select X Value")
 
     class Meta:
         fieldsets = (
@@ -336,14 +336,33 @@ class AggregatePlotInvestigation(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.fields['metaValueField'].queryset = SampleMetadata.objects.order_by('key').distinct('key')
+"""
+class AggregatePlotStackedForm(forms.Form):
+    MODEL_CHOICES = (
+        ('', '----------'),
+        ('1', 'Samples'),
+    #    ('2', 'Biological Replicates'),
+    #    ('3', 'Computational Pipelines'),
 
+    )
+    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
+                                      label="Select Investigation(s)")
+    modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
+    stackedParams = forms.CharField(widget=forms.SelectMultiple, label="Choose stacked values")
 
+    class Meta:
+        fieldsets = (
+            ('Aggregate', 'Select Aggregation Operation', {'fields': ('agg_choice',)}),
+            ('Data Choice', 'Select Investigation and Models', {'fields': ('invField', 'modelField',)}),
+            ('Filter', 'Select parameters to filter your data', {'fields': ('stackedParams',)}),
+        )
+"""
 #Form for trendline plotting
 class TrendPlotForm(forms.Form):
     MODEL_CHOICES = (
         ('', '----------'),
         ('1', 'Samples'),
-        ('2', 'Biological Replicates'),
+    #    ('2', 'Biological Replicates'),
     #    ('3', 'Computational Pipelines'),
 
     )

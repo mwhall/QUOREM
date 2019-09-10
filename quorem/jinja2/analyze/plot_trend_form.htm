@@ -1,8 +1,12 @@
+<!-- Note that plot form and aggregate form are very similar.
+     The primary difference is that plot form requires different ajax method
+     calls, and therefore needs different data-model-urls -->
+
 <!-- MultiStep Form -->
 <div class="row">
     <div class="col-md-12 col-md-offset-3">
       <!-- action="{{ action }}" -->
-        <form action="{{ url( action ) }}" method="POST" id="msform" data-models-url="{{ url('ajax_load_model_options') }}">
+        <form action="{{ url( action ) }}" method="POST" id="msform" data-x-url="{{ url('ajax_trend_x_options') }}" data-y-url="{{ url('ajax_trend_y_options')}}">
             {% csrf_token %}
             <!-- progressbar -->
             <ul id="progressbar">
@@ -26,7 +30,7 @@
                 </div>
                 {% endfor %}
                 {% else %}
-                {{ field.label }}
+                {{field.label}}
                 {{ field }}
                 {% endif %}
               {% endfor %}

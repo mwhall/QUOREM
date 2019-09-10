@@ -291,7 +291,7 @@ class AnalysisValidator(Validator):
         try:
             self.data["analysis_date"] = arrow.get(self.data["analysis_date"], date_format).format("YYYY-MM-DD")
         except arrow.parser.ParserError:
-            try: 
+            try:
                 self.data["analysis_date"] = arrow.get(self.data["analysis_date"], "YYYY-MM-DD").format("YYYY-MM-DD")
             except arrow.parser.ParserError:
                 raise ValueError("Can't parse analysis_date with arrow")
@@ -348,11 +348,11 @@ class ResultValidator(Validator):
     def save(self):
         print("Saving result")
         process = ProcessValidator(data=pd.Series({"process_id": self.data["process_id"]})).fetch()
-        source_step = StepValidator(data=pd.Series({"step_id": self.data["source_step_id"], 
+        source_step = StepValidator(data=pd.Series({"step_id": self.data["source_step_id"],
                                      "step_method": self.data["source_step_method"]})).fetch()
         reps = Replicate.objects.filter(name__in=[self.data[x] for x in self.data.index if "replicate_id" in x])
         if not self.in_db():
-            result = Result(uuid=self.data["result_id"], 
+            result = Result(uuid=self.data["result_id"],
                             source_step = source_step,
                             source_software = self.data["source_software"],
                             type = self.data["result_type"],
@@ -391,8 +391,8 @@ def typecast(type_str):
 class ValueValidator(Validator):
     def __init__(self, name, date_format = "DD/MM/YYYY", *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.TYPE_FIELD_MAP = {"strval": "str", 
-                               "intval": "int", 
+        self.TYPE_FIELD_MAP = {"strval": "str",
+                               "intval": "int",
                                "floatval": "float",
                                "datetimeval": "date",
                                "resultval": "result"}
@@ -427,7 +427,7 @@ class ValueValidator(Validator):
                   self.TYPE_FIELD_MAP[self.type] + "__value__exact": self.casted_value,
                   "value_type__exact": self.vtype}
         return Value.objects.get(**kwargs)
-        
+
     def validate(self):
         #Must raise an exception if failure to add to database
         #Only real requirement is that the linked objects exist
@@ -437,7 +437,7 @@ class ValueValidator(Validator):
                 # Each linked item must exist
                 if not vldtr.in_db():
                     raise NotFoundError("Value not inserted, %s with id %s not found" % (vldtr.model_name, self.data[field]))
-            
+
 
     def in_db(self):
         #Scenarios: in database, but not linked to the proper thing (false)
@@ -522,7 +522,7 @@ class ValueValidator(Validator):
 
 
     def infer_type(self, date_format):
-        found_types = list(set([x.content_type.model 
+        found_types = list(set([x.content_type.model
             for x in Value.objects.filter(name__exact=self.name,
                                           value_type__exact=self.vtype)]))
         if len(found_types) > 1:
@@ -556,7 +556,7 @@ class ValueValidator(Validator):
             # Default value
             return "strval"
 
-Validators = [InvestigationValidator, 
+Validators = [InvestigationValidator,
               ReplicateValidator,
               ProcessCategoryValidator,
               ProcessValidator,
@@ -613,7 +613,7 @@ def resolve_input_row(row):
         if field in row:
             validator = validator_mapper[field](data=row)
             try:
-                print("Validating and saving field %s"%(field,)) 
+                print("Validating and saving field %s"%(field,))
                 validator.validate()
                 print("Saving")
                 validator.save()
@@ -636,4 +636,3 @@ def resolve_input_row(row):
                 validator.validate()
                 print("Saving")
                 validator.save()
-

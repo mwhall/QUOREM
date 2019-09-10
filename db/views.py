@@ -451,7 +451,7 @@ def search(request):
                   ('sample', Sample, 'Samples'),
                   ('replicate', Replicate, 'Replicates'),
                   ('process', Process, 'Processs'),
-                  ('processStep', Step, 'Computational Process Step' )]
+                  ('processStep', Step, 'Computational Process Step' ),]
 
     ## Retrieve values from request
     #q or q2 is search term.
@@ -607,7 +607,9 @@ def search(request):
         for key, value in selected.items()
         if value
     }
-
+    if facets:
+        print(meta_type)
+        print(facets)
     return render(request, 'search/search_results.htm',{
         'q':q,
         'title':title,
@@ -665,8 +667,13 @@ class PlotAggregateView(FormView):
         def form_valid(self, form):
             req = self.request.POST
             inv = req.getlist('invField')
+            print("* * * * * * * * * * * * * * * * * * * *")
+            print(req['metaValueField'])
+            print("* * * * * * * * * * * * * * * * * * * *")
+            print(req.getlist('metaValueField'))
+            print("* * * * * * * * * * * * * * * * * * * *")
             html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
-                                req['metaValueField'])
+                                req.getlist('metaValueField'))
             return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'investigation': inv, 'action':self.action})
 
 
@@ -740,12 +747,70 @@ class PlotTrendView(FormView):
 # selected as well as x_val_category. Example, if choice is BB samples, populate
 # with metadata found in BB. If two or more invs are selected, need to only show
 # options found in all invs.
-def ajax_plot_trendx_view(request):
-    pass
 
-#Should be basically the same as x_view.
+#trendx_view is the same as aggregate view for now. This may change at some point which is why
+# its a seperate function.
+def ajax_plot_trendx_view(request):
+    inv_id = request.GET.getlist('inv_id[]')
+    #if only one id is selected, not a list.
+    if not inv_id:
+        inv_id = request.GET.get('inv_id')
+    model_choice = request.GET.get('type')
+    exclude = request.GET.get('exclude')
+
+    qs = None
+    type = None
+
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+    if model_choice == "1": #Samples
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
+        type = "sample"
+
+    elif model_choice == "2": #Bio Replicates
+        type = "replicate"
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+#trend y view will need to know what was chosen in trend x.
 def ajax_plot_trendy_view(request):
-    pass
+    """
+    vars from ajax:
+    type: model for y, as an integer.
+    x_model: model for x, as an integr.
+    x_choice: meta for x, as a string.
+    """
+
+    inv_id = request.GET.getlist('inv_id[]')
+    #if only one id is selected, not a list.
+    if not inv_id:
+        inv_id = request.GET.get('inv_id')
+
+    model_choice = request.GET.get('type')
+    x_model = request.GET.get('x_model')
+    x_sel = request.GET.get('x_choice')
+
+    qs = None
+    type = None
+
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+    xqs = None
+    #X was sample
+    if x_model == '1':
+    #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
+        x = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel)
+        print('x', x)
+        xqs = Sample.objects.filter(values__in=x)
+        print('xqs', xqs)
+        type = 'sample'
+    yops = None
+    print("XQS",  xqs)
+    if xqs:
+        yops = Value.objects.filter(samples__in=xqs).order_by('name').distinct('name')
+    print('yops', yops)
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':yops,})
 
 ###############################################################################
 ### View for handling file uploads                                          ###

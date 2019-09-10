@@ -2,11 +2,14 @@ import plotly.graph_objects as go
 from plotly.io._html import to_html
 from django.db.models import Count, Avg, Q
 from . import models
+import pandas as pd
 
 #Code for barchart from plot_aggregate
 def barchart_html(agg, inv, model, meta):
     # Use a dict to map query result to necessary query expression.
     #This is based on types defined by models.Value
+    print (meta[0])
+
     mapping = {'str val': 'str__value',
                'float val': 'float__value',}
 
@@ -24,6 +27,8 @@ def barchart_html(agg, inv, model, meta):
     elif agg == '2':
         Operation = Avg
         title = "Average"
+    elif agg == '3':
+        title = 'Stack'
     #Assign Model type
     if model == '1':
         type = models.Sample
@@ -37,16 +42,51 @@ def barchart_html(agg, inv, model, meta):
     #create a qs for each investigation. This will allow comparison accorss invs.
 
     sets = []
-    for inv in investigations:
+    if Operation != None:
+        meta = meta[0]
+        print(meta)
+        for inv in investigations:
+            if model_choice=="Sample":
+                v_raw = models.Value.objects.filter(samples__in=models.Sample.objects.filter(investigation=inv)).filter(name=meta)
+                v_type = v_raw[0].content_type.name
+                filter = mapping[v_type]
+                print(filter)
+                sets.append({'title': inv.name,
+                             'data': v_raw.values(filter).order_by(filter).annotate(agg=Operation(filter))
+                             })
+    #logic for stacked bar chart
+    else:
         if model_choice=="Sample":
-            v_raw = models.Value.objects.filter(samples__in=models.Sample.objects.filter(investigation=inv)).filter(name=meta)
-            v_type = v_raw[0].content_type.name
-            filter = mapping[v_type]
-            print(filter)
-            sets.append({'title': inv.name,
-                         'data': v_raw.values(filter).order_by(filter).annotate(agg=Operation(filter))
-                         })
+            vqs = models.Value.objects.filter(name__in=meta).filter(samples__in=models.Sample.objects.filter(investigation__in=investigations))
+            sqs = models.Sample.objects.filter(values__in=vqs).distinct()
+            v_names = []
+            v_dict = {}
+            s_set = []
+            for sample in sqs:
+                s_set.append(sample.name)
+                vals = vqs.filter(samples__in=[sample]).distinct()
+                for val in vals:
+                    if val.name in v_dict.keys():
+                        v_dict[val.name].append(val.content_object.value)
+                    else:
+                        v_names.append(val.name)
+                        v_dict[val.name] = [val.content_object.value]
 
+        #    v_names = list(set(v_names))
+
+            #GO for plotly
+            data = []
+            for name in v_names:
+                data.append(go.Bar(name=name, x=s_set, y=v_dict[name]))
+
+            layout= go.Layout(title="Samples with selected values",
+                              xaxis={'title': 'Sample Name'},)
+            fig = go.Figure(data=data, layout=layout)
+            fig.update_layout(barmode='stack')
+            return to_html(fig, full_html=False), {'agg': title,
+                                                      'inv': inv_titles,
+                                                      'type':model_choice,
+                                                      'meta':meta}
 
     #create values for plotly
     graph_values = []
@@ -81,6 +121,7 @@ def barchart_html(agg, inv, model, meta):
 
 #Code for trendline/scatterplot
 def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operation):
+    """
     #To save code, use a dict that maps numerical field vals to django model
     cat_map = {'1': (models.Sample, models.SampleMetadata, 'sample__in', "Sample"),
                '2': (models.BiologicalReplicate, models.BiologicalReplicateMetadata, 'biological_replicate__in', "Biological Replicate"),
@@ -121,9 +162,46 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                                     sample__in=models.Sample.objects.filter(
                                     investigation__in=invs))}).filter(
                                     key=y_val).values('value').order_by('value')
+    """
 
-    x = [s['value'] for s in xqs]
-    y = [s['value'] for s in yqs]
+    cat_map = {'1': (models.Sample, 'samples__in', "Sample"),}
+    op_map = {'1': 'markers', '2': 'lines+markers'}
+    q_map = {'str val': 'str__value',
+            'int val': 'int__value',
+            'float val': 'float__value',}
+
+    x = None
+    y = None
+    xqs = None
+    yqs = None
+    qs = None #for finding same objects in x and y
+
+    x_type, x_search, x_cat = cat_map[x_val_category]
+    y_type, y_search, y_cat = cat_map[y_val_category]
+
+    if x_type is models.Sample:
+        xqs = models.Value.objects.filter(**{x_search: x_type.objects.filter(
+                                    investigation__in=invs)}).filter(
+                                    name=x_val)
+        xval_type = xqs[0].content_type.name
+        x_filt = q_map[xval_type]
+        xqs = xqs.order_by(x_filt)
+        s_filt = x_filt + "__values"
+        qs = x_type.objects.filter(values__in=xqs).order_by(s_filt)
+
+        ### Y options will be dependant on x choice.
+        ### only choice for y when x is samples is also samples for now.
+
+        #by using samples__in=qs, the yqs will be ordered by qs.
+        yqs = models.Value.objects.filter(samples__in=qs).filter(name=y_val)
+
+    print("XQS: ",xqs)
+    print("YQS: ", yqs)
+    x = [s.content_object.value for s in xqs]
+    y = [s.content_object.value for s in yqs]
+
+    x_type, x_search, x_cat = cat_map[x_val_category]
+    y_type, y_search, y_cat = cat_map[y_val_category]
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y,
