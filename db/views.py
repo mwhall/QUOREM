@@ -502,12 +502,13 @@ def search(request):
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
-
+        qs = qs.distinct()
         if q:
             #SearchQuery matches with stemming, but not partial string matching.
             #icontains for partial matching. =query for SearchQuery functionality
             qs = qs.filter(Q(search_vector__icontains=q) | Q(search_vector = query))
             qs = qs.annotate(rank=rank_annotation)
+
         return qs.order_by()
 
 
@@ -589,7 +590,9 @@ def search(request):
             vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
             meta_type = vals[0].content_type.name
             filt = q_map[meta_type]
-            facets = list(set([v.content_object.value for v in vals.order_by(filt)]))
+            vals = vals.order_by(filt).distinct()
+            facets = [v.content_object.value for v in vals]
+            print("facets should be in order now: ", facets)
 
     elif selected['type'] == 'replicate':
         metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')

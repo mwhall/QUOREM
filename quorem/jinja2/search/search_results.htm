@@ -85,10 +85,6 @@
     <script src="{{ static('/js/jquery-ui.js') }}"></script>
     <!-- javascript populates a hidden form with selected facets -->
     {% if meta_type=="float val" or meta_type=="int val" %}
-    <div>
-      <p> {{ facets[0] }} </p>
-      <p> {{ facets[-1] }} </p>
-    </div>
     <script>
     $( function() {
       $( "#slider-range" ).slider({
