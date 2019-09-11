@@ -281,17 +281,11 @@ class Value(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey()
-    search_vector = SearchVectorField(null=True)
+
 
     def __str__(self):
         return self.name + ": " + str(self.content_object.value)
 
-
-    @classmethod
-    def update_search_vector(self):
-        Value.objects.update(
-            search_vector= (SearchVector('name', weight='A'))
-        )
 class StrVal(models.Model):
     value = models.TextField()
     val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="str")

@@ -30,7 +30,7 @@
             {% endif %}
             {% if meta %}
               <input class="form-control" type=hidden name="meta" value="{{ meta }}">
-              {% if meta_type=='float val' %}
+              {% if meta_type=='float val' or meta_type=='int val' %}
                 <input type="hidden" id="min" name="min_value">
                 <input type="hidden" id="max" name="max_value">
               {% elif meta_type == "str val" %}
@@ -84,14 +84,20 @@
     {% endblock bottom_scripts -%}
     <script src="{{ static('/js/jquery-ui.js') }}"></script>
     <!-- javascript populates a hidden form with selected facets -->
-    {% if meta_type=="float val" %}
+    {% if meta_type=="float val" or meta_type=="int val" %}
+    <div>
+      <p> {{ facets[0] }} </p>
+      <p> {{ facets[-1] }} </p>
+    </div>
     <script>
     $( function() {
       $( "#slider-range" ).slider({
         range: true,
         min: {{ facets[0] }},
         max: {{ facets[-1] }},
+        step: ( {{ facets[-1] }} - {{ facets[0] }} ) / 20,
         values: [ {{ facets[0] }}, {{ facets[-1] }}],
+
         slide: function( event, ui ) {
           $( "#amount" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
           $( "#min" ).val( ui.values[ 0 ] );

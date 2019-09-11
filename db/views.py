@@ -442,6 +442,11 @@ class ResultDetail(InlineDetailView):
 
 #A simple function based view to GET the search bar form
 def search(request):
+
+    q_map = {'str val': 'str__value',
+            'int val': 'int__value',
+            'float val': 'float__value',}
+
     value_range = None
     meta_type = None
     facets = None
@@ -464,7 +469,7 @@ def search(request):
     meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
-    print(min_selected, " ", max_selected)
+    print("min max: ", min_selected, " ", max_selected)
     str_facets = request.GET.get("string_facets", '').split(sep=',')
     if str_facets[0] == '':
         str_facets = None
@@ -583,8 +588,8 @@ def search(request):
         if meta:
             vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
             meta_type = vals[0].content_type.name
-            facets = list(set([v.content_object.value for v in vals]))
-
+            filt = q_map[meta_type]
+            facets = list(set([v.content_object.value for v in vals.order_by(filt)]))
 
     elif selected['type'] == 'replicate':
         metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
@@ -667,11 +672,6 @@ class PlotAggregateView(FormView):
         def form_valid(self, form):
             req = self.request.POST
             inv = req.getlist('invField')
-            print("* * * * * * * * * * * * * * * * * * * *")
-            print(req['metaValueField'])
-            print("* * * * * * * * * * * * * * * * * * * *")
-            print(req.getlist('metaValueField'))
-            print("* * * * * * * * * * * * * * * * * * * *")
             html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
                                 req.getlist('metaValueField'))
             return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'investigation': inv, 'action':self.action})
@@ -801,15 +801,11 @@ def ajax_plot_trendy_view(request):
     if x_model == '1':
     #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
         x = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel)
-        print('x', x)
         xqs = Sample.objects.filter(values__in=x)
-        print('xqs', xqs)
         type = 'sample'
     yops = None
-    print("XQS",  xqs)
     if xqs:
         yops = Value.objects.filter(samples__in=xqs).order_by('name').distinct('name')
-    print('yops', yops)
     return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':yops,})
 
 ###############################################################################
