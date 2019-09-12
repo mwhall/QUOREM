@@ -442,6 +442,11 @@ class ResultDetail(InlineDetailView):
 
 #A simple function based view to GET the search bar form
 def search(request):
+
+    q_map = {'str val': 'str__value',
+            'int val': 'int__value',
+            'float val': 'float__value',}
+
     value_range = None
     meta_type = None
     facets = None
@@ -451,7 +456,7 @@ def search(request):
                   ('sample', Sample, 'Samples'),
                   ('replicate', Replicate, 'Replicates'),
                   ('process', Process, 'Processs'),
-                  ('processStep', Step, 'Computational Process Step' )]
+                  ('processStep', Step, 'Computational Process Step' ),]
 
     ## Retrieve values from request
     #q or q2 is search term.
@@ -462,8 +467,9 @@ def search(request):
     ##From search form
     selected_type = request.GET.get('type', '')
     meta = request.GET.get('meta', '')
-#    min_selected = request.GET.get('min_value', '')
-#    max_selected = request.GET.get('max_value', '')
+    min_selected = request.GET.get('min_value', '')
+    max_selected = request.GET.get('max_value', '')
+    print("min max: ", min_selected, " ", max_selected)
     str_facets = request.GET.get("string_facets", '').split(sep=',')
     if str_facets[0] == '':
         str_facets = None
@@ -486,20 +492,24 @@ def search(request):
         #Filter metadata ranges
         if meta:
             qs = qs.filter(values__name=meta) #only works with samples
-            """
+
             if min_selected and max_selected:
-                qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
-                    num_val__lte=max_selected).filter(num_val__gte=min_selected)
-            """
+                vals = Value.objects.filter(name=meta)
+                filt = q_map[vals[0].content_type.name]
+                filt_lte = filt + "__lte"
+                filt_gte = filt + "__gte"
+                vals = vals.filter(**{filt_lte: max_selected, filt_gte: min_selected})
+                qs = qs.filter(values__in=vals)
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
-
+        qs = qs.distinct()
         if q:
             #SearchQuery matches with stemming, but not partial string matching.
             #icontains for partial matching. =query for SearchQuery functionality
             qs = qs.filter(Q(search_vector__icontains=q) | Q(search_vector = query))
             qs = qs.annotate(rank=rank_annotation)
+
         return qs.order_by()
 
 
@@ -580,8 +590,10 @@ def search(request):
         if meta:
             vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
             meta_type = vals[0].content_type.name
-            facets = list(set([v.content_object.value for v in vals]))
-
+            filt = q_map[meta_type]
+            vals = vals.order_by(filt).distinct()
+            facets = [v.content_object.value for v in vals]
+            print("facets should be in order now: ", facets)
 
     elif selected['type'] == 'replicate':
         metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
@@ -604,7 +616,9 @@ def search(request):
         for key, value in selected.items()
         if value
     }
-
+    if facets:
+        print(meta_type)
+        print(facets)
     return render(request, 'search/search_results.htm',{
         'q':q,
         'title':title,
@@ -621,8 +635,8 @@ def search(request):
         #selected values
         'string_facets': str_facets,
     #    'value_range': value_range,
-    #    'min_value': min_selected,
-    #    'max_value': max_selected,
+        'min_value': min_selected,
+        'max_value': max_selected,
         #'value_form': value_form,
             #'search_page': "active",
     })
@@ -663,7 +677,7 @@ class PlotAggregateView(FormView):
             req = self.request.POST
             inv = req.getlist('invField')
             html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
-                                req['metaValueField'])
+                                req.getlist('metaValueField'))
             return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'investigation': inv, 'action':self.action})
 
 
@@ -694,6 +708,7 @@ def ajax_aggregates_meta_view(request):
         #excludes are defined in each conditional to allow later flexibility
 #        if exclude:
 #            qs = qs.exclude(key=exclude)
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
         type = "sample"
     elif model_choice == "2": #Bio Replicates
 #        qs = ReplicateMetadata.objects.filter(
@@ -736,12 +751,66 @@ class PlotTrendView(FormView):
 # selected as well as x_val_category. Example, if choice is BB samples, populate
 # with metadata found in BB. If two or more invs are selected, need to only show
 # options found in all invs.
-def ajax_plot_trendx_view(request):
-    pass
 
-#Should be basically the same as x_view.
+#trendx_view is the same as aggregate view for now. This may change at some point which is why
+# its a seperate function.
+def ajax_plot_trendx_view(request):
+    inv_id = request.GET.getlist('inv_id[]')
+    #if only one id is selected, not a list.
+    if not inv_id:
+        inv_id = request.GET.get('inv_id')
+    model_choice = request.GET.get('type')
+    exclude = request.GET.get('exclude')
+
+    qs = None
+    type = None
+
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+    if model_choice == "1": #Samples
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
+        type = "sample"
+
+    elif model_choice == "2": #Bio Replicates
+        type = "replicate"
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+#trend y view will need to know what was chosen in trend x.
 def ajax_plot_trendy_view(request):
-    pass
+    """
+    vars from ajax:
+    type: model for y, as an integer.
+    x_model: model for x, as an integr.
+    x_choice: meta for x, as a string.
+    """
+
+    inv_id = request.GET.getlist('inv_id[]')
+    #if only one id is selected, not a list.
+    if not inv_id:
+        inv_id = request.GET.get('inv_id')
+
+    model_choice = request.GET.get('type')
+    x_model = request.GET.get('x_model')
+    x_sel = request.GET.get('x_choice')
+
+    qs = None
+    type = None
+
+    if not model_choice:
+        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+
+    xqs = None
+    #X was sample
+    if x_model == '1':
+    #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
+        x = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel)
+        xqs = Sample.objects.filter(values__in=x)
+        type = 'sample'
+    yops = None
+    if xqs:
+        yops = Value.objects.filter(samples__in=xqs).order_by('name').distinct('name')
+    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':yops,})
 
 ###############################################################################
 ### View for handling file uploads                                          ###

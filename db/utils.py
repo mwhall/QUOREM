@@ -2,13 +2,21 @@ import plotly.graph_objects as go
 from plotly.io._html import to_html
 from django.db.models import Count, Avg, Q
 from . import models
+import pandas as pd
 
 #Code for barchart from plot_aggregate
 def barchart_html(agg, inv, model, meta):
+    # Use a dict to map query result to necessary query expression.
+    #This is based on types defined by models.Value
+    print (meta[0])
+
+    mapping = {'str val': 'str__value',
+               'float val': 'float__value',}
+
     Operation = None
     title = None
-    type = None
-    metaType = None
+    v_type = None #value type
+    v_raw = None #raw qs of values
 
     investigations = models.Investigation.objects.filter(pk__in=inv)
     inv_titles = [i.name for i in investigations]
@@ -19,56 +27,101 @@ def barchart_html(agg, inv, model, meta):
     elif agg == '2':
         Operation = Avg
         title = "Average"
+    elif agg == '3':
+        title = 'Stack'
     #Assign Model type
     if model == '1':
         type = models.Sample
         model_choice = "Sample"
-        metaType = models.SampleMetadata
+#        metaType = models.SampleMetadata
     elif model == '2':
-        type = models.BiologicalReplicate
-        model_choice = "Biological Replicate"
-        metaType = models.BiologicalReplicateMetadata
-    #using this conditional will allow later additions to this method.
-    if metaType:
-        #create qs for each selected investigation
-        sets = []
+        type = models.Replicate
+        model_choice = "Replicate"
+#        metaType = models.BiologicalReplicateMetadata
+
+    #create a qs for each investigation. This will allow comparison accorss invs.
+
+    sets = []
+    if Operation != None:
+        meta = meta[0]
+        print(meta)
         for inv in investigations:
-            sets.append({'title': inv.name,
-                         'data': metaType.objects.filter(sample__in=models.Sample.objects.filter(investigation=inv)).filter(key=meta).values('value').order_by(
-                'value').annotate(agg=Operation('value'))})
+            if model_choice=="Sample":
+                v_raw = models.Value.objects.filter(samples__in=models.Sample.objects.filter(investigation=inv)).filter(name=meta)
+                v_type = v_raw[0].content_type.name
+                filter = mapping[v_type]
+                print(filter)
+                sets.append({'title': inv.name,
+                             'data': v_raw.values(filter).order_by(filter).annotate(agg=Operation(filter))
+                             })
+    #logic for stacked bar chart
+    else:
+        if model_choice=="Sample":
+            vqs = models.Value.objects.filter(name__in=meta).filter(samples__in=models.Sample.objects.filter(investigation__in=investigations))
+            sqs = models.Sample.objects.filter(values__in=vqs).distinct()
+            v_names = []
+            v_dict = {}
+            s_set = []
+            for sample in sqs:
+                s_set.append(sample.name)
+                vals = vqs.filter(samples__in=[sample]).distinct()
+                for val in vals:
+                    if val.name in v_dict.keys():
+                        v_dict[val.name].append(val.content_object.value)
+                    else:
+                        v_names.append(val.name)
+                        v_dict[val.name] = [val.content_object.value]
 
-        #create values for plotly
-        graph_values = []
-        for qs in sets:
-            graph_values.append(
-                {'x': [s['value'] for s in qs['data']],
-                 'y': [s['agg'] for s in qs['data']],
-                 'title': qs['title']}
-            )
+        #    v_names = list(set(v_names))
 
-        data = []
-        for bar in graph_values:
-            data.append(go.Bar(
-                x=bar['x'],
-                y=bar['y'],
-                text=bar['y'],
-                textposition = 'auto',
-                name=bar['title'],
-            ))
+            #GO for plotly
+            data = []
+            for name in v_names:
+                data.append(go.Bar(name=name, x=s_set, y=v_dict[name]))
 
-        layout = go.Layout(title=(title + " by  " + meta),
-                           xaxis={'title': meta},
-                           yaxis={'title': title})
+            layout= go.Layout(title="Samples with selected values",
+                              xaxis={'title': 'Sample Name'},)
+            fig = go.Figure(data=data, layout=layout)
+            fig.update_layout(barmode='stack')
+            return to_html(fig, full_html=False), {'agg': title,
+                                                      'inv': inv_titles,
+                                                      'type':model_choice,
+                                                      'meta':meta}
 
-        figure = go.Figure(data=data, layout=layout)
-        return to_html(figure, full_html=False), {'agg':title,
-                                                  'inv': inv_titles,
-                                                  'type':model_choice,
-                                                  'meta':meta}
+    #create values for plotly
+    graph_values = []
+    for qs in sets:
+        print(qs)
+        graph_values.append(
+            {'x': [s[filter] for s in qs['data']],
+             'y': [s['agg'] for s in qs['data']],
+             'title': qs['title']}
+        )
+
+    data = []
+    for bar in graph_values:
+        data.append(go.Bar(
+            x=bar['x'],
+            y=bar['y'],
+            text=bar['y'],
+            textposition = 'auto',
+            name=bar['title'],
+        ))
+
+    layout = go.Layout(title=(title + " by  " + meta),
+                       xaxis={'title': meta},
+                       yaxis={'title': title})
+
+    figure = go.Figure(data=data, layout=layout)
+    return to_html(figure, full_html=False), {'agg':title,
+                                              'inv': inv_titles,
+                                              'type':model_choice,
+                                              'meta':meta}
     return None
 
 #Code for trendline/scatterplot
 def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operation):
+    """
     #To save code, use a dict that maps numerical field vals to django model
     cat_map = {'1': (models.Sample, models.SampleMetadata, 'sample__in', "Sample"),
                '2': (models.BiologicalReplicate, models.BiologicalReplicateMetadata, 'biological_replicate__in', "Biological Replicate"),
@@ -109,9 +162,46 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                                     sample__in=models.Sample.objects.filter(
                                     investigation__in=invs))}).filter(
                                     key=y_val).values('value').order_by('value')
+    """
 
-    x = [s['value'] for s in xqs]
-    y = [s['value'] for s in yqs]
+    cat_map = {'1': (models.Sample, 'samples__in', "Sample"),}
+    op_map = {'1': 'markers', '2': 'lines+markers'}
+    q_map = {'str val': 'str__value',
+            'int val': 'int__value',
+            'float val': 'float__value',}
+
+    x = None
+    y = None
+    xqs = None
+    yqs = None
+    qs = None #for finding same objects in x and y
+
+    x_type, x_search, x_cat = cat_map[x_val_category]
+    y_type, y_search, y_cat = cat_map[y_val_category]
+
+    if x_type is models.Sample:
+        xqs = models.Value.objects.filter(**{x_search: x_type.objects.filter(
+                                    investigation__in=invs)}).filter(
+                                    name=x_val)
+        xval_type = xqs[0].content_type.name
+        x_filt = q_map[xval_type]
+        xqs = xqs.order_by(x_filt)
+        s_filt = x_filt + "__values"
+        qs = x_type.objects.filter(values__in=xqs).order_by(s_filt)
+
+        ### Y options will be dependant on x choice.
+        ### only choice for y when x is samples is also samples for now.
+
+        #by using samples__in=qs, the yqs will be ordered by qs.
+        yqs = models.Value.objects.filter(samples__in=qs).filter(name=y_val)
+
+    print("XQS: ",xqs)
+    print("YQS: ", yqs)
+    x = [s.content_object.value for s in xqs]
+    y = [s.content_object.value for s in yqs]
+
+    x_type, x_search, x_cat = cat_map[x_val_category]
+    y_type, y_search, y_cat = cat_map[y_val_category]
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y,

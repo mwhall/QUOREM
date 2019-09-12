@@ -196,7 +196,9 @@ def report_success(upfile):
         try:
             model.update_search_vector()
             print(model, " sv updated")
-        except:
+        except Exception as e:
+            print(e)
+            print(model, " sv didn't work")
             continue
     errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
     errorMessage.save()

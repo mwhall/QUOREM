@@ -1,12 +1,12 @@
-<option value="">----------</option>
+
 {% if type %}
 {% if type == 'sample' %} <!--sample -->
   {% for s_metadata in qs %}
-<option value="{{ s_metadata.key }}">{{ s_metadata.key }}</option>
+<option value="{{ s_metadata.name }}">{{ s_metadata.name }}</option>
   {% endfor %}
 {% elif type == 'replicate' %} <!--replicate -->
   {% for br_metadata in qs %}
-<option value="{{ br_metadata.key }}">{{ br_metadata.key }}</option>
+<option value="{{ br_metadata.name }}">{{ br_metadata.name }}</option>
   {% endfor %}
 {% endif %}
 {% endif %}

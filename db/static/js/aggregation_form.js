@@ -130,12 +130,31 @@ $(".previous").click(prev_frame);
 // For some reason doing so in the same way as the other code throws a
 // synchronous XTML error. Not a high priority but refactoring here would be nice.
 $("#options").click(function () {
+  console.log('CLICK!');
   if (!form_valid(current_fs)){
     return false;
   }
   var url = $("#msform").attr('data-models-url');
+  var aggs = document.getElementsByName('agg_choice');
+  var agg = "";
+  for (var i = 0; i < aggs.length; i++){
+    if( aggs[i].checked ){
+      agg = aggs[i].value
+    }
+  }
   var invId = $('#id_invField').val();
   var modelType = $('#id_modelField').val();
+
+  if ( agg == '3' ){
+    console.log('agg == 3');
+    var select = document.getElementById("id_metaValueField");
+    select.setAttribute('multiple', '');
+  }
+  else{
+    console.log('agg != 3');
+    var select = document.getElementById("id_metaValueField");
+    select.removeAttribute('multiple');
+  }
   $.ajax({
     url: url,
     data: {
@@ -151,11 +170,10 @@ $("#options").click(function () {
 /******************************************************************************
 *** Ajax for trend line code                                                ***
 ******************************************************************************/
-//TODO: refactor this to allow the same function to be used for x and y, as
-//      they are basically the same. Params in JS events arent that simple though
+
 
 function populateXOptions(){
-  var url = $('#msform').attr('data-models-url');
+  var url = $('#msform').attr('data-x-url');
   var model = $('#id_x_val_category').val();
   var invs = $('#id_invField').val();
   $.ajax({
@@ -170,8 +188,9 @@ function populateXOptions(){
   });
 }
 function populateYOptions(){
-  var url = $('#msform').attr('data-models-url');
-  var model = $('#id_y_val_category').val();
+  var url = $('#msform').attr('data-y-url');
+  var xmodel = $('#id_x_val_category').val();
+  var ymodel = $('#id_y_val_category').val();
   var invs = $('#id_invField').val();
   //exclude the selected x-val from qs to prevent self vs self analysis.
   var x_sel = $('#id_x_val').val();
@@ -179,10 +198,12 @@ function populateYOptions(){
     url:url,
     data:{
       'inv_id': invs,
-      'type': model,
-      'exclude': x_sel,
+      'type': ymodel,
+      'x_model': xmodel,
+      'x_choice': x_sel,
     },
     success: function(data){
+      console.log("Success populate y");
       $('#id_y_val').html(data);
     }
   });
