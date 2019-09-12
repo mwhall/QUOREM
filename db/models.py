@@ -10,6 +10,8 @@ from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.search import SearchVector
 from django.contrib.postgres.indexes import GinIndex
 
+from django.db.models import F
+
 from celery import current_app
 
 from quorem.wiki import refresh_automated_report
@@ -95,15 +97,16 @@ class Sample(models.Model):
 
     @classmethod
     def update_search_vector(self):
+
         Sample.objects.update(
-            search_vector = (SearchVector('name', weight= 'A') +
-                            SearchVector('values__name', weight='B')
+            search_vector = (SearchVector('name', weight= 'A') 
 
                              # Should be investigation name, not pk.
                              # SearchVector('investigation', weight = 'B')
                              )
         )
-#        refresh_automated_report("sample", pk=self.pk)
+
+
 
 class Replicate(models.Model):
     """

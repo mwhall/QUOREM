@@ -494,11 +494,12 @@ def search(request):
             qs = qs.filter(values__name=meta) #only works with samples
 
             if min_selected and max_selected:
-                """
-                qs = qs.annotate(num_val=Cast('value', models.FloatField())).filter(
-                    num_val__lte=max_selected).filter(num_val__gte=min_selected)
-                """
-                qs = qs.filter(values__float__value__lte=max_selected).filter(values__float__value__gte=min_selected)
+                vals = Value.objects.filter(name=meta)
+                filt = q_map[vals[0].content_type.name]
+                filt_lte = filt + "__lte"
+                filt_gte = filt + "__gte"
+                vals = vals.filter(**{filt_lte: max_selected, filt_gte: min_selected})
+                qs = qs.filter(values__in=vals)
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
