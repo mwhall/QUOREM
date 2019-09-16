@@ -3,7 +3,7 @@ from django.forms.utils import flatatt
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    Replicate, Process,
+    Process,
     Step, Result, Value,
     Investigation, Step, Sample,
     UploadInputFile, UserProfile, ErrorMessage
@@ -175,16 +175,6 @@ class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=Displ
         widgets = {'name': DisplayText(get_text_method=get_name),
                    'investigation': DisplayText(get_text_method=get_investigation)}
 
-class ReplicateForm(RendererModelForm):
-    class Meta:
-        model = Replicate
-        exclude = ['search_vector']
-
-class ReplicateDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = Replicate
-        exclude = ['search_vector']
-
 class ProcessForm(RendererModelForm):
     class Meta:
         model = Process
@@ -241,14 +231,6 @@ class InvestigationDisplayWithInlineSamples(FormWithInlineFormsets):
      FormsetClasses = [InvestigationDisplaySampleFormset]
      def get_formset_inline_title(self, formset):
          return "Samples"
-
-SampleDisplayReplicateFormset = ko_inlineformset_factory(Sample,
-                                                      Replicate,
-                                                      form=ReplicateDisplayForm)
-
-SampleReplicateFormset = ko_inlineformset_factory(Sample, Replicate,
-                                                  form=ReplicateForm,
-                                                  extra=0, min_num=0)
 
 StepDisplayFormset = ko_inlineformset_factory(Process,
                                               Step.processes.through,

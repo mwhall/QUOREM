@@ -41,11 +41,11 @@ def parse_csv_or_tsv(table_file):
     ctable=None
     ttable=None
     try:
-        ctable = pd.read_table(io.StringIO(table_string), sep=",", index_col=None, header=0 )
+        ctable = pd.read_table(io.StringIO(table_string), sep=",", index_col=None, header=None )
     except:
         pass
     try:
-        ttable = pd.read_table(io.StringIO(table_string), sep="\t", index_col=None, header=0 )
+        ttable = pd.read_table(io.StringIO(table_string), sep="\t", index_col=None, header=None )
     except:
         pass
     if (ctable is None) & (ttable is None):
@@ -59,4 +59,16 @@ def parse_csv_or_tsv(table_file):
         table = ctable
     else:
         table = ttable
+    #This bit allows us to have duplicate columns, something we need here
+    table.columns = table.loc[0]
+    table = table.loc[1:]
+    if "result_id" in table:
+        if pd.isna(table["result_id"]).all():
+            # Then we need to generate a UUID for the entire sheet, which is used across entries
+            # i.e., if you leave a totally blank result_id column, we'll make one for you (but only one)
+            table.loc[:, "result_id"] = str(uuid.uuid1())
+        else:
+            #TODO: We need to go through and replace the levels with randomly generated UUIDs for each level
+            pass
+
     return table

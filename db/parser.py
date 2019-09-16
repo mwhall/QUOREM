@@ -559,7 +559,7 @@ class ValueValidator(Validator):
             return values
         else:
             return True 
-        
+
     def validate(self):
         #Must raise an exception if failure to add to database
         #Only real requirement is that the linked objects exist
@@ -606,10 +606,29 @@ class ValueValidator(Validator):
             value = Value(content_object=val, name=self.id_field, value_type=self.vtype)
             value.save()
             # Make sure it's an object that can/should be linked to this value type
+        else:
+            return
 
-    def infer_type(self, date_format):
-        found_types = list(set([x.content_type.model
-            for x in Value.objects.filter(name__exact=self.name,
+        for link_field in self.targets:
+            if link_field=="extra_step":
+                link_field="step_id"
+            model_name = link_field.split("_")[0]
+            link_data = self.data[link_field]
+            if isinstance(link_data, pd.Series):
+                _id_list = link_data.values
+            else:
+                _id_list = [link_data]
+            
+            for _id in _id_list:
+                if (link_field.split("_")[0] in permitted_types[self.vtype]):
+                    vldtr = validator_mapper[link_field.split("_")[0]](pd.Series({link_field: _id}))
+                    if vldtr.value_field is not None:
+                        obj = vldtr.fetch()
+                        getattr(obj, vldtr.value_field).add(value)
+
+    def infer_type(self):
+        found_types = list(set([x.content_type.model 
+            for x in Value.objects.filter(name__exact=self.id_field,
                                           value_type__exact=self.vtype)]))
         if len(found_types) > 1:
             raise DuplicateTypeError("Two types found for value name %s of \
@@ -648,7 +667,6 @@ Validators = [InvestigationValidator,
               AnalysisValidator,
               ResultValidator,
               ValueValidator]
-
 
 validator_mapper = {"investigation": InvestigationValidator,
                     "sample": SampleValidator,

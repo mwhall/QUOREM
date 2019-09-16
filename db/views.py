@@ -30,7 +30,7 @@ import io
 
 from .formatters import guess_filetype
 from .models import (
-        Sample, Investigation, Process, Replicate,
+        Sample, Investigation, Process,
         Step, Result, Feature, Value,
         UploadInputFile, load_mixed_objects, UserProfile
 )
@@ -234,65 +234,14 @@ class SampleUpdate(BsTabsMixin, InlineCrudView):
             'submit_text': 'Save Sample'
         }
 
-class ReplicateList(ListSortingView):
-    model = Replicate
-    allowed_sort_orders = '__all__'
-    grid_fields = ['name', 'sample', 'sample__investigation']
-    def get_heading(self):
-        return "Replicate List"
-#    def get_name_links(self, obj):
-#        links = [format_html(
-#            '<a href="{}">{}</a>',
-#            reverse('replicate_detail', kwargs={'replicate_id': obj.pk}),
-#            obj.name
-#        )]
-#        # is_authenticated is not callable in Django 2.0.
-#        if self.request.user.is_authenticated:
-#            links.append(format_html(
-#                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-#                reverse('replicate_update', kwargs={'replicate_id': obj.pk})
-#            ))
-#        return links
-
-#    def get_sample_links(self, obj):
-#        links = [format_html(
-#            '<a href="{}">{}</a>',
-#             reverse('sample_detail', kwargs={'sample_id': obj.sample.pk}),
-#             obj.sample.name
-#         )]
-#        return links
-
-#    def get_display_value(self, obj, field):
-#        if field == 'name':
-#            links = self.get_name_links(obj)
-#            return mark_safe(''.join(links))
-#        elif field == 'sample':
-#            links = self.get_sample_links(obj)
-#            return mark_safe(''.join(links))
-#        else:
-#            return super().get_display_value(obj, field)
-
 class FeatureList(ListSortingView):
     model = Feature
     allowed_sort_orders = '__all__'
 
-#class ReplicateDetail(InlineDetailView):
-#    pk_url_kwarg = 'replicate_id'
-#    form_with_inline_formsets = ReplicateDisplayWithInlineMetadata
-
-#class ReplicateUpdate(BsTabsMixin, InlineCrudView):
-#    format_view_title = True
-#    pk_url_kwarg = 'replicate_id'
-#    form_with_inline_formsets = ReplicateWithInlineMetadata
-#    def get_bs_form_opts(self):
-#        return {
-#            'submit_text': 'Save Replicate'
-#        }
-
 class StepList(ListSortingView):
     model = Step
     allowed_sort_orders = '__all__'
-    grid_fields = ['name', 'method']
+    grid_fields = ['name']
     def get_heading(self):
         return "Step List"
 #    def get_name_links(self, obj):
@@ -324,13 +273,9 @@ class StepCreate(CreateView):
 class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
-    grid_fields = ['input_file', 'source_software', 'type', 'replicates', ['process', 'source_step']]
+    grid_fields = ['uuid', 'input_file', 'source', 'type', 'samples', 'features', ['analysis', 'source_step']]
     def get_heading(self):
-        return "Process Result List"
-
-    def get_replicates_text(self, obj):
-        return "Number matched: %d" % (len(obj.replicates.all()),)
-
+        return "Result List"
 
     def get_file_links(self, obj):
         links = []
@@ -356,9 +301,7 @@ class ResultList(ListSortingView):
         return links
 
     def get_display_value(self, obj, field):
-        if field == 'replicates':
-            return self.get_replicates_text(obj)
-        elif field == 'input_file':
+        if field == 'input_file':
             links = self.get_file_links(obj)
             return mark_safe(''.join(links))
             #return self.get_file_name(obj)

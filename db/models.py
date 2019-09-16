@@ -50,7 +50,7 @@ class Feature(models.Model):
     name = models.CharField(max_length=255)
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
-    first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True)
+    first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
     observed_results = models.ManyToManyField('Result', related_name='observed_results')
     observed_replicates = models.ManyToManyField('Replicate', related_name='observed_replicates')
 
@@ -184,11 +184,8 @@ class Step(models.Model):
 
     search_vector = SearchVectorField(null=True)
     def __str__(self):
-        return '%s -> %s' % (self.name, self.method)
+        return '%s' % (self.name,)
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['name', 'method'], name='One entry per name-method pair')
-            ]
         indexes = [
             GinIndex(fields=['search_vector'])
         ]
@@ -245,8 +242,11 @@ class Result(models.Model):
     process = models.ForeignKey('Process', on_delete=models.CASCADE)
     # This process result is from this step
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
-    # Replicates that this thing is the result for
-    replicates = models.ManyToManyField('Replicate', related_name='replicates', related_query_name="results", verbose_name="Replicates", blank=True)
+    # Samples that this thing is the result for
+    samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
+    features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
+
+    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
 
@@ -270,15 +270,15 @@ class Result(models.Model):
 ### Key-Value storage for objects
 
 class Value(models.Model):
-    PARAMETER = 'PA'
-    METADATA = 'MD'
-    MEASURE = 'ME'
+    PARAMETER = 'parameter'
+    METADATA = 'metadata'
+    MEASURE = 'measure'
     VALUE_TYPES = (
             (PARAMETER, 'Parameter'),
             (METADATA, 'Metadata'),
             (MEASURE, 'Measure'))
     name = models.CharField(max_length=512)
-    value_type = models.CharField(max_length=2, choices=VALUE_TYPES)
+    value_type = models.CharField(max_length=9, choices=VALUE_TYPES)
     # This generic relation links to a polymorphic Val class
     # Allowing Value to be str, int, float, datetime, etc.
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
