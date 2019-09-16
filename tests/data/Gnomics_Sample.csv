@@ -1,13 +1,21 @@
-investigation_id	sample_id	value_type	species	sex	source_site
-An exploration of gnomish genomics	GreenOoze1	MD	ooze	male	pseudopod
-An exploration of gnomish genomics	GreenOoze2	MD	ooze	female	pseudopod
-An exploration of gnomish genomics	Troll1	MD	troll	male	foot
-An exploration of gnomish genomics	Troll2	MD	troll	female	foot
-An exploration of gnomish genomics	Dwarf1	MD	dwarf	male	beard
-An exploration of gnomish genomics	Dwarf2	MD	dwarf	female	beard
-An exploration of gnomish genomics	Orc1	MD	orc	male	skin
-An exploration of gnomish genomics	Orc2	MD	orc	female	skin
-An exploration of gnomish genomics	Elf1	MD	elf	male	ear
-An exploration of gnomish genomics	Elf2	MD	elf	female	ear
-An exploration of gnomish genomics	Goblin1	MD	goblin	male	toenail
-An exploration of gnomish genomics	Goblin2	MD	goblin	female	toenail
+investigation_id	process_id	sample_id	upstream_sample	sample_category	value_type	species	sex	captive	source_site	collection_date
+An exploration of gnomish genomics	Enemy Capturing	GreenOoze1		live	metadata	ooze	male	yes		
+An exploration of gnomish genomics	Enemy Capturing	GreenOoze2		live	metadata	ooze	female	escaped through drain		
+An exploration of gnomish genomics	Enemy Capturing	Troll1		live	metadata	troll	male	yes		
+An exploration of gnomish genomics	Enemy Capturing	Troll2		live	metadata	troll	female	yes		
+An exploration of gnomish genomics	Enemy Capturing	Dwarf1		live	metadata	dwarf	male	yes		
+An exploration of gnomish genomics	Enemy Capturing	Dwarf2		live	metadata	dwarf	female	tunneled out		
+An exploration of gnomish genomics	Enemy Capturing	Orc1		live	metadata	orc	male	yes		
+An exploration of gnomish genomics	Enemy Capturing	Orc2		live	metadata	orc	female	yes		
+An exploration of gnomish genomics	Enemy Capturing	Elf1		live	metadata	elf	male	yes		
+An exploration of gnomish genomics	Enemy Capturing	Elf2		live	metadata	elf	female	yes		
+An exploration of gnomish genomics	Enemy Capturing	Goblin1		live	metadata	goblin	male	bribed a guard		
+An exploration of gnomish genomics	Enemy Capturing	Goblin2		live	metadata	goblin	female	yes		
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T1_1	Troll1	part	metadata				toenail	1979-12-18
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T1_2	Troll1	part	metadata				ear hair	1979-12-18
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O1_1	Orc1	part	metadata				blood	1979-12-18
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O1_2	Orc1	part	metadata				tusk	1979-12-18
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T2_1	Troll2	part	metadata				toenail	1979-12-19
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T2_2	Troll2	part	metadata				ear hair	1979-12-19
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O2_1	Orc2	part	metadata				blood	1979-12-19
+An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O2_2	Orc2	part	metadata				tusk	1979-12-19
