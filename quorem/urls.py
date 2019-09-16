@@ -19,15 +19,14 @@ from django.conf.urls import url
 from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
-from db.views_ajax import InvestigationGridView, ReplicateFkWidgetGrid, SampleFkWidgetGrid, StepFkWidgetGrid
+from db.views_ajax import InvestigationGridView, SampleFkWidgetGrid, StepFkWidgetGrid
 from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
     InvestigationUpdate,
     ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
     ResultList,
     StepList, StepCreate,
-    ReplicateList, FeatureList,
-#    ReplicateDetail, ReplicateUpdate, ReplicateList, ReplicateCreate,
+    FeatureList,
     SampleDetail, SampleList, SampleUpdate, #SampleCreate,
     UploadList, UploadInputFileDetail,
     #SearchResultList
@@ -83,17 +82,6 @@ urlpatterns = [
     re_path(r'sample/edit/(?P<sample_id>\d+)/$', SampleUpdate.as_view(),
         name='sample_update',
         kwargs={'view_title': 'Sample Update', 'allow_anonymous': False}),
-
-# Replicate Routing
-    re_path(r'replicate/all/$', ReplicateList.as_view(),
-            name = 'replicate_all',
-            kwargs = {'view_title': 'All Replicates'}),
-#    re_path(r'replicate/(?P<replicate_id>\d+)/$', ReplicateDetail.as_view(),
-#        name='replicate_detail',
-#        kwargs={'view_title': 'Replicate Detail'}),
-#    re_path(r'replicate/edit/(?P<replicate_id>\d+)/$', ReplicateUpdate.as_view(),
-#        name='replicate_update',
-#        kwargs={'view_title': 'Replicate Update', 'allow_anonymous': False}),
 
     re_path(r'feature/all/$', FeatureList.as_view(),
             name = 'feature_all',

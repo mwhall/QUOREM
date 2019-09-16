@@ -1,10 +1,59 @@
 import arrow
 import uuid
 import pandas as pd
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-from .models import Replicate, Investigation, Sample, Process, ProcessCategory,\
-                    Step, Value, Result, StrVal, IntVal, FloatVal, DatetimeVal, \
-                    ResultVal, Analysis
+from django.db.models import Count
+from .models import Investigation, Sample, Process, Step, Analysis, \
+                    Feature, Category, Value, Result, StrVal, IntVal, FloatVal, \
+                    DatetimeVal, ResultVal
+
+
+base_names = ["investigation", "process", "step", \
+              "analysis", "sample", "feature", "result"]
+
+id_fields = [ x + "_id" for x in base_names ]
+
+category_fields = [ x + "_category" for x in base_names ]
+
+upstream_models = ["process", "step", "sample", "result"]
+upstream_fields = [ "upstream_" + x for x in upstream_models ]
+
+reserved_fields = id_fields + \
+                  category_fields + \
+                  upstream_fields + \
+                  ["investigation_description", \
+                   "investigation_citation", \
+                   "investigation_institution", \
+                   "process_description", \
+                   "process_citation", \
+                   "step_description", \
+                   "result_type", \
+                   "result_source", \
+                   "analysis_location", \
+                   "analysis_date", \
+                   "extra_step", \
+                   "feature_sequence", \
+                   "value_type", \
+                   "value_target", \
+                   "force_overwrite"]
+
+linkable_fields = id_fields + ["extra_step"]
+
+plural_mapper = {"investigation": "investigations",
+                 "process": "processes",
+                 "step": "steps",
+                 "analysis": "analyses",
+                 "result": "results",
+                 "sample": "samples",
+                 "feature": "features"}
+
+def resolve_target(row):
+    precedence = ["result_id", "step_id", "sample_id", "process_id", "analysis_id", \
+                  "investigation_id", "feature_id"]
+    for id_field in precedence:
+        if id_field in row:
+            return id_field
 
 class MissingColumnError(Exception):
     """Error for when a column that should be present in order to commit a row
@@ -37,60 +86,29 @@ class DuplicateTypeError(Exception):
 class Validator():
     value_field = None
 
-    def __init__(self, data={}):
+    def __init__(self, data=pd.Series({})):
         self.data = data
+        assert isinstance(self.data, pd.Series)
+        #NOTE: The way we input/loop through data, duplicate columns/indexes are allowed in self.data
+        # Calls to self.data should either be loops over indices, or unambiguous/non-duplicate fields ONLY
+        assert (self.data.index==self.id_field).sum() == 1, "Cannot have duplicate primary targets for a validator"
+        if "force_overwrite" in self.data:
+            self.overwrite = True
+        else:
+            self.overwrite = False
         self.required_if_new = []
         self.optional_fields = []
         self.manytomany_fields = []
-        self.jointly_unique = []
         self.django_mapping = {}
 
     def in_db(self):
         """Base Validator in database check
-           id_field is the value in the id_field for this model
-           But has to check all metadata, since some models have joint keys"""
-        print("in_db")
+           id_field is the value in the id_field for this modeil """
         kwargs = {self.django_mapping[self.id_field] + "__exact": self.data[self.id_field]}
-        for field1, field2 in self.jointly_unique:
-            if (field1 == self.id_field):
-                swap_field = field2
-            elif (field2 == self.id_field):
-                swap_field = field1
-            if swap_field not in id_fields:
-                kwargs[self.django_mapping[swap_field] + "__exact"] = self.data[swap_field]
-            else:
-                #We have to go grab the actual instance to pull the record out
-                vldtr = validator_mapper[swap_field](data=self.data)
-                try:
-                    obj = vldtr.fetch()
-                except:
-                    return False
-                kwargs[self.django_mapping[swap_field]] = obj
-        try:
-            print("in_db")
-            print(kwargs)
-            self.model.objects.get(**kwargs)
-            return True
-        except self.model.DoesNotExist:
-            print("Didn't find it")
-            return False
+        return self.model.objects.filter(**kwargs).exists()
 
     def validate(self):
-        """Base Validator validation routine
-           Checks if the id field content is an integer and warns if it is
-           If it is in the database, verify that all other fields are
-           consistent with the database
-           If it is not in the database, verify that the row contains
-           all the other required information"""
-        print("Validating")
-        identifier = self.data[self.id_field]
         in_db = self.in_db()
-        #Can't have integers as names to avoid confusion
-        if (not in_db) & str(identifier).isdigit():
-            raise InvalidNameError("To avoid confusion with database \
-                                   indexes, %s names cannot be integers. \
-                                   Add a prefix to the %s column." % \
-                                   (self.model_name, self.id_field))
         #If not in database, make sure we have all the fields to save it
         if (not in_db):
             #If the investigation can't be found, we need to create it, and
@@ -100,11 +118,20 @@ class Validator():
             if len(missing_fields) > 0:
                 raise MissingColumnError("Columns " + \
                         ", ".join(missing_fields) + " missing and required")
+
+            for field in self.required_if_new + self.optional_fields:
+                if field == "extra_step":
+                    field = "step_id"
+                if (field != self.id_field) and (field in id_fields) and (field in self.data):
+                    data = self.data.drop(self.id_field)
+                    vldtr = validator_mapper[field.split("_")[0]](data=data)
+                    vldtr.validate()
+
         #if in database, make sure all their available data matches ours,
         #if not it's mistaken identity
         else:
             try:
-                self.fetch(required_only=False)
+                self.fetch(id_only=False)
             except self.model.DoesNotExist:
                 raise InconsistentWithDatabaseError("%s id %s found in database, \
                     but other %s fields do not exactly match database values.\
@@ -117,86 +144,123 @@ class Validator():
                                                        self.model_name))
         return True
 
-    def fetch(self, required_only=False):
+    def fetch(self, id_only=True):
         """Does an exact fetch on all kwargs
            If kwargs[self.id_field] is an int then it queries that as pk"""
-        if required_only:
-            fields = self.required_if_new + [self.id_field]
+        kwargs = {self.django_mapping[self.id_field] + "__exact": self.data[self.id_field]}
+        if id_only:
+            return self.model.objects.get(**kwargs)
         else:
-            fields = self.required_if_new + self.optional_fields + [self.id_field]
-        found_fields = [ x for x in fields if x in self.data ]
-        kwargs = {}
-        for field in found_fields:
-            if field in id_fields:
-                f_id = self.data[field]
-                if field == self.id_field:
-                    if str(f_id).isdigit():
-                        name = int(f_id)
-                        name_field = "pk"
+            for field, datum in self.data.iteritems():
+                if pd.isna(datum):
+                    #Ignore it for this row
+                    continue
+                if field in self.required_if_new + self.optional_fields:
+                    #NOTE: This doesn't fetch Categories, Values, or Upstream/Downstream, which is OK for fetching, I think
+                    if field in id_fields:
+                        if field == self.id_field:
+                            # This is asserted to be unique
+                            name = field
+                            name_field = self.django_mapping[field] + "__exact"
+                        else:
+                            # This may not be unique, so we have to slice it down to only the ID
+                            vldtr = validator_mapper[field.split("_")[0]](data=pd.Series({field: self.data[field]}))
+                            name = vldtr.fetch()
+                            name_field = self.django_mapping[field]
+                        if field not in self.manytomany_fields:
+                            #Then it is its own argument, and not a list/set argument
+                            kwargs[name_field] = name
+                        else:
+                            pass #TODO: Do we add them to a list, and use the mapping to check if they are present? Can Django handle this naturally?
                     else:
-                        name = f_id
-                        name_field = self.django_mapping[field] + "__exact"
-                else:
-                    vldtr = validator_mapper[field](data=self.data)
-                    name = vldtr.fetch()
-                    if str(f_id).isdigit():
-                        name_field="pk"
-                    else:
-                        name_field = self.django_mapping[field]
-                if field not in self.manytomany_fields:
-                    kwargs[name_field] = name
-            else:
-                if field not in self.manytomany_fields:
-                    kwargs[self.django_mapping[field] + "__exact"] =  self.data[field]
-        #If fields are jointly unique, drag the other field into the query
-        #even if it isn't in required
-        print("Fetch")
-        print(kwargs)
-        # TODO: Should we validate m2m links here?
+                        if field not in self.manytomany_fields:
+                            kwargs[self.django_mapping[field] + "__exact"] =  datum
+                        else:
+                            pass #TODO: see above
         return self.model.objects.get(**kwargs)
 
     def save(self):
-        print("Saving")
         #Go through each field
-        identifier = self.data[self.id_field]
+        kwargs = {self.django_mapping[self.id_field]: self.data[self.id_field]}
         in_db = self.in_db()
-        found_fields = [ x for x in
-                  self.required_if_new + self.optional_fields if x in self.data ]
-        kwargs = {}
         m2m_links = []
-        for field in found_fields:
+        categories_to_add = []
+        upstream_to_add = []
+        
+        for field, datum in self.data.iteritems():
+            if pd.isna(datum):
+                #Irrelevant field for this row/validator
+                continue
             #If x is an id field, then we have to fetch the actual object
-            if field in id_fields:
-                vldtr = validator_mapper[field](data=self.data)
-                datum = vldtr.fetch()
-            else:
-                datum = self.data[field]
+            if (field in self.required_if_new + self.optional_fields) and (field in id_fields) and (field != self.id_field):
+                # Keep all other context the same, but focus on this object
+                data = self.data.drop(field)
+                # Remove the original id_field that we're saving so we don't recurse forever
+                data = data.drop(self.id_field)
+                data[field] = datum
+                vldtr = validator_mapper[field.split("_")[0]](data=data)
+                if vldtr.in_db():
+                    datum = vldtr.fetch()
+                else:
+                    # We have to make it
+                    datum = vldtr.save()
+            elif (field in category_fields) and (field == self.id_field.split("_")[0] + "_category"):
+                # Grab the category, or make it if it's new
+                model_name = field.split("_")[0]
+                assert model_name in validator_mapper
+                content_type = ContentType.objects.get(app_label='db', 
+                                                       model=model_name)
+                cat_exists = Category.objects.filter(category_of=content_type, 
+                                                     name=datum).exists()
+                if not cat_exists:
+                    cat = Category(category_of=content_type, name=datum)
+                    cat.save()
+                else:
+                    cat = Category.objects.get(category_of=content_type, 
+                                               name=datum)
+                categories_to_add.append(cat)
+            elif (field in upstream_fields) and (field in self.django_mapping):
+                # Grab the upstream item, depending on what it is
+                model_name = field.split("_")[1]
+                vldtr = validator_mapper[field.split("_")[1]](data=pd.Series({model_name + "_id": datum}))
+                upobj = vldtr.fetch()
+                upstream_to_add.append(upobj)
             if field in self.manytomany_fields:
                 m2m_links.append((field, datum))
-            else:
+            elif (field not in upstream_fields) and (field not in category_fields) and (field in self.django_mapping):
                 kwargs[self.django_mapping[field]] = datum
-        kwargs[self.django_mapping[self.id_field]] = identifier
+        
+        #Now that we've collected all the things, we can make it if it isn't in the DB
         if not in_db:
             try:
                 obj = self.model(**kwargs)
                 obj.save()
-                #Add the manytomany links to the model, which
-                #can't be crammed into kwargs
             except:
                 raise
         else:
-            obj = self.fetch()
+            try:
+                obj = self.fetch(id_only=False)
+            except self.model.DoesNotExist:
+                raise InconsistentWithDatabaseError("Cannot save changes to requested object: An item with the same ID but differing values from this input exists in the database. Refusing to overwrite.")
+        # If we can find the things, add/update the requested catgories, upstream, and other m2m fields
         for field, datum in m2m_links:
-                getattr(obj, self.django_mapping[field]).add(datum)
+            getattr(obj, self.django_mapping[field]).add(datum)
+        #Commit categories
+        for cat in categories_to_add:
+            obj.categories.add(cat)
+        #Commit upstream links
+        for upobj in upstream_to_add:
+            obj.upstream.add(upobj)
+        return obj
 
 class InvestigationValidator(Validator):
     model_name = "Investigation"
     model = Investigation
     value_field = "values"
-
+    id_field = "investigation_id"
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "investigation_id"
         self.required_if_new = ["investigation_institution",
                                 "investigation_description"]
         self.django_mapping = {self.id_field: "name",
@@ -207,94 +271,87 @@ class SampleValidator(Validator):
     model_name = "Sample"
     model = Sample
     value_field = "values"
+    id_field = "sample_id"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "sample_id"
-        self.required_if_new = ["investigation_id"]
+        self.required_if_new = ["investigation_id", "process_id"]
         self.django_mapping = {self.id_field: "name",
-                               self.required_if_new[0]: "investigation"}
+                               self.required_if_new[0]: "investigation",
+                               self.required_if_new[1]: "process",
+                               "upstream_sample": "upstream"}
 
-class ReplicateValidator(Validator):
-    model_name = "Replicate"
-    model = Replicate
+class FeatureValidator(Validator):
+    model_name = "Feature"
+    model = Feature
     value_field = "values"
+    id_field = "feature_id"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "replicate_id"
-        self.required_if_new = ["sample_id", "process_id"]
+        self.required_if_new = []
+        self.optional_fields = ["feature_sequence", "result_id", "sample_id"]
+        self.manytomany_fields = ["result_id", "sample_id"]
         self.django_mapping = {self.id_field: "name",
-                               self.required_if_new[0]: "sample",
-                               self.required_if_new[1]: "process"}
-
-class ProcessCategoryValidator(Validator):
-    model_name = "ProcessCategory"
-    model = ProcessCategory
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.id_field = "process_category_id"
-        self.required_if_new = ["process_category_description"]
-        self.django_mapping = {self.id_field: "name",
-                               self.required_if_new[0]: "description"}
+                               self.optional_fields[0]: "sequence",
+                               self.optional_fields[1]: "observed_results",
+                               self.optional_fields[2]: "observed_samples"}
 
 class ProcessValidator(Validator):
     model_name = "Process"
     model = Process
     value_field = "parameters"
-
+    id_field = "process_id"
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "process_id"
-        self.required_if_new = ["process_description", "process_citation", "process_category_id"]
+        self.required_if_new = ["process_description", "process_citation"]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "description",
                                self.required_if_new[1]: "citation",
-                               self.required_if_new[2]: "category"}
+                               "upstream_process": "upstream"}
 
 class StepValidator(Validator):
     model_name = "Step"
     model = Step
     value_field = "parameters"
+    id_field = "step_id"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "step_id"
         self.required_if_new = ["process_id",
-                                "step_method",
                                 "step_description"]
         self.manytomany_fields = ["process_id"]
-        self.jointly_unique = [(self.id_field, self.required_if_new[1])]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "processes",
-                               self.required_if_new[1]: "method",
-                               self.required_if_new[2]: "description"}
+                               self.required_if_new[1]: "description",
+                               "upstream_step": "upstream"}
 
 class AnalysisValidator(Validator):
     model_name = "Analysis"
     model = Analysis
     value_field = "values"
+    id_field = "analysis_id"
 
     def __init__(self, date_format = "DD/MM/YYYY", *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.id_field = "analysis_id"
         self.required_if_new = ["process_id"]
-        self.manytomany_fields = ["extra_steps"]
-        self.optional_fields = ["analysis_location", "analysis_date"]
+        self.manytomany_fields = ["extra_step"]
+        self.optional_fields = ["analysis_location", "analysis_date", "extra_step"]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "process",
                                self.manytomany_fields[0]: "extra_steps",
                                self.optional_fields[0]: "location",
                                self.optional_fields[1]: "date"}
         # Transform the date to Django's default format
-        try:
-            self.data["analysis_date"] = arrow.get(self.data["analysis_date"], date_format).format("YYYY-MM-DD")
-        except arrow.parser.ParserError:
+        if "analysis_date" in self.data:
             try:
-                self.data["analysis_date"] = arrow.get(self.data["analysis_date"], "YYYY-MM-DD").format("YYYY-MM-DD")
+                self.data["analysis_date"] = arrow.get(self.data["analysis_date"], date_format).format("YYYY-MM-DD")
             except arrow.parser.ParserError:
-                raise ValueError("Can't parse analysis_date with arrow")
+                try: 
+                    self.data["analysis_date"] = arrow.get(self.data["analysis_date"], "YYYY-MM-DD").format("YYYY-MM-DD")
+                except arrow.parser.ParserError:
+                    raise ValueError("Can't parse analysis_date with arrow")
 
 # Tried to do this with a purely class-based method, but it took too much time
 # Overriding for this one, because it's different enough
@@ -302,69 +359,97 @@ class ResultValidator(Validator):
     model_name = "Result"
     model = Result
     value_field = "values"
+    id_field = "result_id"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #TODO: Generate a UUID if this is blank?
-        self.id_field = "result_id"
+        #NOTE: Generating of UUIDs, if necessary, is handled at spreadsheet parse in db/formatters.py
+        #If values are UUIDs, they are not changed
+        #If values are not UUIDs, they are replaced with a UUID, with the same value being replaced with the same UUID
+        #If result_id is totally blank in the sheet, one UUID is generated for the whole column
+        # Don't leave result_id blank unless you intend to submit a result_id with every row!
         self.required_if_new = ["result_type",
-                                "process_id",
-                                "source_step_id",
-                                "source_step_method",
-                                "source_software"]
-        self.manytomany_fields = ["replicate_id"]
-        self.jointly_unique = [(self.required_if_new[2], self.required_if_new[3])]
+                                "result_source",
+                                "analysis_id",
+                                "step_id"]
+        self.optional_fields = ["sample_id", "feature_id"]
+        self.manytomany_fields = ["sample_id", "feature_id"]
         self.django_mapping = {self.id_field: "uuid",
                                self.required_if_new[0]: "type",
-                               self.required_if_new[1]: "process",
-                               self.required_if_new[2]: "source_step__name",
-                               self.required_if_new[3]: "source_step__method",
-                               self.manytomany_fields[0]: "replicates"}
+                               self.required_if_new[1]: "source",
+                               self.required_if_new[2]: "analysis",
+                               self.required_if_new[3]: "source_step__name",
+                               self.manytomany_fields[0]: "samples",
+                               self.manytomany_fields[1]: "features",
+                               "upstream_result": "upstream"}
 
-    def fetch(self):
+    def fetch(self, id_only=True):
+        #Even though I propagate id_only here, it isn't needed since
+        # the UUID should help maintain certainty of uniqueness
         return Result.objects.get(uuid=self.data["result_id"])
+            
 
     def in_db(self):
         return Result.objects.filter(uuid=self.data["result_id"]).exists()
 
-    def validate(self):
-        print("Validating result")
-        print(self.data)
+    def validate(self, save=False):
         # First check that the process and source step exist
-        print("Grabbing and validating process")
-        process_vldtr = ProcessValidator(data=pd.Series({"process_id": self.data["process_id"]}))
-        print("Fetching")
-        process_vldtr.fetch()
-        print("Grabbing and validating step")
-        step_vldtr = StepValidator(pd.Series(data={"step_id": self.data["source_step_id"], "step_method": self.data["source_step_method"]}))
-        step_vldtr.fetch()
-        # Next, check that each replicate exists
-        for field in self.data.index:
-            if "replicate_id" in field:
-                rep_vldtr = ReplicateValidator(data=pd.Series({"replicate_id": self.data[field]}))
-                rep_vldtr.validate()
+        if not self.in_db():
+            data = self.data.copy()
+            data = data.drop("result_id")
+            analysis_vldtr = AnalysisValidator(data=data)
+            analysis_vldtr.validate()
+            if not analysis_vldtr.in_db():
+                # This must be saved before we can validate ourselves
+                analysis_vldtr.save()
+            data = data.drop("analysis_id")
+            step_vldtr = StepValidator(data=data)
+            step_vldtr.validate()
+            if save and (not step_vldtr.in_db()):
+                step_vldtr.save()
+            for field, datum in self.data.iteritems():
+                if field == "sample_id":
+                    samp_vldtr = SampleValidator(data=pd.Series({"sample_id": datum}))
+                    samp_vldtr.validate()
+                    if save and (not samp_vldtr.in_db()):
+                        samp_vldtr.save()
+                elif field == "feature_id":
+                    feat_vldtr = FeatureValidator(data=pd.Series({"feature_id": datum}))
+                    feat_vldtr.validate()
+                    if save and (not feat_vldtr.in_db()):
+                        feat_vldtr.save()
+                elif field == "upstream_result":
+                    res_vldtr = ResultValidator(data=pd.Series({"result_id": datum}))
+                    #If we use validate here, theres a chance it'll pass it based on the result's analysis etc.
+                    if not res_vldtr.in_db():
+                        raise NotFoundError("Result %s not found in database, cannot add to upstream" % (res_vldtr.data["result_id"],))
+                    
         return True
 
     def save(self):
-        print("Saving result")
-        process = ProcessValidator(data=pd.Series({"process_id": self.data["process_id"]})).fetch()
-        source_step = StepValidator(data=pd.Series({"step_id": self.data["source_step_id"],
-                                     "step_method": self.data["source_step_method"]})).fetch()
-        reps = Replicate.objects.filter(name__in=[self.data[x] for x in self.data.index if "replicate_id" in x])
+        self.validate(save=True)
+        analysis = AnalysisValidator(data=pd.Series({"analysis_id": self.data["analysis_id"]})).fetch()
+        source_step = StepValidator(data=pd.Series({"step_id": self.data["step_id"]})).fetch()
+        samples = Sample.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="sample_id"])
+        features = Feature.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="feature_id"])
+        upstream = Result.objects.filter(uuid__in=[y for x,y in self.data.iteritems() if x=="upstream_result"])
+        categories = Category.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="result_category"],
+                                             category_of=ContentType.objects.get(app_label='db', model='result'))
         if not self.in_db():
             result = Result(uuid=self.data["result_id"],
                             source_step = source_step,
-                            source_software = self.data["source_software"],
+                            source = self.data["result_source"],
                             type = self.data["result_type"],
-                            process = process)
+                            analysis = analysis)
             result.save()
         else:
-            # Make sure that the replicates are added
             result = self.fetch()
-        for rep in reps:
-            result.replicates.add(rep)
-
-
+        result.samples.add(*samples)
+        result.features.add(*features)
+        result.upstream.add(*upstream)
+        result.categories.add(*categories)
+        #TODO:
+        # If source_step not in analysis.process, then it must be added to analysis.extra_steps
 
 def existing_type(model, name):
     #Get all objects of this container/object type combo
@@ -390,6 +475,7 @@ def typecast(type_str):
 
 class ValueValidator(Validator):
     def __init__(self, name, date_format = "DD/MM/YYYY", *args, **kwargs):
+        self.id_field = name
         super().__init__(*args, **kwargs)
         self.TYPE_FIELD_MAP = {"strval": "str",
                                "intval": "int",
@@ -404,137 +490,161 @@ class ValueValidator(Validator):
         if "value_type" not in self.data:
             raise ValueError("Generic Value column %s without a 'value_type' column" % (name,))
         self.date_format = date_format
+
+        # Measure, Metadata, Parameter
         self.vtype = self.data["value_type"]
         if self.vtype not in dict(Value.VALUE_TYPES):
             raise ValueError("vtype must be one of %s" % (str(
                                                           list(
                                                           dict(
                                         Value.VALUE_TYPES).keys())),))
-        self.name = name
         self.value = self.data[name]
-        print("Inferring value datatype")
-        self.type = self.infer_type(date_format)
-        print("Casting data with type %s" % (self.type,))
+        self.type = self.infer_type()
         self.value_caster = typecast(self.type)
         if self.type is not "datetimeval":
             self.casted_value = self.value_caster(self.value)
         else:
             self.casted_value = self.value_caster(self.value, date_format).format("YYYY-MM-DD")
+        
+        # Set up the link targets
+        if "value_target" in self.data:
+            targets = self.data["value_target"]
+            if isinstance(targets, pd.Series):
+                targets = targets.dropna().values
+            else:
+                targets = pd.Series([targets]).dropna()
+        else:
+            targets = pd.Series([resolve_target(self.data)])
+        self.targets = targets
 
-    def fetch(self):
-        print("Inferred type %s" % (self.type,))
-        kwargs = {"name__exact": self.name,
+    # Values are specific: they must have matching name, type, value, AND links
+    def in_db(self, return_if_found=False):
+        print("checking if in db")
+        kwargs = {"name__exact": self.id_field,
                   self.TYPE_FIELD_MAP[self.type] + "__value__exact": self.casted_value,
                   "value_type__exact": self.vtype}
-        return Value.objects.get(**kwargs)
+        # This gets us all values of a certain name and type (parameter, measure, metadata)
+        # which we can then check for 
+        values = Value.objects.filter(**kwargs)
+        if len(values) == 0:
+            return False
+
+        # First, we whittle it down to make sure it has the fields we're explicitly looking for 
+        for link_field in self.targets:
+            if link_field == "extra_step":
+                link_field = "step_id"
+            model_name = link_field.split("_")[0]
+            link_data = self.data[link_field]
+            if isinstance(link_data, pd.Series):
+                _id_list = link_data.values
+            else:
+                _id_list = [link_data]
+            values = values.annotate(count=Count(plural_mapper[model_name])).filter(count=len(_id_list))
+            if len(values) == 0:
+                return False
+
+            for _id in _id_list:
+                vldtr = validator_mapper[model_name](pd.Series({link_field: _id}))
+                obj = vldtr.fetch()
+                kwargs = {plural_mapper[model_name]: obj}
+                values = values.filter(**kwargs)
+                if len(values) == 0:
+                    return False
+        # Next, we have to make sure it doesn't have any links to any other fields
+        for field in linkable_fields:
+            if field not in self.targets:
+                #Check to make sure that nothing exists in each of these
+                kwargs = {plural_mapper[model_name]: None}
+                values = values.filter(**kwargs) 
+        if return_if_found:
+            return values
+        else:
+            return True 
 
     def validate(self):
+        print("validating")
         #Must raise an exception if failure to add to database
         #Only real requirement is that the linked objects exist
-        for field in self.data.index:
-            if field in id_fields:
-                vldtr = validator_mapper[field](data=self.data)
-                # Each linked item must exist
-                if not vldtr.in_db():
-                    raise NotFoundError("Value not inserted, %s with id %s not found" % (vldtr.model_name, self.data[field]))
-
-
-    def in_db(self):
+        for link_field in self.targets:
+            if link_field == "extra_step":
+                link_field = "step_id"
+            model_name = link_field.split("_")[0]
+            link_data = self.data[link_field]
+            if isinstance(link_data, pd.Series):
+                _id_list = link_data.values
+            else:
+                _id_list = [link_data]
+            for _id in _id_list:
+                vldtr = validator_mapper[model_name](pd.Series({link_field: _id}))
+                obj = vldtr.validate()
+        return True 
+           
+    def fetch(self):
         #Scenarios: in database, but not linked to the proper thing (false)
         # in database, and linked (true)
         # not in database (false)
-        try:
-            kwargs = {"name__exact": self.name,
-                      self.TYPE_FIELD_MAP[self.type] + "__value__exact": self.casted_value,
-                      "value_type__exact": self.vtype}
-            val = Value.objects.get(**kwargs)
-            #All of the id fields in the row must exist and be linked
-            for field in self.data.index:
-                if field in id_fields:
-                    vldtr = validator_mapper[field](data=self.data)
-                    if vldtr.value_field is not None:
-                        try:
-                            obj = vldtr.fetch()
-                            if val not in getattr(obj, vldtr.value_field):
-                                return False
-                        except:
-                            return False
-            return True
-        except MultipleObjectsReturned:
-            raise DuplicateEntryError("Two Value objects with the same name and value discovered. Inconsistent database.")
-        except Value.DoesNotExist:
-            return False
-        except ObjectDoesNotExist:
-            return False
-
-    def resolve_target(self):
-        #Rules:
-        # - "investigation_id" only id -> investigation
-        # - "investigation_id" and "sample_id" -> sample
-        # - "investigation_id" and "sample_id" and "replicate_id" -> replicate
-        # - "process_id" -> process
-        # - "process_id" and "step_id" -> step
-        # - "analysis_id" -> analysis
-        # - "analysis_id" and "process_id" and "result_id" and "source_step_id" and "replicate_id" -> result
-        precedence = ["result_id", "analysis_id", "step_id", "process_id", \
-                      "replicate_id", "sample_id", "investigation_id"]
-        for id_field in precedence:
-            if id_field in self.data:
-                print("Targeting %s" % (id_field,))
-                return id_field
-
+        values = self.in_db(return_if_found=True)
+        if values is False:
+            raise Value.DoesNotExist
+        return values
 
     def save(self):
         # First look to see if a Value with the same content exists, and we link that instead of making a new one
         # If Value does not exist, make the appropriate *Val and Value
         # Find each of the linkable items and add the value to its value_field, making sure that it's the right kind for that linkable
-        permitted_types = {'PA': ['result','step','process','analysis'],
-                           'MD': ['result','analysis','investigation','sample','replicate'],
-                           'ME': ['result','analysis','investigation','sample','replicate']}
+        print('saving value %s' % (self.id_field))
+        permitted_types = {'parameter': ['result','step','process','analysis'],
+                           'metadata': ['result','analysis', 'step', 'process', 'investigation','sample', 'feature'],
+                           'measure': ['result','analysis','investigation','sample', 'feature']}
         try:
-            value = self.fetch()
+            values = self.fetch()
         except Value.DoesNotExist:
-            print("Inferred type %s" % (self.type,))
-            val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
-            val.save()
-            value = Value(content_object=val, name=self.name, value_type=self.vtype)
-            value.save()
+            values = []
         except:
             raise
+  
+        if len(values) == 0:
+            val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
+            val.save()
+            value = Value(content_object=val, name=self.id_field, value_type=self.vtype)
+            value.save()
             # Make sure it's an object that can/should be linked to this value type
-        print("Got value, linking")
-        target_field = self.resolve_target()
-        for field in self.data.index:
-            #This covers replicate_id, replicate_id.1, replicate_id.2 etc.
-            if (field in target_field) and (field.split("_")[0] in permitted_types[self.vtype]):
-                print("Grabbing object %s" % (field,))
-                vldtr = validator_mapper[field.split(".")[0]](data=self.data)
-                # Swap the alternate out if necessary
-                vldtr.data[vldtr.id_field] = self.data[field]
-                #Make the link
-                print(vldtr.value_field)
-                if vldtr.value_field is not None:
-                    print("Fetching")
-                    obj = vldtr.fetch()
-                    print("Linking")
-                    getattr(obj, vldtr.value_field).add(value)
-                    print("Linked")
+        else:
+            return
 
+        for link_field in self.targets:
+            if link_field=="extra_step":
+                link_field="step_id"
+            model_name = link_field.split("_")[0]
+            link_data = self.data[link_field]
+            if isinstance(link_data, pd.Series):
+                _id_list = link_data.values
+            else:
+                _id_list = [link_data]
+            
+            for _id in _id_list:
+                if (link_field.split("_")[0] in permitted_types[self.vtype]):
+                    vldtr = validator_mapper[link_field.split("_")[0]](pd.Series({link_field: _id}))
+                    if vldtr.value_field is not None:
+                        print("Fetching object of type %s, link name %s, name %s, value %s and adding value"%(model_name,_id,self.id_field, self.value))
+                        obj = vldtr.fetch()
+                        getattr(obj, vldtr.value_field).add(value)
 
-    def infer_type(self, date_format):
-        found_types = list(set([x.content_type.model
-            for x in Value.objects.filter(name__exact=self.name,
+    def infer_type(self):
+        print("inferring type of %s" %(self.id_field))
+        found_types = list(set([x.content_type.model 
+            for x in Value.objects.filter(name__exact=self.id_field,
                                           value_type__exact=self.vtype)]))
         if len(found_types) > 1:
             raise DuplicateTypeError("Two types found for value name %s of \
-                                      type %s" % (self.name, self.vtype))
+                                      type %s" % (self.id_field, self.vtype))
         elif len(found_types) == 1:
-            print("Found existing value with type %s" % (found_types[0]))
+            print('found type as %s'%(found_types[0]))
             return found_types[0]
         else:
             strvalue = str(self.value)
             try:
-                arrow.get(strvalue, date_format)
+                arrow.get(strvalue, self.date_format)
                 return "datetimeval"
             except arrow.parser.ParserError:
                 pass
@@ -556,83 +666,43 @@ class ValueValidator(Validator):
             # Default value
             return "strval"
 
-Validators = [InvestigationValidator,
-              ReplicateValidator,
-              ProcessCategoryValidator,
+Validators = [InvestigationValidator, 
               ProcessValidator,
               StepValidator,
               SampleValidator,
+              AnalysisValidator,
+              ResultValidator,
               ValueValidator]
 
-id_fields = ["investigation_id", "process_category_id", "process_id", \
-             "step_id", "sample_id", "replicate_id", "analysis_id", "result_id"]
-
-reserved_fields = id_fields + ["investigation_description", \
-                               "investigation_citation", \
-                               "investigation_institution", \
-                               "process_category_description", \
-                               "process_description", "process_citation", \
-                               "step_method", \
-                               "step_action", \
-                               "step_description", \
-                               "result_type", \
-                               "analysis_location", \
-                               "analysis_date", \
-                               "value_type", \
-                               # Not a primary id field, only used for Result, which is in a custom class
-                               "source_step_id", \
-                               "source_step_method", \
-                               "source_software"]
-
-validator_mapper = {"investigation_id": InvestigationValidator,
-                    "sample_id": SampleValidator,
-                    "replicate_id": ReplicateValidator,
-                    "process_category_id": ProcessCategoryValidator,
-                    "process_id": ProcessValidator,
-                    "step_id": StepValidator,
-                    "analysis_id": AnalysisValidator,
-                    "result_id": ResultValidator,
+validator_mapper = {"investigation": InvestigationValidator,
+                    "sample": SampleValidator,
+                    "process": ProcessValidator,
+                    "step": StepValidator,
+                    "analysis": AnalysisValidator,
+                    "result": ResultValidator,
+                    "feature": FeatureValidator
                     }
 
-
 def resolve_input_row(row):
-    #row: an object s.t. row['sample_id'] gets a single sample id
-    # from e.g. a spreadsheet
-    #We resolve the objects in order that they would need to be created if a
-    # record were to be inserted from scratch, and if every detail were to be
-    # included in a single line for some insane reason
-    #This progressive validation ensures that absolutely everything present in
-    #the Spreadsheet is compatible with the database
-    #It will throw an error if:
-    # - An _id column exists in the input, but not in the database, and other required data is missing (MissingColumnError)
-    # - An _id column exists in the input, but not in the database, and is an integer (InvalidNameError; id is either pk or name, so we don't want ints as names to cause a conflict here)
-    # - An _id column exists in the input, and one of its required fields is also in the input, but the contents differ with what's in the database
-    # - If none of these conditions hold, then either 1) it's in the database, or 2) we can put it in there
-    print("Saving objects...")
-    for field in id_fields:
-        if field in row:
-            validator = validator_mapper[field](data=row)
-            try:
-                print("Validating and saving field %s"%(field,))
-                validator.validate()
-                print("Saving")
-                validator.save()
-                print("saved")
-            except Exception as e:
-                raise e
-    print("Saving values...")
-    for field in row.index:
-        id_substr = False
-        if (not pd.isna(row[field])) & (field not in reserved_fields):
-            for id_field in id_fields:
-                if field in id_field:
-                    id_substr = True
-            if not id_substr:
-                print("Value field: %s" % (field,))
-                print("Value value: %s" % (row[field],))
-                # It's a generic Value field
-                validator = ValueValidator(name=field, data=row)
-                print("Validating")
-                validator.validate()
-                print("Saving")
-                validator.save()
+    primary_target = resolve_target(row)
+    validator = validator_mapper[primary_target.split("_")[0]](data=row)
+    #If there are any pre-requisites from the primary target, it'll
+    # attempt to validate and save them
+    try:
+        print('top level validation')
+        validator.validate()
+        print('top level save')
+        validator.save()
+    except Exception as e:
+        raise e
+    print('going for values')
+    for field, datum in row.iteritems():
+        if (not pd.isna(datum)) & (field not in reserved_fields):
+            print(field, datum)
+            data = row.drop(field)
+            #If duplicates, focus on one
+            data[field] = datum
+            validator = ValueValidator(name=field, data=data)
+            validator.validate()
+            validator.save()
+

@@ -82,9 +82,7 @@ def sample_markdown(pk=None):
 def refresh_automated_report(slug, pk=None):
     Investigation = apps.get_model('db.Investigation')
     Sample = apps.get_model('db.Sample')
-    BiologicalReplicate = apps.get_model('db.BiologicalReplicate')
-    BiologicalReplicateProtocol = apps.get_model('db.BiologicalReplicateProtocol')
-    ComputationalPipeline = apps.get_model('db.ComputationalPipeline')
+    Process = apps.get_model('db.Process')
     
     slug_to_model = {'investigation': Investigation,
                      'sample': Sample}
