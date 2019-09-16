@@ -510,15 +510,16 @@ class ValueValidator(Validator):
         if "value_target" in self.data:
             targets = self.data["value_target"]
             if isinstance(targets, pd.Series):
-                targets = targets.values
+                targets = targets.dropna().values
             else:
-                targets = [targets]
+                targets = pd.Series([targets]).dropna()
         else:
-            targets = [resolve_target(self.data)]
+            targets = pd.Series([resolve_target(self.data)])
         self.targets = targets
 
     # Values are specific: they must have matching name, type, value, AND links
     def in_db(self, return_if_found=False):
+        print("checking if in db")
         kwargs = {"name__exact": self.id_field,
                   self.TYPE_FIELD_MAP[self.type] + "__value__exact": self.casted_value,
                   "value_type__exact": self.vtype}
@@ -561,6 +562,7 @@ class ValueValidator(Validator):
             return True 
 
     def validate(self):
+        print("validating")
         #Must raise an exception if failure to add to database
         #Only real requirement is that the linked objects exist
         for link_field in self.targets:
@@ -590,6 +592,7 @@ class ValueValidator(Validator):
         # First look to see if a Value with the same content exists, and we link that instead of making a new one
         # If Value does not exist, make the appropriate *Val and Value
         # Find each of the linkable items and add the value to its value_field, making sure that it's the right kind for that linkable
+        print('saving value %s' % (self.id_field))
         permitted_types = {'parameter': ['result','step','process','analysis'],
                            'metadata': ['result','analysis', 'step', 'process', 'investigation','sample', 'feature'],
                            'measure': ['result','analysis','investigation','sample', 'feature']}
@@ -623,10 +626,12 @@ class ValueValidator(Validator):
                 if (link_field.split("_")[0] in permitted_types[self.vtype]):
                     vldtr = validator_mapper[link_field.split("_")[0]](pd.Series({link_field: _id}))
                     if vldtr.value_field is not None:
+                        print("Fetching object of type %s, link name %s, name %s, value %s and adding value"%(model_name,_id,self.id_field, self.value))
                         obj = vldtr.fetch()
                         getattr(obj, vldtr.value_field).add(value)
 
     def infer_type(self):
+        print("inferring type of %s" %(self.id_field))
         found_types = list(set([x.content_type.model 
             for x in Value.objects.filter(name__exact=self.id_field,
                                           value_type__exact=self.vtype)]))
@@ -634,6 +639,7 @@ class ValueValidator(Validator):
             raise DuplicateTypeError("Two types found for value name %s of \
                                       type %s" % (self.id_field, self.vtype))
         elif len(found_types) == 1:
+            print('found type as %s'%(found_types[0]))
             return found_types[0]
         else:
             strvalue = str(self.value)
@@ -683,13 +689,16 @@ def resolve_input_row(row):
     #If there are any pre-requisites from the primary target, it'll
     # attempt to validate and save them
     try:
+        print('top level validation')
         validator.validate()
+        print('top level save')
         validator.save()
     except Exception as e:
         raise e
-
+    print('going for values')
     for field, datum in row.iteritems():
         if (not pd.isna(datum)) & (field not in reserved_fields):
+            print(field, datum)
             data = row.drop(field)
             #If duplicates, focus on one
             data[field] = datum

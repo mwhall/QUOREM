@@ -273,7 +273,7 @@ class StepCreate(CreateView):
 class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
-    grid_fields = ['uuid', 'input_file', 'source', 'type', 'samples', 'features', ['analysis', 'source_step']]
+    grid_fields = ['uuid', 'input_file', 'source', 'type', 'samples', 'features', ['analysis', 'source_step'], 'values']
     def get_heading(self):
         return "Result List"
 
@@ -305,13 +305,22 @@ class ResultList(ListSortingView):
             links = self.get_file_links(obj)
             return mark_safe(''.join(links))
             #return self.get_file_name(obj)
+        elif field == 'values':
+            values = ", ".join(np.unique([x.name for x in obj.values.all()]))
+            return values
+        elif field == 'samples':
+            samples = ', '.join(np.unique([x.name for x in obj.samples.all()]))
+            return samples
+        elif field == 'features':
+            feats = ', '.join(np.unique([x.name for x in obj.features.all()]))
+            return feats
         else:
             return super().get_display_value(obj, field)
 
     def get_table_attrs(self):
         return {
             'class': 'table table-bordered table-collapse display-block-condition custom-table',
-            'id' : 'process_table',
+            'id' : 'result_table',
         }
 
 class ProcessList(ListSortingView):
