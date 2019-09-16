@@ -28,13 +28,13 @@ from db.views import (
     StepList, StepCreate,
     ReplicateList, FeatureList,
 #    ReplicateDetail, ReplicateUpdate, ReplicateList, ReplicateCreate,
-    SampleDetail, SampleList, SampleUpdate, #SampleCreate, 
+    SampleDetail, SampleList, SampleUpdate, #SampleCreate,
     UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
     #analysis page
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
-    PlotAggregateView, PlotTrendView,
+    PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
 )
 
 urlpatterns = [
@@ -152,6 +152,8 @@ urlpatterns = [
     path('analyze/plot/aggregate/', PlotAggregateView.as_view(), name='plot_aggregate'),
     path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
     ## Trend Routing
+    path('ajax/trendx-options/', ajax_plot_trendx_view, name="ajax_trend_x_options"),
+    path("ajax/trendy-options/", ajax_plot_trendy_view, name="ajax_trend_y_options"),
     path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
