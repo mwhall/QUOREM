@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'accounts',
     'landingpage',
     'django_tables2',
+    'dal',
+    'dal_select2',
     #postgres, needed for search functionality
     'django.contrib.postgres',
     #'import_export',

@@ -1,3 +1,4 @@
+import copy
 import arrow
 import uuid
 import pandas as pd
@@ -119,13 +120,17 @@ class Validator():
                 raise MissingColumnError("Columns " + \
                         ", ".join(missing_fields) + " missing and required")
 
-            for field in self.required_if_new + self.optional_fields:
-                if field == "extra_step":
-                    field = "step_id"
-                if (field != self.id_field) and (field in id_fields) and (field in self.data):
-                    data = self.data.drop(self.id_field)
-                    vldtr = validator_mapper[field.split("_")[0]](data=data)
-                    vldtr.validate()
+
+            for field, datum in self.data.iteritems():
+                if field in self.required_if_new + self.optional_fields:
+                    if field == "extra_step":
+                        field = "step_id"
+                    if (field != self.id_field) and (field in id_fields) and (field in self.data):
+                        drop_fields = [self.id_field] + [x for x in self.data.index if field in x]
+                        data = self.data.drop(drop_fields)
+                        data[field] = datum
+                        vldtr = validator_mapper[field.split("_")[0]](data=data)
+                        vldtr.validate()
 
         #if in database, make sure all their available data matches ours,
         #if not it's mistaken identity
@@ -203,6 +208,7 @@ class Validator():
                     datum = vldtr.fetch()
                 else:
                     # We have to make it
+                    vldtr.validate()
                     datum = vldtr.save()
             elif (field in category_fields) and (field == self.id_field.split("_")[0] + "_category"):
                 # Grab the category, or make it if it's new
@@ -221,10 +227,30 @@ class Validator():
                 categories_to_add.append(cat)
             elif (field in upstream_fields) and (field in self.django_mapping):
                 # Grab the upstream item, depending on what it is
+                print("Validating upstream value for %s" % (self.data[self.id_field],))
                 model_name = field.split("_")[1]
-                vldtr = validator_mapper[field.split("_")[1]](data=pd.Series({model_name + "_id": datum}))
-                upobj = vldtr.fetch()
-                upstream_to_add.append(upobj)
+                if model_name == "step":
+                    print("Considering %s upstream of %s" %(self.data[field], self.data[self.id_field]))
+                vldtr = validator_mapper[model_name](data=self.data)
+                keep = vldtr.required_if_new + vldtr.optional_fields
+                drop_fields = [field] + [x for x in data.index if x not in keep]
+                data = copy.deepcopy(self.data)
+                data = data.drop(drop_fields)
+                data[model_name+"_id"] = datum
+                print(data)
+                vldtr = validator_mapper[model_name](data=data)
+                upobj = None
+                try:
+                    upobj = vldtr.fetch()
+                except vldtr.model.DoesNotExist:
+                    try:
+                        vldtr.validate()
+                        vldtr.save()
+                        upobj = vldtr.fetch()
+                    except:
+                        raise ValueError("Error when trying to validate and save referenced upstream object that was not found in database")
+                if upobj:
+                    upstream_to_add.append(upobj)
             if field in self.manytomany_fields:
                 m2m_links.append((field, datum))
             elif (field not in upstream_fields) and (field not in category_fields) and (field in self.django_mapping):
@@ -305,10 +331,11 @@ class ProcessValidator(Validator):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.required_if_new = ["process_description", "process_citation"]
+        self.required_if_new = ["process_citation"]
+        self.optional_fields = ["process_description"]
         self.django_mapping = {self.id_field: "name",
-                               self.required_if_new[0]: "description",
-                               self.required_if_new[1]: "citation",
+                               self.optional_fields[0]: "description",
+                               self.required_if_new[0]: "citation",
                                "upstream_process": "upstream"}
 
 class StepValidator(Validator):
@@ -319,12 +346,12 @@ class StepValidator(Validator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.required_if_new = ["process_id",
-                                "step_description"]
+        self.required_if_new = ["process_id"]
+        self.optional_fields = ["step_description"]
         self.manytomany_fields = ["process_id"]
         self.django_mapping = {self.id_field: "name",
                                self.required_if_new[0]: "processes",
-                               self.required_if_new[1]: "description",
+                               self.optional_fields[0]: "description",
                                "upstream_step": "upstream"}
 
 class AnalysisValidator(Validator):
@@ -448,6 +475,7 @@ class ResultValidator(Validator):
         result.features.add(*features)
         result.upstream.add(*upstream)
         result.categories.add(*categories)
+        return result
         #TODO:
         # If source_step not in analysis.process, then it must be added to analysis.extra_steps
 
@@ -594,7 +622,7 @@ class ValueValidator(Validator):
         # Find each of the linkable items and add the value to its value_field, making sure that it's the right kind for that linkable
         print('saving value %s' % (self.id_field))
         permitted_types = {'parameter': ['result','step','process','analysis'],
-                           'metadata': ['result','analysis', 'step', 'process', 'investigation','sample', 'feature'],
+                           'metadata': ['result','analysis', 'investigation','sample', 'feature'],
                            'measure': ['result','analysis','investigation','sample', 'feature']}
         try:
             values = self.fetch()
@@ -629,6 +657,7 @@ class ValueValidator(Validator):
                         print("Fetching object of type %s, link name %s, name %s, value %s and adding value"%(model_name,_id,self.id_field, self.value))
                         obj = vldtr.fetch()
                         getattr(obj, vldtr.value_field).add(value)
+        return value
 
     def infer_type(self):
         print("inferring type of %s" %(self.id_field))

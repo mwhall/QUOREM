@@ -25,7 +25,7 @@ from db.views import (
     InvestigationUpdate,
     ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
     ResultList,
-    StepList, StepCreate,
+    StepList, StepCreate, StepDetail,
     FeatureList,
     SampleDetail, SampleList, SampleUpdate, #SampleCreate, 
     UploadList, UploadInputFileDetail,
@@ -35,6 +35,7 @@ from db.views import (
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
     PlotAggregateView, PlotTrendView,
 )
+from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
 urlpatterns = [
     # Main page routing
@@ -106,16 +107,16 @@ urlpatterns = [
         name = 'result_all',
         kwargs={'view_title': "Result List", 'alllow_anonymous': False}),
 
-    # Process Step Routing
+    # Step Routing
     re_path(r'step/all/$', StepList.as_view(),
             name='step_all',
             kwargs={'view_title': "All Steps"}),
 #    re_path(r'step/create/$', StepCreate.as_view(),
 #        name = 'step_create',
 #        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
-#    re_path(r'process/step/(?P<process_step_id>\d+)/$', StepDetail.as_view(),
-#        name = 'process_step_detail',
-#        kwargs={'view_title': "Process Step Detail"}),
+    re_path(r'step/(?P<step_id>\d+)/$', StepDetail.as_view(),
+        name = 'step_detail',
+        kwargs={'view_title': "Step Detail"}),
 #    re_path(r'process/step/edit/(?P<process_step_id>\d+)/$', StepUpdate.as_view(),
 #        name = 'process_step_update',
 #        kwargs = {'view_title': "Process Step Update", 'allow_anonymous': False}),
@@ -141,6 +142,14 @@ urlpatterns = [
     path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
     ## Trend Routing
     path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
+
+    ## Autocomplete Routing
+    re_path(r'^value-autocomplete/$',
+            ValueAutocomplete.as_view(),
+            name='value-autocomplete'),
+    re_path(r'^category-autocomplete/$',
+            CategoryAutocomplete.as_view(),
+            name='category-autocomplete'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

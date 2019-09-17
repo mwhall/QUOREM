@@ -10,7 +10,6 @@
   {% block header %}
   {% endblock %}
   {% block body -%}
-
   <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
@@ -57,6 +56,7 @@
       </header>
       <main class="col-md-9">
         <div class="container">
+
           {% if messages -%}
           {% include 'base_messages.htm' -%}
           {% endif -%}
@@ -68,6 +68,10 @@
   </div>
   {% endblock body -%}
   {% include 'base_bottom_scripts.htm' -%}
+  {% if form -%}
+  <script type="text/javascript" src="{{ static('admin/js/vendor/jquery/jquery.js') }}"></script>
+  {{ form.media }}
+  {% endif -%}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
   <script type="text/javascript">
     $(function() {

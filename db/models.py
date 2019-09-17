@@ -83,7 +83,7 @@ class Sample(models.Model):
     investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
     process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
 
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
     categories = models.ManyToManyField('Category', related_name='samples', blank=True)
@@ -115,7 +115,7 @@ class Process(models.Model):
     description = models.TextField(blank=True)
     citation = models.TextField(blank=True)
 
-    upstream = models.ManyToManyField('self', related_name="downstream", blank=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name="downstream", blank=True)
 
     parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
@@ -145,8 +145,7 @@ class Step(models.Model):
     description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
-
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
     search_vector = SearchVectorField(null=True)
@@ -210,7 +209,7 @@ class Result(models.Model):
     # Samples that this thing is the result for
     samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
     features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
     categories = models.ManyToManyField('Category', related_name='results', blank=True)
@@ -243,6 +242,8 @@ class Category(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['name', 'category_of'], name='Only one category of each name per model')
             ]
+    def __str__(self):
+        return self.name
  
 ### Key-Value storage for objects
 

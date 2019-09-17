@@ -39,7 +39,7 @@ from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
     ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps,
     ResultDisplayForm,
-    SampleDisplayForm, SampleForm, StepForm,
+    SampleDisplayForm, SampleForm, StepForm, StepDisplayForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
@@ -111,7 +111,7 @@ class InvestigationList(ListSortingView):
     model = Investigation
     allowed_sort_orders = '__all__'
     #allowed_filter_fields = {'description': None}
-    grid_fields = ['name', 'institution', 'description']
+    grid_fields = ['name', 'institution', 'description', 'categories']
     list_display = ['edit_investigation']
     def get_heading(self):
         return "Investigation List"
@@ -129,20 +129,18 @@ class InvestigationList(ListSortingView):
         # is_authenticated is not callable in Django 2.0.
         if self.request.user.is_authenticated:
             links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>',
+                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
                 reverse('investigation_update', kwargs={'investigation_id': obj.pk})
             ))
-        # TODO: Fix metadata display
-        #    links.append(format_html(
-        #        ' <a href="{}"><span class="iconui iconui-file"></span></a>)',
-        #        reverse('investigation_metadata_detail', kwargs={'investigation_id': obj.pk})
-        #    ))
         return links
 
     def get_display_value(self, obj, field):
         if field == 'name':
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
+        elif field == 'categories':
+            cats = [x.name for x in obj.categories.all()]
+            return mark_safe(', '.join(cats))
         else:
             return super().get_display_value(obj, field)
 
@@ -238,32 +236,41 @@ class FeatureList(ListSortingView):
     model = Feature
     allowed_sort_orders = '__all__'
 
+class StepDetail(InlineDetailView):
+    pk_url_kwarg = "step_id"
+    form = StepDisplayForm
+    def __init__(self, *args, **kwargs):
+        super(StepDetail, self).__init__(*args, **kwargs)
+
 class StepList(ListSortingView):
     model = Step
     allowed_sort_orders = '__all__'
-    grid_fields = ['name']
+    grid_fields = ['name', 'parameters']
     def get_heading(self):
         return "Step List"
-#    def get_name_links(self, obj):
-#        links = [format_html(
-#            '<a href="{}">{}</a>',
-#            reverse('step_detail', kwargs={'step_id': obj.pk}),
-#            obj.name
-#        )]
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('step_detail', kwargs={'step_id': obj.pk}),
+            obj.name
+        )]
 #        # is_authenticated is not callable in Django 2.0.
 #        if self.request.user.is_authenticated:
 #            links.append(format_html(
 #                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
 #                reverse('step_update', kwargs={'step_id': obj.pk})
 #            ))
-#        return links
+        return links
 
-#    def get_display_value(self, obj, field):
-#        if field == 'name':
-#            links = self.get_name_links(obj)
-#            return mark_safe(''.join(links))
-#        else:
-#            return super().get_display_value(obj, field)
+    def get_display_value(self, obj, field):
+        if field == 'name':
+            links = self.get_name_links(obj)
+            return mark_safe(''.join(links))
+        elif field == 'parameters':
+            parameters = "<br/>".join([x.name + ": " + str(x.content_object.value) for x in obj.parameters.all()])
+            return mark_safe(parameters)
+        else:
+            return super().get_display_value(obj, field)
 
 class StepCreate(CreateView):
     template_name = "base.htm"

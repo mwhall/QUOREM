@@ -1,6 +1,6 @@
 from django import forms
 from django.forms.utils import flatatt
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 from .models import (
     Process,
@@ -10,7 +10,7 @@ from .models import (
 )
 
 from django_jinja_knockout.forms import (
-    DisplayModelMetaclass, FormWithInlineFormsets, RendererModelForm,
+    DisplayModelMetaclass, FormWithInlineFormsets, BootstrapModelForm,
     ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin,
     BootstrapModelForm
 )
@@ -21,6 +21,7 @@ from django.forms import inlineformset_factory, ModelForm
 #Stuff for custom FieldSetForm
 from django.forms.models import ModelFormOptions
 
+from dal import autocomplete
 
 """
 Custom Form Classes
@@ -70,7 +71,7 @@ Django-Jinja-Knockout Forms
 
 #Base Forms and Display Forms
 
-class UserProfileForm(RendererModelForm):
+class UserProfileForm(BootstrapModelForm):
     #ModelForm will auto-generate fields which dont already exist
     #Therefore, creating fields prevents auto-generation.
     class Meta:
@@ -106,13 +107,13 @@ class NewUploadForm(ModelForm):
 
 #This form used only for display purposes
 class UploadInputFileDisplayForm(WidgetInstancesMixin,
-                                RendererModelForm,
+                                BootstrapModelForm,
                                 metaclass=DisplayModelMetaclass):
         class Meta:
             model=UploadInputFile
             fields = '__all__'
 
-class ErrorDisplayForm(WidgetInstancesMixin, RendererModelForm,
+class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
                         metaclass=DisplayModelMetaclass):
     class Meta:
         model = ErrorMessage
@@ -146,24 +147,30 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 
 #### Investigation Forms
 
-class InvestigationForm(RendererModelForm):
+class InvestigationForm(BootstrapModelForm):
     class Meta:
         model = Investigation
-        exclude = ['search_vector', 'values']
+        exclude = ['search_vector']
+        attrs = {'data-minimum-input-length':3,
+                 'data-placeholder': 'Type to search...'}
+        widgets = {'values': autocomplete.ModelSelect2Multiple(url='value-autocomplete',
+                                                               attrs=attrs),
+                   'categories': autocomplete.ModelSelect2Multiple(url='category-autocomplete',
+                                                                   attrs=attrs)}
 
-class InvestigationDisplayForm(RendererModelForm,
+class InvestigationDisplayForm(BootstrapModelForm,
                                metaclass=DisplayModelMetaclass):
     class Meta:
         model = Investigation
         exclude = ['search_vector']
 
-class SampleForm(RendererModelForm):
+class SampleForm(BootstrapModelForm):
     investigation = NameLabelChoiceField(queryset = Investigation.objects.all())
     class Meta:
         model = Sample
         exclude = ['search_vector']
 
-class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=DisplayModelMetaclass):
+class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         def get_name(self, value):
             return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
@@ -175,31 +182,44 @@ class SampleDisplayForm(WidgetInstancesMixin, RendererModelForm, metaclass=Displ
         widgets = {'name': DisplayText(get_text_method=get_name),
                    'investigation': DisplayText(get_text_method=get_investigation)}
 
-class ProcessForm(RendererModelForm):
+class ProcessForm(BootstrapModelForm):
     class Meta:
         model = Process
         exclude = ['search_vector']
 
-class ProcessDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = Process
         exclude = ['search_vector']
 
-class StepForm(RendererModelForm):
-#    step = NameLabelChoiceField(queryset=Step.objects.all())
-#    step.label = "Process Step"
+class StepForm(BootstrapModelForm):
     class Meta:
         model = Step
-        exclude = ['search_vector']
+        exclude = ('search_vector',)
 
-class StepDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+class InlineStepDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = Step
-        exclude = ['search_vector']
+        exclude = ('search_vector',)
+
+class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Downstream", widget=DisplayText)
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['downstream'] = [x for x in kwargs['instance'].downstream.all()]
+        super(StepDisplayForm, self).__init__(*args, **kwargs)
+        self.fields.move_to_end('upstream')
+        self.fields.move_to_end('downstream')
+        self.fields.move_to_end('categories')
+
+    class Meta:
+        model = Step
+        exclude = ('search_vector',)
 
 # No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
 
-class ResultDisplayForm(RendererModelForm, metaclass=DisplayModelMetaclass):
+class ResultDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = Result
         exclude = ['search_vector']
@@ -234,7 +254,7 @@ class InvestigationDisplayWithInlineSamples(FormWithInlineFormsets):
 
 StepDisplayFormset = ko_inlineformset_factory(Process,
                                               Step.processes.through,
-                                              form=StepDisplayForm)
+                                              form=InlineStepDisplayForm)
 
 StepFormset = ko_inlineformset_factory(Process,
                                        Step.processes.through,
