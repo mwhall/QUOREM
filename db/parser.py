@@ -50,7 +50,7 @@ plural_mapper = {"investigation": "investigations",
                  "feature": "features"}
 
 def resolve_target(row):
-    precedence = ["result_id", "sample_id", "step_id", "process_id", "analysis_id", \
+    precedence = ["result_id", "sample_id", "process_id", "step_id", "analysis_id", \
                   "investigation_id", "feature_id"]
     for id_field in precedence:
         if id_field in row:
@@ -344,9 +344,11 @@ class ProcessValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.required_if_new = ["process_citation"]
-        self.optional_fields = ["process_description"]
+        self.optional_fields = ["process_description", "step_id"]
+        self.manytomany_fields = ["step_id"]
         self.django_mapping = {self.id_field: "name",
                                self.optional_fields[0]: "description",
+                               self.optional_fields[1]: "steps",
                                self.required_if_new[0]: "citation",
                                "upstream_process": "upstream"}
 
@@ -359,11 +361,9 @@ class StepValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.required_if_new = []
-        self.optional_fields = ["process_id", "step_description"]
-        self.manytomany_fields = ["process_id"]
+        self.optional_fields = ["step_description"]
         self.django_mapping = {self.id_field: "name",
-                               self.optional_fields[0]: "processes",
-                               self.optional_fields[1]: "description",
+                               self.optional_fields[0]: "description",
                                "upstream_step": "upstream"}
 
 class AnalysisValidator(Validator):
@@ -721,7 +721,7 @@ def resolve_input_row(row):
     #If there are any pre-requisites from the primary target, it'll
     # attempt to validate and save them
     try:
-        print('top level validation')
+        print('top level validation of %s' % (primary_target,))
         validator.validate()
         print('top level save')
         validator.save()

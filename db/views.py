@@ -37,9 +37,10 @@ from .models import (
 
 from .forms import (
     InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
-    ProcessForm, ProcessDisplayWithInlineSteps, ProcessWithInlineSteps,
+    ProcessForm, ProcessDisplayForm,
     ResultDisplayForm,
-    SampleDisplayForm, SampleForm, StepForm, StepDisplayForm,
+    SampleDisplayForm, SampleForm, 
+    StepForm, StepDisplayForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
@@ -267,8 +268,9 @@ class StepList(ListSortingView):
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
         elif field == 'parameters':
-            parameters = "<br/>".join([x.name + ": " + str(x.content_object.value) for x in obj.parameters.all()])
-            return mark_safe(parameters)
+            default_params = [x.name + ": " + str(x.content_object.value) \
+                               for x in obj.parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
+            return mark_safe('</br>'.join(default_params))
         else:
             return super().get_display_value(obj, field)
 
@@ -360,12 +362,12 @@ class ProcessList(ListSortingView):
 
 class ProcessDetail(InlineDetailView):
     pk_url_kwarg = 'process_id'
-    form_with_inline_formsets = ProcessDisplayWithInlineSteps
+    form = ProcessDisplayForm
 
 class ProcessCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     pk_url_kwarg = 'process_id'
-    form_with_inline_formsets = ProcessWithInlineSteps
+    form = ProcessForm
     def get_heading(self):
         return "Create New Process"
     def get_bs_form_opts(self):
@@ -381,7 +383,7 @@ class ProcessCreate(BsTabsMixin, InlineCreateView):
 class ProcessUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
     pk_url_kwarg = 'process_id'
-    form_with_inline_formsets = ProcessWithInlineSteps
+    form = ProcessForm
     def get_bs_form_opts(self):
         return {
             'title': 'Update Process',

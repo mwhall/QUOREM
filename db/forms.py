@@ -2,6 +2,7 @@ from django import forms
 from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
 from django.urls import reverse
+from django.db import models
 from .models import (
     Process,
     Step, Result, Value,
@@ -187,10 +188,22 @@ class ProcessForm(BootstrapModelForm):
         model = Process
         exclude = ['search_vector']
 
+def get_step_link(form, value):
+    return format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': Step.objects.get(name=value).pk})}), value)
+
 class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps", widget=DisplayText(get_text_method=get_step_link))
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['steps'] = [x for x in kwargs['instance'].steps.all()]
+        super(ProcessDisplayForm, self).__init__(*args, **kwargs)
+        self.fields.move_to_end('steps')
+        self.fields.move_to_end('categories')
+
     class Meta:
         model = Process
-        exclude = ['search_vector']
+        exclude = ['search_vector', 'parameters']
 
 class StepForm(BootstrapModelForm):
     class Meta:
@@ -203,11 +216,12 @@ class InlineStepDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass)
         exclude = ('search_vector',)
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Downstream", widget=DisplayText)
+    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x for x in kwargs['instance'].downstream.all()]
+            initial['parameters'] = [x for x in kwargs['instance'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
         super(StepDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         self.fields.move_to_end('downstream')
@@ -216,6 +230,8 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
     class Meta:
         model = Step
         exclude = ('search_vector',)
+        widgets = {'upstream': DisplayText(get_text_method=get_step_link)}
+#                   'downstream': DisplayText(get_text_method=get_step_link)}
 
 # No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
 
@@ -251,27 +267,6 @@ class InvestigationDisplayWithInlineSamples(FormWithInlineFormsets):
      FormsetClasses = [InvestigationDisplaySampleFormset]
      def get_formset_inline_title(self, formset):
          return "Samples"
-
-StepDisplayFormset = ko_inlineformset_factory(Process,
-                                              Step.processes.through,
-                                              form=InlineStepDisplayForm)
-
-StepFormset = ko_inlineformset_factory(Process,
-                                       Step.processes.through,
-                                       form=StepForm,
-                                       extra=0, min_num=0)
-
-class ProcessDisplayWithInlineSteps(FormWithInlineFormsets):
-    FormClass = ProcessDisplayForm
-    FormsetClasses = [StepDisplayFormset]
-    def get_formset_inline_title(self, formset):
-        return "Process Step"
-
-class ProcessWithInlineSteps(FormWithInlineFormsets):
-    FormClass = ProcessForm
-    FormsetClasses = [StepFormset]
-    def get_formset_inline_title(self, formset):
-        return "Process Steps"
 
 ##### Search form
 class SearchBarForm(forms.Form):
