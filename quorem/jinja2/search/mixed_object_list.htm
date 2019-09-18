@@ -1,6 +1,6 @@
 <div class="list-group">
   {% for item in results %}
-    {% if item.type == 'investigation' %}
+    {% if item.otype == 'investigation' %}
       <a class="list-group-item list-group-item-action flex-column align-items-start"
       href="/investigation/{{ item.obj.pk }}">
         <div class="d-flex w-100 justify-content-between">
@@ -8,8 +8,11 @@
         </div>
         <p class="mb-1">Description: {{ item.obj.description|highlight(q) }}</p>
         <p class="mb-1">Institution: {{ item.obj.institution|highlight(q) }}</p>
+        {% if item.obj.samples.count() %}
+        <p class="mb-1">Samples: {{ item.obj.samples.count() }}</p>
+        {% endif %}
       </a>
-    {% elif item.type == 'sample' %}
+    {% elif item.otype == 'sample' %}
       <a class="list-group-item list-group-item-action flex-column align-items-start"
       href="/sample/{{ item.obj.pk }}">
         <div class="d-flex w-100 justify-content-between">
@@ -18,15 +21,17 @@
       <p class="mb-1">Investigation: {{ item.obj.investigation.name|highlight(q) }}</p>
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>
-    {% elif item.type == 'replicate' %}
-    <a class="list-group-item list-group-item-action flex-column align-items-start"
-    href="/sample/{{ item.obj.sample.pk }}">
-      <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Replicate {{ item.obj.name|highlight(q) }} for Sample {{ item.obj.sample.name|highlight(q) }}</h5>
-      </div>
-      <p class="mb-1">TODO: put some info from replicate model here, in the search results. </p>
-    </a>
-    {% elif item.type == 'process' %}
+     {% elif item.otype == 'feature' %}
+      <a class="list-group-item list-group-item-action flex-column align-items-start"
+      href="/feature/{{ item.obj.pk }}">
+        <div class="d-flex w-100 justify-content-between">
+          <h5 class="mb-1">Feature {{ item.obj.name|highlight(q) }}</h5>
+        </div>
+      {% if item.obj.observed_samples.count() %}
+      <p class="mb-1">Observed in {{ item.obj.observed_samples.count()|highlight(q) }} Samples</p>
+      {% endif %}
+      <p class="mb-1">A later iteration will include more information here.</p>
+      </a>   {% elif item.otype == 'process' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/process/{{ item.obj.pk }}">
       <div class="d-flex w-100 justify-content-between">
@@ -34,13 +39,16 @@
       </div>
       <p class="mb-1">{{ item.obj.description }} </p>
     </a>
-    {% elif item.type == 'processStep' %}
+    {% elif item.otype == 'step' %}
     <a class="list-group-item list-group-item-action flex-column align-items start"
     href="/process/step/{{ item.obj.pk }}">
       <div class="d-flex w-100 justify-content-between">
-        <h5 class="mb-1">Process step {{ item.obj.name }} </h5>
+        <h5 class="mb-1">Step: {{ item.obj.name }} </h5>
       </div>
       <p class="mb-1"> {{ item.obj.description }}</p>
+      {% if item.obj.processes.count() > 0 %}
+      <p class="mb-1"> Used in {% for process in item.obj.processes.all() %} {{ process.name }} {% endfor %}</p>
+      {% endif %}
     </a>
     {% endif %}
   {% endfor %}

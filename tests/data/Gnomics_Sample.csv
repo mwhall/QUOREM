@@ -1,21 +1,21 @@
-investigation_id	process_id	sample_id	upstream_sample	sample_category	value_type	species	sex	captive	source_site	collection_date
-An exploration of gnomish genomics	Enemy Capturing	GreenOoze1		live	metadata	ooze	male	yes		
-An exploration of gnomish genomics	Enemy Capturing	GreenOoze2		live	metadata	ooze	female	escaped through drain		
-An exploration of gnomish genomics	Enemy Capturing	Troll1		live	metadata	troll	male	yes		
-An exploration of gnomish genomics	Enemy Capturing	Troll2		live	metadata	troll	female	yes		
-An exploration of gnomish genomics	Enemy Capturing	Dwarf1		live	metadata	dwarf	male	yes		
-An exploration of gnomish genomics	Enemy Capturing	Dwarf2		live	metadata	dwarf	female	tunneled out		
-An exploration of gnomish genomics	Enemy Capturing	Orc1		live	metadata	orc	male	yes		
-An exploration of gnomish genomics	Enemy Capturing	Orc2		live	metadata	orc	female	yes		
-An exploration of gnomish genomics	Enemy Capturing	Elf1		live	metadata	elf	male	yes		
-An exploration of gnomish genomics	Enemy Capturing	Elf2		live	metadata	elf	female	yes		
-An exploration of gnomish genomics	Enemy Capturing	Goblin1		live	metadata	goblin	male	bribed a guard		
-An exploration of gnomish genomics	Enemy Capturing	Goblin2		live	metadata	goblin	female	yes		
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T1_1	Troll1	part	metadata				toenail	1979-12-18
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T1_2	Troll1	part	metadata				ear hair	1979-12-18
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O1_1	Orc1	part	metadata				blood	1979-12-18
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O1_2	Orc1	part	metadata				tusk	1979-12-18
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T2_1	Troll2	part	metadata				toenail	1979-12-19
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	T2_2	Troll2	part	metadata				ear hair	1979-12-19
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O2_1	Orc2	part	metadata				blood	1979-12-19
-An exploration of gnomish genomics	Mechawrench's Proprietary Sequencing Tech	O2_2	Orc2	part	metadata				tusk	1979-12-19
+investigation_id	analysis_id	analysis_location	process_id	step_id	sample_id	upstream_sample	sample_category	value_type	species	sex	captive	source_site	collection_date
+An exploration of gnomish genomics	Electric net adventures!	Dark Cavern	Enemy Capturing	electronet_capture	GreenOoze1		live	metadata	ooze	male	yes		
+An exploration of gnomish genomics	Electric net adventures!	Dark Cavern	Enemy Capturing	electronet_capture	GreenOoze2		live	metadata	ooze	female	escaped through drain		
+An exploration of gnomish genomics	Electric net adventures!	Dark Cavern	Enemy Capturing	electronet_capture	Troll1		live	metadata	troll	male	yes		
+An exploration of gnomish genomics	Wintertime enermy adventure	Misty Docks	Enemy Capturing	electronet_capture	Troll2		live	metadata	troll	female	yes		
+An exploration of gnomish genomics	Wintertime enermy adventure	Misty Docks	Enemy Capturing	electronet_capture	Dwarf1		live	metadata	dwarf	male	yes		
+An exploration of gnomish genomics	Wintertime enermy adventure	Misty Docks	Enemy Capturing	electronet_capture	Dwarf2		live	metadata	dwarf	female	tunneled out		
+An exploration of gnomish genomics	Wintertime enermy adventure	Misty Docks	Enemy Capturing	electronet_capture	Orc1		live	metadata	orc	male	yes		
+An exploration of gnomish genomics	Wintertime enermy adventure	Misty Docks	Enemy Capturing	electronet_capture	Orc2		live	metadata	orc	female	yes		
+An exploration of gnomish genomics	Catching spies	Home base	Enemy Capturing	electronet_capture	Elf1		live	metadata	elf	male	yes		
+An exploration of gnomish genomics	Catching spies	Home base	Enemy Capturing	electronet_capture	Elf2		live	metadata	elf	female	yes		
+An exploration of gnomish genomics	Catching spies	Home base	Enemy Capturing	electronet_capture	Goblin1		live	metadata	goblin	male	bribed a guard		
+An exploration of gnomish genomics	Catching spies	Home base	Enemy Capturing	electronet_capture	Goblin2		live	metadata	goblin	female	yes		
+An exploration of gnomish genomics	Sequencing batch, winter	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	T1_1	Troll1	part	metadata				toenail	1979-12-18
+An exploration of gnomish genomics	Sequencing batch, winter	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	T1_2	Troll1	part	metadata				ear hair	1979-12-18
+An exploration of gnomish genomics	Sequencing batch, winter	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	O1_1	Orc1	part	metadata				blood	1979-12-18
+An exploration of gnomish genomics	Sequencing batch, winter	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	O1_2	Orc1	part	metadata				tusk	1979-12-18
+An exploration of gnomish genomics	Sequencing batch, summer	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	T2_1	Troll2	part	metadata				toenail	1979-12-19
+An exploration of gnomish genomics	Sequencing batch, summer	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	T2_2	Troll2	part	metadata				ear hair	1979-12-19
+An exploration of gnomish genomics	Sequencing batch, summer	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	O2_1	Orc2	part	metadata				blood	1979-12-19
+An exploration of gnomish genomics	Sequencing batch, summer	Ironforge	Mechawrench's Proprietary Sequencing Tech	shotgun	O2_2	Orc2	part	metadata				tusk	1979-12-19

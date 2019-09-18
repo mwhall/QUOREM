@@ -30,7 +30,7 @@ import io
 
 from .formatters import guess_filetype
 from .models import (
-        Sample, Investigation, Process,
+        Sample, Investigation, Process, Analysis,
         Step, Result, Feature, Value,
         UploadInputFile, load_mixed_objects, UserProfile
 )
@@ -413,9 +413,11 @@ def search(request):
     ## (logic_model_type, db_model_type, user_facing_model_string)
     model_types= [('investigation', Investigation, 'Investigations'),
                   ('sample', Sample, 'Samples'),
-                  ('replicate', Replicate, 'Replicates'),
-                  ('process', Process, 'Processs'),
-                  ('processStep', Step, 'Computational Process Step' ),]
+                  ('feature', Feature, 'Features'),
+                  ('analysis', Analysis, 'Analyses'),
+                  ('process', Process, 'Processes'),
+                  ('step', Step, 'Steps' ),
+                  ('result', Result, 'Results'),]
 
     ## Retrieve values from request
     #q or q2 is search term.
@@ -424,7 +426,7 @@ def search(request):
         q = request.GET.get('q2', '').strip()
 
     ##From search form
-    selected_type = request.GET.get('type', '')
+    selected_type = request.GET.get('otype', '')
     meta = request.GET.get('meta', '')
     min_selected = request.GET.get('min_value', '')
     max_selected = request.GET.get('max_value', '')
@@ -435,7 +437,7 @@ def search(request):
     #initialize vars for query
     query = None
     rank_annotation = None
-    values = ['pk','type']
+    values = ['pk','otype']
     if q:
         query = SearchQuery(q)
         rank_annotation = SearchRank(F('search_vector'), query)
@@ -446,7 +448,7 @@ def search(request):
    #Allows iterative building of queryset.
     def make_queryset(model_type, type_name):
         qs = model_type.objects.annotate(
-            type=models.Value(type_name, output_field=models.CharField())
+            otype=models.Value(type_name, output_field=models.CharField())
         )
         #Filter metadata ranges
         if meta:
@@ -476,7 +478,7 @@ def search(request):
     #Model type is arbitrary.
     #Django will compile away the empty qs when making the query.
     qs = Investigation.objects.annotate(
-        type=models.Value('empty', output_field=models.CharField))
+        otype=models.Value('empty', output_field=models.CharField))
 
     if q:
         qs = qs.annotate(rank=rank_annotation)
@@ -503,7 +505,7 @@ def search(request):
     #create a dict of types and counts to pass to the view.
     type_counts = sorted(
         [
-            {'type': type_name, 'n': value['count'], 'name': value['name']}
+            {'otype': type_name, 'n': value['count'], 'name': value['name']}
             for type_name, value in type_counts_raw.items()
         ],
         key=lambda t: t['n'], reverse=True
@@ -524,7 +526,7 @@ def search(request):
     results = []
     for obj in load_mixed_objects(page.object_list, model_types):
         results.append({
-            'type': obj.original_dict['type'],
+            'otype': obj.original_dict['otype'],
             'rank': obj.original_dict.get('rank'),
             'obj': obj,
         })
@@ -536,7 +538,7 @@ def search(request):
 
     #selected Filters
     selected = {
-        'type': selected_type,
+        'otype': selected_type,
     }
 
     #Find value ranges for relevant queries.
@@ -544,25 +546,18 @@ def search(request):
     ###########################################################################
     ### TODO: With new db, this if/else can be replaced with generic statements.
 
-    if selected['type'] == 'sample':
-        metadata = Value.objects.filter(samples__in=Sample.objects.all()).order_by('name').distinct('name')
+    if selected['otype'] == 'sample':
+        metadata = Value.objects.filter(samples__isnull=False).order_by('name').distinct('name')
         if meta:
-            vals = Value.objects.filter(samples__in=Sample.objects.all()).filter(name=meta)
+            vals = Value.objects.filter(samples__isnull=False).filter(name=meta)
             meta_type = vals[0].content_type.name
             filt = q_map[meta_type]
             vals = vals.order_by(filt).distinct()
             facets = [v.content_object.value for v in vals]
             print("facets should be in order now: ", facets)
 
-    elif selected['type'] == 'replicate':
-        metadata = Value.objects.filter(replicates__in=Replicate.objects.all()).order_by('name').distinct('name')
-        if meta:
-            vals = Value.objects.filter(replicates__in=Replicate.objects.all()).filter(name=meta)
-            meta_type = vals[0].content_type.name
-            facets = list(set([v.content_object.value for v in vals]))
-
-    elif selected['type'] == 'processStep':
-        metadata = Value.objects.filter(steps__in=Step.objects.all()).order_by('name').distinct('name')
+    elif selected['otype'] == 'step':
+        metadata = Value.objects.filter(steps__isnull=False).order_by('name').distinct('name')
 
     else:
         metadata = None
@@ -586,7 +581,7 @@ def search(request):
         'page': page,
         'type_counts': type_counts,
         'selected': selected,
-        'type': selected_type,
+        'otype': selected_type,
         'metadata':metadata,
         'meta': meta,
         'meta_type': meta_type,
@@ -648,16 +643,15 @@ def ajax_aggregates_meta_view(request):
     #if only one id is selected, not a list.
     if not inv_id:
         inv_id = request.GET.get('inv_id')
-    model_choice = request.GET.get('type')
+    model_choice = request.GET.get('otype')
     exclude = request.GET.get('exclude')
     #get investigation specific meta data.
     #E.g. Inv -> Samples -> SampleMetadata
-    #     Inv -> Reps -> ReplicateMetadata
     qs = None
-    type = None
+    otype = None
 
     if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
     if model_choice == "1": #Samples
 #        qs = SampleMetadata.objects.filter(
@@ -668,17 +662,12 @@ def ajax_aggregates_meta_view(request):
 #        if exclude:
 #            qs = qs.exclude(key=exclude)
         qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
-        type = "sample"
-    elif model_choice == "2": #Bio Replicates
-#        qs = ReplicateMetadata.objects.filter(
-#            biological_replicate__in = (Replicate.objects.filter(
-#            sample__in = Sample.objects.filter(investigation__in = inv_id)
-#            ))).order_by('key').distinct('key')
-#        if exclude:
-#            qs = qs.exclude(key=exclude)
-        type = "replicate"
+        otype = "sample"
+    elif model_choice == "2": #Features
+        qs = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
+        otype = "feature"
 #    elif model_choice == '3': #Computational something or other
-    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
 
 ###############################################################################
@@ -718,28 +707,28 @@ def ajax_plot_trendx_view(request):
     #if only one id is selected, not a list.
     if not inv_id:
         inv_id = request.GET.get('inv_id')
-    model_choice = request.GET.get('type')
+    model_choice = request.GET.get('otype')
     exclude = request.GET.get('exclude')
 
     qs = None
-    type = None
+    otype = None
 
     if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
     if model_choice == "1": #Samples
         qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
-        type = "sample"
+        otype = "sample"
 
-    elif model_choice == "2": #Bio Replicates
-        type = "replicate"
-    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+    elif model_choice == "2": #Features
+        otype = "feature"
+    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
 #trend y view will need to know what was chosen in trend x.
 def ajax_plot_trendy_view(request):
     """
     vars from ajax:
-    type: model for y, as an integer.
+    otype: model for y, as an integer.
     x_model: model for x, as an integr.
     x_choice: meta for x, as a string.
     """
@@ -749,15 +738,15 @@ def ajax_plot_trendy_view(request):
     if not inv_id:
         inv_id = request.GET.get('inv_id')
 
-    model_choice = request.GET.get('type')
+    model_choice = request.GET.get('otype')
     x_model = request.GET.get('x_model')
     x_sel = request.GET.get('x_choice')
 
     qs = None
-    type = None
+    otype = None
 
     if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':qs,})
+        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
     xqs = None
     #X was sample
@@ -765,11 +754,11 @@ def ajax_plot_trendy_view(request):
     #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
         x = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel)
         xqs = Sample.objects.filter(values__in=x)
-        type = 'sample'
+        otype = 'sample'
     yops = None
     if xqs:
         yops = Value.objects.filter(samples__in=xqs).order_by('name').distinct('name')
-    return render (request, 'analyze/ajax_model_options.htm', {'type': type, 'qs':yops,})
+    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':yops,})
 
 ###############################################################################
 ### View for handling file uploads                                          ###

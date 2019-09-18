@@ -25,8 +25,8 @@
           <div class="form-group">
             <label for="largesearchbar">Putting the Q in QUOREM.</label>
             <input class="form-control form-control-lg" type="text" placeholder="16S rRNA" name="q2" id="largesearchbar">
-            {% if selected.type %}
-              <input class="form-control" type=hidden name="type" value="{{ selected.type }}">
+            {% if selected.otype %}
+              <input class="form-control" type=hidden name="otype" value="{{ selected.otype }}">
             {% endif %}
             {% if meta %}
               <input class="form-control" type=hidden name="meta" value="{{ meta }}">
@@ -43,9 +43,9 @@
         <!-- Display of Selected Facets -->
         {% if selected %}
         <p>Filters:</p>
-          {% if selected.type %}
-            <a href="{{ ['type', 'meta', 'min_value', 'max_value', 'string_facets']|remove_facet() }}" class="btn btn-outline-primary">
-              {{ selected.type }}  <span>&times;</span>
+          {% if selected.otype %}
+            <a href="{{ ['otype', 'meta', 'min_value', 'max_value', 'string_facets']|remove_facet() }}" class="btn btn-outline-primary">
+              {{ selected.otype }}  <span>&times;</span>
             </a><br>
             {% if meta %}
               <a href="{{ ['meta', 'min_sel', 'max_sel', 'min_value', 'max_value', 'string_facets']|remove_facet() }}" class="btn btn-outline-success">

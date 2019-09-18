@@ -80,9 +80,9 @@ class Sample(models.Model):
     Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
     """
     name = models.CharField(max_length=255,unique=True)
-    investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
-    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
-
+    investigation = models.ForeignKey('Investigation', related_name='samples', on_delete=models.CASCADE)  # fk 2
+    analysis = models.ForeignKey('Analysis', related_name='samples', on_delete=models.CASCADE, blank=True)
+    source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
@@ -168,9 +168,14 @@ class Step(models.Model):
 class Analysis(models.Model):
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
-    date = models.DateTimeField(blank=True)
-    location = models.CharField(max_length=255, blank=True)
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    date = models.DateTimeField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    # If this is blank, then all the steps must be stored in extra_steps
+    # But if the Process changes: 
+    #  - all the Results with this Process must have their Parameters checked, and if they are the same, make sure it's only stored at the highest level
+    #    but if it's different, specify it in the Result's Parameters
+    #  - Analysis is 
+    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
     extra_steps = models.ManyToManyField('Step')
@@ -352,7 +357,7 @@ def load_mixed_objects(dicts,model_keys):
     #dicts are expected to have 'pk', 'rank', 'type'
     to_fetch = {}
     for d in dicts:
-        to_fetch.setdefault(d['type'], set()).add(d['pk'])
+        to_fetch.setdefault(d['otype'], set()).add(d['pk'])
     fetched = {}
 
     for key, model, ui_string in model_keys:
@@ -364,7 +369,7 @@ def load_mixed_objects(dicts,model_keys):
     #return the list in the same otder as dicts arg
     to_return = []
     for d in dicts:
-        item = fetched.get((d['type'], d['pk'])) or None
+        item = fetched.get((d['otype'], d['pk'])) or None
         if item:
                 item.original_dict = d
         to_return.append(item)
