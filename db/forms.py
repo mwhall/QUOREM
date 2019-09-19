@@ -4,9 +4,10 @@ from django.utils.html import format_html, mark_safe
 from django.urls import reverse
 from django.db import models
 from .models import (
-    Process,
-    Step, Result, Value,
-    Investigation, Step, Sample,
+    Investigation,
+    Process, Step, Analysis,
+    Result,
+    Sample, Feature,
     UploadInputFile, UserProfile, ErrorMessage
 )
 
@@ -166,30 +167,47 @@ class InvestigationDisplayForm(BootstrapModelForm,
         exclude = ['search_vector']
 
 class SampleForm(BootstrapModelForm):
-    investigation = NameLabelChoiceField(queryset = Investigation.objects.all())
+#    investigations = NameLabelChoiceField(queryset = Investigation.objects.all())
     class Meta:
         model = Sample
         exclude = ['search_vector']
+
+def get_step_link(form, value):
+    if isinstance(value, int):
+        name = Step.objects.get(pk=value).name
+        return format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': value})}), name)
+    else:
+        return Step.objects.get(name=value).get_detail_link()
+
 
 class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
-        def get_name(self, value):
-            return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
-        def get_investigation(self, value):
-            return format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.instance.investigation.pk})}), self.instance.investigation.name)
+        #def get_name(self, value):
+        #    return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
+        def get_investigations(self, value):
+            return ",".join([x.get_detail_link() for x in self.instance.investigations.all()])
 
         model = Sample
         exclude = ['search_vector']
-        widgets = {'name': DisplayText(get_text_method=get_name),
-                   'investigation': DisplayText(get_text_method=get_investigation)}
+        #widgets = {'name': DisplayText(get_text_method=get_name),
+        widgets={'investigations': DisplayText(get_text_method=get_investigations),
+                'source_step': DisplayText(get_text_method=get_step_link)}
+
+class FeatureForm(BootstrapModelForm):
+    class Meta:
+        model = Feature
+        exclude = ['search_vector']
+
+class FeatureDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    class Meta:
+        model = Feature
+        exclude = ['search_vector']
+
 
 class ProcessForm(BootstrapModelForm):
     class Meta:
         model = Process
         exclude = ['search_vector']
-
-def get_step_link(form, value):
-    return format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': Step.objects.get(name=value).pk})}), value)
 
 class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps", widget=DisplayText(get_text_method=get_step_link))
@@ -216,11 +234,12 @@ class InlineStepDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass)
         exclude = ('search_vector',)
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
+    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
-            initial['downstream'] = [x for x in kwargs['instance'].downstream.all()]
+            initial['downstream'] = [x.name for x in kwargs['instance'].downstream.all()]
+            # This complication makes sure we only have the default parameters
             initial['parameters'] = [x for x in kwargs['instance'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
         super(StepDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
@@ -230,7 +249,10 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
     class Meta:
         model = Step
         exclude = ('search_vector',)
-        widgets = {'upstream': DisplayText(get_text_method=get_step_link)}
+        def get_process_link(self, value):
+            return Process.objects.get(name=value).get_detail_link()
+        widgets = {'upstream': DisplayText(get_text_method=get_step_link),
+                   'processes': DisplayText(get_text_method=get_process_link)}
 #                   'downstream': DisplayText(get_text_method=get_step_link)}
 
 # No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
@@ -238,35 +260,7 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
 class ResultDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     class Meta:
         model = Result
-        exclude = ['search_vector']
-
-# Inline/Compound Forms
-
-InvestigationSampleFormset = ko_inlineformset_factory(Investigation,
-                                                      Sample,
-                                                      form=SampleForm,
-                                                      extra=0,
-                                                      min_num=0)
-
-InvestigationDisplaySampleFormset = ko_inlineformset_factory(
-                                                 Investigation,
-                                                 Sample,
-                                                 form=SampleDisplayForm)
-
-
-
-class InvestigationWithInlineSamples(FormWithInlineFormsets):
-    FormClass = InvestigationForm
-    FormsetClasses = [InvestigationSampleFormset]
-    def get_formset_inline_title(self, formset):
-        return "Sample"
-
-
-class InvestigationDisplayWithInlineSamples(FormWithInlineFormsets):
-     FormClass = InvestigationDisplayForm
-     FormsetClasses = [InvestigationDisplaySampleFormset]
-     def get_formset_inline_title(self, formset):
-         return "Samples"
+        exclude = ['search_vector', 'values', 'samples']
 
 ##### Search form
 class SearchBarForm(forms.Form):

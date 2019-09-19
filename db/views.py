@@ -36,10 +36,11 @@ from .models import (
 )
 
 from .forms import (
-    InvestigationDisplayWithInlineSamples, InvestigationWithInlineSamples,
+    InvestigationDisplayForm, InvestigationForm,
     ProcessForm, ProcessDisplayForm,
     ResultDisplayForm,
     SampleDisplayForm, SampleForm, 
+    FeatureDisplayForm, FeatureForm,
     StepForm, StepDisplayForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
@@ -155,12 +156,14 @@ class InvestigationList(ListSortingView):
 class InvestigationDetail(InlineDetailView):
     pk_url_kwarg = 'investigation_id'
     #template_name = 'investigation_edit.htm'
-    form_with_inline_formsets = InvestigationDisplayWithInlineSamples
+    form = InvestigationDisplayForm
+    def get_heading(self):
+        return ""
 
 class InvestigationUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
     pk_url_kwarg = 'investigation_id'
-    form_with_inline_formsets = InvestigationWithInlineSamples
+    form = InvestigationForm
     def get_bs_form_opts(self):
         return {
             'title': format_html('Edit "{}"', self.object),
@@ -170,7 +173,7 @@ class InvestigationUpdate(BsTabsMixin, InlineCrudView):
 class InvestigationCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     pk_url_kwarg = 'investigation_id'
-    form_with_inline_formsets = InvestigationWithInlineSamples
+    form = InvestigationForm
     def get_heading(self):
         return "Create New Investigation"
     def get_bs_form_opts(self):
@@ -184,7 +187,7 @@ class InvestigationCreate(BsTabsMixin, InlineCreateView):
 class SampleList(ListSortingView):
     model = Sample
     allowed_sort_orders = '__all__'
-    grid_fields = ['name', 'investigation']
+    grid_fields = ['name', 'investigations']
     def get_heading(self):
         return "Sample List"
     def get_name_links(self, obj):
@@ -202,20 +205,17 @@ class SampleList(ListSortingView):
         return links
 
     def get_investigation_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-             reverse('investigation_detail', kwargs={'investigation_id': obj.investigation.pk}),
-             obj.investigation.name
-         )]
+        links = [x.get_detail_link() \
+          for x in obj.investigations.all() ]
         return links
 
     def get_display_value(self, obj, field):
         if field == 'name':
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
-        elif field == 'investigation':
+        elif field == 'investigations':
             links = self.get_investigation_links(obj)
-            return mark_safe(''.join(links))
+            return mark_safe(', '.join(links))
         else:
             return super().get_display_value(obj, field)
 
@@ -223,6 +223,21 @@ class SampleList(ListSortingView):
 class SampleDetail(InlineDetailView):
     pk_url_kwarg = 'sample_id'
     form = SampleDisplayForm
+    def get_heading(self):
+        return ""
+
+#    def get_investigation_links(self, obj):
+#        links = [x.get_detail_link()\
+#         for x in obj.investigations.all() ]
+#        return links
+
+#    def get_display_value(self, obj, field):
+#        if field == 'investigations':
+#            links = self.get_investigation_links(obj)
+#            return mark_safe(', '.join(links))
+#        else:
+#            return super().get_display_value(obj, field)
+
 
 class SampleUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
@@ -236,12 +251,28 @@ class SampleUpdate(BsTabsMixin, InlineCrudView):
 class FeatureList(ListSortingView):
     model = Feature
     allowed_sort_orders = '__all__'
+    grid_fields = ['name', 'sequence', 'annotations']
+    def get_heading(self):
+        return "Feature List"
+ 
+    def get_name_links(self, obj):
+        return obj.get_detail_link()
+
+    def get_display_value(self, obj, field):
+        if field=='name':
+            return self.get_name_links(obj)
+
+class FeatureDetail(InlineDetailView):
+    pk_url_kwarg = "feature_id"
+    form = FeatureDisplayForm
+    def get_heading(self):
+        return ""
 
 class StepDetail(InlineDetailView):
     pk_url_kwarg = "step_id"
     form = StepDisplayForm
-    def __init__(self, *args, **kwargs):
-        super(StepDetail, self).__init__(*args, **kwargs)
+    def get_heading(self):
+        return ""
 
 class StepList(ListSortingView):
     model = Step
@@ -255,12 +286,12 @@ class StepList(ListSortingView):
             reverse('step_detail', kwargs={'step_id': obj.pk}),
             obj.name
         )]
-#        # is_authenticated is not callable in Django 2.0.
-#        if self.request.user.is_authenticated:
-#            links.append(format_html(
-#                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-#                reverse('step_update', kwargs={'step_id': obj.pk})
-#            ))
+        # is_authenticated is not callable in Django 2.0.
+        if self.request.user.is_authenticated:
+            links.append(format_html(
+                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+                reverse('step_update', kwargs={'step_id': obj.pk})
+            ))
         return links
 
     def get_display_value(self, obj, field):
@@ -279,10 +310,24 @@ class StepCreate(CreateView):
     model = Step
     form_class = StepForm
 
+class StepUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'step_id'
+    form = StepForm
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Update Step',
+            'submit_text': 'Save Step',
+        }
+
+    def get_success_url(self):
+        return reverse('step_detail', kwargs={'step_id': self.object.pk})
+
+
 class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
-    grid_fields = ['uuid', 'input_file', 'source', 'type', 'samples', 'features', ['analysis', 'source_step'], 'values']
+    grid_fields = ['uuid', 'analysis',  'source', 'type', 'analysis', 'source_step']
     def get_heading(self):
         return "Result List"
 
@@ -318,11 +363,15 @@ class ResultList(ListSortingView):
             values = ", ".join(np.unique([x.name for x in obj.values.all()]))
             return values
         elif field == 'samples':
-            samples = ', '.join(np.unique([x.name for x in obj.samples.all()]))
+            samples = mark_safe(', '.join(np.unique([x.get_detail_link() for x in obj.samples.all()])))
             return samples
         elif field == 'features':
             feats = ', '.join(np.unique([x.name for x in obj.features.all()]))
             return feats
+        elif field == 'source_step':
+            return obj.source_step.get_detail_link()
+        elif field == 'uuid':
+            return obj.get_detail_link()
         else:
             return super().get_display_value(obj, field)
 
@@ -363,6 +412,8 @@ class ProcessList(ListSortingView):
 class ProcessDetail(InlineDetailView):
     pk_url_kwarg = 'process_id'
     form = ProcessDisplayForm
+    def get_heading(self):
+        return ""
 
 class ProcessCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
@@ -394,7 +445,10 @@ class ProcessUpdate(BsTabsMixin, InlineCrudView):
         return reverse('process_detail', kwargs={'process_id': self.object.pk})
 
 class ResultDetail(InlineDetailView):
-    pk_url_kwargs = 'result_id'
+    pk_url_kwarg = 'result_id'
+    form = ResultDisplayForm
+    def get_heading(self):
+        return ""
 
 
 ###############################################################################
@@ -663,7 +717,8 @@ def ajax_aggregates_meta_view(request):
         #excludes are defined in each conditional to allow later flexibility
 #        if exclude:
 #            qs = qs.exclude(key=exclude)
-        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
+        #With making investigations manytomany in Samples, this __in probably is broken...
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).order_by('name').distinct('name')
         otype = "sample"
     elif model_choice == "2": #Features
         qs = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
@@ -719,7 +774,7 @@ def ajax_plot_trendx_view(request):
         return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
     if model_choice == "1": #Samples
-        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).order_by('name').distinct('name')
+        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).order_by('name').distinct('name')
         otype = "sample"
 
     elif model_choice == "2": #Features
@@ -754,7 +809,7 @@ def ajax_plot_trendy_view(request):
     #X was sample
     if x_model == '1':
     #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
-        x = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel)
+        x = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).filter(name=x_sel)
         xqs = Sample.objects.filter(values__in=x)
         otype = 'sample'
     yops = None

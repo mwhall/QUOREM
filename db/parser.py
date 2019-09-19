@@ -89,6 +89,7 @@ class Validator():
 
     def __init__(self, data=pd.Series({})):
         self.data = data
+        print(self.id_field)
         assert isinstance(self.data, pd.Series)
         #NOTE: The way we input/loop through data, duplicate columns/indexes are allowed in self.data
         # Calls to self.data should either be loops over indices, or unambiguous/non-duplicate fields ONLY
@@ -312,11 +313,13 @@ class SampleValidator(Validator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.required_if_new = ["investigation_id", "analysis_id", "step_id"]
+        self.required_if_new = ["analysis_id", "step_id"]
+        self.optional_fields = ["investigation_id"]
+        self.manytomany_fields = ["investigation_id"]
         self.django_mapping = {self.id_field: "name",
-                               self.required_if_new[0]: "investigation",
-                               self.required_if_new[1]: "analysis",
-                               self.required_if_new[2]: "source_step",
+                               self.optional_fields[0]: "investigations",
+                               self.required_if_new[0]: "analysis",
+                               self.required_if_new[1]: "source_step",
                                "upstream_sample": "upstream"}
 
 class FeatureValidator(Validator):
@@ -402,6 +405,8 @@ class ResultValidator(Validator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        print(self.data)
+
         #NOTE: Generating of UUIDs, if necessary, is handled at spreadsheet parse in db/formatters.py
         #If values are UUIDs, they are not changed
         #If values are not UUIDs, they are replaced with a UUID, with the same value being replaced with the same UUID
@@ -433,56 +438,82 @@ class ResultValidator(Validator):
 
     def validate(self, save=False):
         # First check that the process and source step exist
-        if not self.in_db():
-            data = self.data.copy()
-            data = data.drop("result_id")
-            analysis_vldtr = AnalysisValidator(data=data)
-            analysis_vldtr.validate()
-            if not analysis_vldtr.in_db():
-                # This must be saved before we can validate ourselves
-                analysis_vldtr.save()
-            data = data.drop("analysis_id")
-            step_vldtr = StepValidator(data=data)
+        data = copy.deepcopy(self.data)
+        data = data.drop("result_id")
+        analdata = {x: y for x,y in self.data.iteritems() if x in ["analysis_id", "process_id", "analysis_location", "analysis_date"]}
+        analysis_vldtr = AnalysisValidator(data=pd.Series(analdata))
+        analysis_vldtr.validate()
+        if not analysis_vldtr.in_db():
+            # This must be saved before we can validate ourselves
+            analysis_vldtr.save()
+        data = data.drop("analysis_id")
+        stepdata = { x: y for x,y in self.data.iteritems() if x in ["step_id", "step_description"] }
+        if stepdata:
+            step_vldtr = StepValidator(data=pd.Series(stepdata))
             step_vldtr.validate()
             if save and (not step_vldtr.in_db()):
                 step_vldtr.save()
-            for field, datum in self.data.iteritems():
-                if field == "sample_id":
+        for field, datum in self.data.iteritems():
+            if not pd.isna(datum):
+                if "sample_id" in field:
+                    #First just check if the sample exists
                     samp_vldtr = SampleValidator(data=pd.Series({"sample_id": datum}))
-                    samp_vldtr.validate()
-                    if save and (not samp_vldtr.in_db()):
-                        samp_vldtr.save()
-                elif field == "feature_id":
+                    if not samp_vldtr.in_db():
+                        # If not, make a dummy option based on the data at hand
+                        # This can be edited by the user later if incorrect, and can
+                        # be prevented by pre-registering samples
+                        samp_vldtr = SampleValidator(data=pd.Series({"sample_id": datum,
+                                                                     "analysis_id": self.data["analysis_id"],
+                                                                     "step_id": self.data["step_id"]}))
+                        samp_vldtr.validate()
+                        if save:
+                            samp_vldtr.save()
+                elif "feature_id" in field:
                     feat_vldtr = FeatureValidator(data=pd.Series({"feature_id": datum}))
                     feat_vldtr.validate()
                     if save and (not feat_vldtr.in_db()):
                         feat_vldtr.save()
-                elif field == "upstream_result":
-                    res_vldtr = ResultValidator(data=pd.Series({"result_id": datum}))
-                    #If we use validate here, theres a chance it'll pass it based on the result's analysis etc.
-                    if not res_vldtr.in_db():
-                        raise NotFoundError("Result %s not found in database, cannot add to upstream" % (res_vldtr.data["result_id"],))
-                    
+                elif "upstream_result" in field:
+                    res_vldtr = ResultValidator(data=pd.Series({"result_id": datum, "analysis_id": self.data["analysis_id"]}))
+                    #If it isn't in the database yet, but in a shadow entry
+                    #TODO Mark these explicitly
+                    res_vldtr.validate()
+                    if save and (not res_vldtr.in_db()):
+                        res_vldtr.save()
+                
         return True
 
     def save(self):
         self.validate(save=True)
+        kwargs = {"uuid": self.data["result_id"]}
         analysis = AnalysisValidator(data=pd.Series({"analysis_id": self.data["analysis_id"]})).fetch()
-        source_step = StepValidator(data=pd.Series({"step_id": self.data["step_id"]})).fetch()
-        samples = Sample.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="sample_id"])
-        features = Feature.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="feature_id"])
-        upstream = Result.objects.filter(uuid__in=[y for x,y in self.data.iteritems() if x=="upstream_result"])
-        categories = Category.objects.filter(name__in=[y for x,y in self.data.iteritems() if x=="result_category"],
+        kwargs["analysis"] = analysis
+        if "step_id" in self.data:
+            source_step = StepValidator(data=pd.Series({"step_id": self.data["step_id"]})).fetch()
+            kwargs["source_step"] = source_step
+        if "result_type" in self.data:
+            kwargs["type"] = self.data["result_type"]
+        if "result_source" in self.data:
+            kwargs["source"] = self.data["result_source"]
+        samples = Sample.objects.filter(name__in=[y for x,y in self.data.iteritems() if ("sample_id" in x) and (not pd.isna(y))])
+        features = Feature.objects.filter(name__in=[y for x,y in self.data.iteritems() if ("feature_id" in x) and (not pd.isna(y))])
+        upstream = Result.objects.filter(uuid__in=[y for x,y in self.data.iteritems() if ("upstream_result" in x) and (not pd.isna(y))])
+        categories = Category.objects.filter(name__in=[y for x,y in self.data.iteritems() if (x=="result_category") and (not pd.isna(y))],
                                              category_of=ContentType.objects.get(app_label='db', model='result'))
         if not self.in_db():
-            result = Result(uuid=self.data["result_id"],
-                            source_step = source_step,
-                            source = self.data["result_source"],
-                            type = self.data["result_type"],
-                            analysis = analysis)
+            result = Result(**kwargs)
             result.save()
         else:
             result = self.fetch()
+            # Fill in blank values, if this was inititally pulled in from downstream
+            if (result.type is None) and ("result_type" in self.data):
+                result.type = self.data["result_type"]
+            if (result.source is None) and ("result_source" in self.data):
+                result.source = self.data["result_source"]
+            if (result.source_step is None) and ("step_id" in self.data):
+                result.source_step = kwargs["source_step"]
+            result.save()
+
         result.samples.add(*samples)
         result.features.add(*features)
         result.upstream.add(*upstream)
@@ -541,11 +572,25 @@ class ValueValidator(Validator):
         self.value = self.data[name]
         self.type = self.infer_type()
         self.value_caster = typecast(self.type)
-        if self.type is not "datetimeval":
+        if self.type == "resultval":
+            vldtr = ResultValidator(data=pd.Series({"result_id": self.value}))
+            if vldtr.in_db():
+                self.casted_value = vldtr.fetch()
+            else:
+                if "analysis_id" in self.data:
+                    print("result not in db but can create")
+                    res_vldtr = ResultValidator(data=pd.Series({"result_id": self.value, "analysis_id": self.data["analysis_id"]}))
+                    #If it isn't in the database yet, but in a shadow entry
+                    #TODO Mark these explicitly
+                    res_vldtr.validate()
+                    self.casted_value = res_vldtr.save()
+                else:
+                    raise ValueError("Generic Value %s is a UUID inferred to be a ResultVal. This UUID is not in the database as a Result. Please upload this Result, or add an 'analysis_id' column pointing to the analysis that this Result was generated from, so a dummy entry can be created and filled at a later date (if possible and desired)." % (self.id_value,))
+        elif self.type is not "datetimeval":
             self.casted_value = self.value_caster(self.value)
         else:
             self.casted_value = self.value_caster(self.value, date_format).format("YYYY-MM-DD")
-        
+       
         # Set up the link targets
         if "value_target" in self.data:
             targets = self.data["value_target"]
@@ -618,9 +663,11 @@ class ValueValidator(Validator):
                 _id_list = link_data.values
             else:
                 _id_list = [link_data]
+            print("Validating all link %s ids" % (model_name,))
             for _id in _id_list:
                 vldtr = validator_mapper[model_name](pd.Series({link_field: _id}))
-                obj = vldtr.validate()
+                if not vldtr.in_db():
+                    return False
         return True 
            
     def fetch(self):
@@ -640,6 +687,7 @@ class ValueValidator(Validator):
             values = self.fetch()
             return values
         except Value.DoesNotExist:
+            print(self.casted_value)
             val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
             val.save()
             value = Value(content_object=val, name=self.id_field, value_type=self.vtype)
@@ -727,10 +775,8 @@ def resolve_input_row(row):
         validator.save()
     except Exception as e:
         raise e
-    print('going for values')
     for field, datum in row.iteritems():
         if (not pd.isna(datum)) & (field not in reserved_fields):
-            print(field, datum)
             data = row.drop(field)
             #If duplicates, focus on one
             data[field] = datum

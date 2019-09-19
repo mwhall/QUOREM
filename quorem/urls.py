@@ -24,9 +24,9 @@ from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
     InvestigationUpdate,
     ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
-    ResultList,
-    StepList, StepCreate, StepDetail,
-    FeatureList,
+    ResultList, ResultDetail,
+    StepList, StepCreate, StepDetail, StepUpdate,
+    FeatureList, FeatureDetail,
     SampleDetail, SampleList, SampleUpdate, #SampleCreate, 
     UploadList, UploadInputFileDetail,
     #SearchResultList
@@ -87,6 +87,9 @@ urlpatterns = [
     re_path(r'feature/all/$', FeatureList.as_view(),
             name = 'feature_all',
             kwargs = {'view_title': 'All Features'}),
+    re_path(r'feature/(?P<feature_id>\d+)/$', FeatureDetail.as_view(),
+            name = 'feature_detail',
+            kwargs = {'view_title': 'Feature Details'}),
 
     # Process Routing
     re_path(r'process/(?P<process_id>\d+)/$', ProcessDetail.as_view(),
@@ -106,6 +109,9 @@ urlpatterns = [
     re_path(r'result/all/$', ResultList.as_view(),
         name = 'result_all',
         kwargs={'view_title': "Result List", 'alllow_anonymous': False}),
+    re_path(r'result/(?P<result_id>\d+)/$', ResultDetail.as_view(),
+            name='result_detail',
+            kwargs={'view_title': "Result Detail"}),
 
     # Step Routing
     re_path(r'step/all/$', StepList.as_view(),
@@ -117,9 +123,9 @@ urlpatterns = [
     re_path(r'step/(?P<step_id>\d+)/$', StepDetail.as_view(),
         name = 'step_detail',
         kwargs={'view_title': "Step Detail"}),
-#    re_path(r'process/step/edit/(?P<process_step_id>\d+)/$', StepUpdate.as_view(),
-#        name = 'process_step_update',
-#        kwargs = {'view_title': "Process Step Update", 'allow_anonymous': False}),
+    re_path(r'step/edit/(?P<step_id>\d+)/$', StepUpdate.as_view(),
+        name = 'step_update',
+        kwargs = {'view_title': "Step Update", 'allow_anonymous': False}),
 
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
