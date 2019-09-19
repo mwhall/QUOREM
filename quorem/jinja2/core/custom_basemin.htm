@@ -30,9 +30,9 @@
   </div>
 
 
-  <div class="container">
+  <div class="container-fluid">
     <div class="row pt-4">
-      <header class="col-md-3">
+      <header class="col-md-2">
         <nav class="navbar navbar-light bg-light nav-main navbar-expand-md" role="navigation">
           <!-- Brand and toggle get grouped for better mobile display -->
           <div class="navbar-header">
@@ -42,10 +42,10 @@
             </button>
           </div>
           <div class="collapse navbar-collapse navbar-ex1-collapse">
-            <ul class="nav nav-pills nav-main flex-column auto-highlight">
+            <ul class="navmain nav navpills flex-column auto-highlight">
               {% block mainmenu -%}
               <li class="nav-item">
-                <a class="nav-link" href="/{# url('home') #}">
+                      <a class="nav-link" href="/{{ url('landing') }}">
                   <span class="glyphicon glyphicon-home"></span> {{ _('Home') }}
                 </a>
               </li>
@@ -55,7 +55,7 @@
         </nav>
       </header>
       <main class="col-md-9">
-        <div class="container">
+        <div class="container-fluid">
 
           {% if messages -%}
           {% include 'base_messages.htm' -%}
