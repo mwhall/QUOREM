@@ -52,12 +52,12 @@ class Investigation(models.Model):
 #        refresh_automated_report("investigation", pk=self.pk)
 
 class Feature(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, verbose_name="Name")
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
     first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
-    observed_results = models.ManyToManyField('Result', related_name='observed_results')
-    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples')
+    observed_results = models.ManyToManyField('Result', related_name='observed_results', blank=True, null=True)
+    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples', blank=True, null=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
     categories = models.ManyToManyField('Category', related_name="features", blank=True)
@@ -200,9 +200,9 @@ class Analysis(models.Model):
     process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
-    extra_steps = models.ManyToManyField('Step')
+    extra_steps = models.ManyToManyField('Step', blank=True, null=True)
     # Run-specific parameters can go in here, but I guess Measures can too
-    values = models.ManyToManyField('Value', related_name='analyses')
+    values = models.ManyToManyField('Value', related_name='analyses', blank=True, null=True)
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -214,6 +214,10 @@ class Analysis(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('analysis_detail', kwargs={'analysis_id': self.pk})}), self.name))
+
 
     @classmethod
     def update_search_vector(self):
@@ -233,7 +237,7 @@ class Result(models.Model):
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
     source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True, null=True)
     type = models.CharField(max_length=255, verbose_name="Result Type", blank=True, null=True)
-    analysis = models.ForeignKey('Analysis', on_delete=models.CASCADE)
+    analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
     # This process result is from this step
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step", blank=True, null=True)
     # Samples that this thing is the result for
@@ -251,8 +255,12 @@ class Result(models.Model):
         ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('result_detail', kwargs={'result_id': self.pk})}), str(self.uuid)))
+
+    def __str__(self):
+        return str(self.uuid)
+
+    def get_detail_link(self, label='uuid'):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('result_detail', kwargs={'result_id': self.pk})}), str(getattr(self, label))))
 
 
     @classmethod

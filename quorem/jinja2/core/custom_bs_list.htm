@@ -1,0 +1,78 @@
+{% macro bs_list(view, object_list=None, is_paginated=False, page_obj=None) -%}
+{% from 'bs_breadcrumbs.htm' import bs_breadcrumbs with context -%}
+{% from 'bs_filters.htm' import bs_filters with context -%}
+{% from 'bs_pagination.htm' import bs_pagination with context -%}
+
+<div class="card">
+    <div class="card-header">
+        <card-title>{{ view.get_heading() }}</card-title>
+    </div>
+    <div class="card-body">
+        {% if caller and 'has_filters' in caller.arguments -%}
+            {{ caller(has_filters=True) }}
+        {% else -%}
+            {% for field in view.allowed_filter_fields -%}
+                {{ bs_breadcrumbs(*view.get_filter_args(field)) }}
+            {% endfor -%}
+        {% endif -%}
+        {% if object_list -%}
+            <table {{ tpl.json_flatatt(view.get_table_attrs()) }}>
+            {% for obj in object_list -%}
+                {% set row_loop_index = loop.index0 -%}
+                {% if loop.index0 == 0 -%}
+                <tr>
+                {% for column in view.grid_fields -%}
+                    <th>
+                    {% if isinstance(column, list) -%}
+                        {% for field in column -%}
+                            <div>{{ view.get_sort_order_link(field) }}</div>
+                        {% endfor -%}
+                    {% else -%}
+                        {{ view.get_sort_order_link(column) }}
+                    {% endif -%}
+                    </th>
+                {% endfor -%}
+                </tr>
+                {% endif -%}
+                <tr>
+                {% for column in view.grid_fields -%}
+                    <td {{ tpl.json_flatatt(view.get_cell_attrs(obj, column, row_loop_index, loop.index0)) }}>
+                    {% if isinstance(column, list) -%}
+                        {% for field in column -%}
+                            <div>{{ view.get_display_value(obj, field) }}</div>
+                        {% endfor -%}
+                    {% else -%}
+                        {{ view.get_display_value(obj, column) }}
+                    {% endif -%}
+                    </td>
+                {% endfor -%}
+                </tr>
+            {% endfor -%}
+            </table>
+        {% else -%}
+            <div class="jumbotron">
+                <div class="default-padding">
+                {% if caller and 'has_no_match' in caller.arguments -%}
+                    {{ caller(has_no_match=True) }}
+                {% else -%}
+                    {{ bs_filters(**view.get_no_match_kwargs()) }}
+                {% endif -%}
+                </div>
+            </div>
+        {% endif -%}
+
+        {% if object_list and is_paginated -%}
+            {% if caller and 'has_pagination' in caller.arguments -%}
+                {{ caller(has_pagination=True) }}
+            {% else -%}
+                {{ bs_pagination(cbv=view, page_obj=page_obj) }}
+            {% endif -%}
+        {% endif -%}
+
+    </div>
+</div>
+
+{% endmacro -%}
+{% if _render_ -%}
+    {{ bs_list(view=view, object_list=object_list, is_paginated=is_paginated, page_obj=page_obj) }}
+{% endif -%}

@@ -186,12 +186,15 @@ class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         #    return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
         def get_investigations(self, value):
             return ",".join([x.get_detail_link() for x in self.instance.investigations.all()])
+        def get_analysis_link(self, value):
+            return Analysis.objects.get(name=value).get_detail_link()
 
         model = Sample
         exclude = ['search_vector']
         #widgets = {'name': DisplayText(get_text_method=get_name),
         widgets={'investigations': DisplayText(get_text_method=get_investigations),
-                'source_step': DisplayText(get_text_method=get_step_link)}
+                'source_step': DisplayText(get_text_method=get_step_link),
+                'analysis': DisplayText(get_text_method=get_analysis_link)}
 
 class FeatureForm(BootstrapModelForm):
     class Meta:
@@ -227,40 +230,90 @@ class StepForm(BootstrapModelForm):
     class Meta:
         model = Step
         exclude = ('search_vector',)
+    def get_upstream_link(self, value):
+            return Result.objects.get(uuid=value).get_detail_link(label='type')
+    def __init__(self, *args, **kwargs): 
+        super(StepForm, self).__init__(*args, **kwargs) 
+        self.fields['parameters'].label = "Default Parameters" 
 
-class InlineStepDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    class Meta:
-        model = Step
-        exclude = ('search_vector',)
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
+    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.name for x in kwargs['instance'].downstream.all()]
             # This complication makes sure we only have the default parameters
-            initial['parameters'] = [x for x in kwargs['instance'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
+            initial['default_parameters'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]))
         super(StepDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
-        self.fields.move_to_end('downstream')
         self.fields.move_to_end('categories')
 
     class Meta:
         model = Step
-        exclude = ('search_vector',)
+        exclude = ('search_vector', 'parameters')
         def get_process_link(self, value):
             return Process.objects.get(name=value).get_detail_link()
         widgets = {'upstream': DisplayText(get_text_method=get_step_link),
                    'processes': DisplayText(get_text_method=get_process_link)}
-#                   'downstream': DisplayText(get_text_method=get_step_link)}
 
 # No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
 
-class ResultDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
+class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    parameters = forms.CharField(max_length=4096, widget=DisplayText())
+    def get_upstream_link(self, value):
+       return Result.objects.get(uuid=value).get_detail_link(label='type')
+    downstream = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_upstream_link))
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['downstream'] = [x.uuid for x in kwargs['instance'].downstream.all()]
+            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.filter(value_type="parameter") ]))
+        super(ResultDisplayForm, self).__init__(*args, **kwargs)
+        self.fields.move_to_end('upstream')
+        #self.fields.move_to_end('downstream')
+        self.fields.move_to_end('categories')
     class Meta:
         model = Result
-        exclude = ['search_vector', 'values', 'samples']
+        exclude = ['search_vector', 'samples', 'values']
+        def get_feature_link(self, value):
+            return Feature.objects.get(name=value).get_detail_link()
+        def get_upstream_link(self, value):
+            return Result.objects.get(uuid=value).get_detail_link(label='type')
+        def get_analysis_link(self, value):
+            return Analysis.objects.get(name=value).get_detail_link()
+        widgets = {'upstream' : DisplayText(get_text_method=get_upstream_link),
+                   'downstream': DisplayText(get_text_method=get_upstream_link),
+                   'features': DisplayText(get_text_method=get_feature_link),
+                   'source_step': DisplayText(get_text_method=get_step_link),
+                   'analysis': DisplayText(get_text_method=get_analysis_link)}
+    
+class AnalysisForm(BootstrapModelForm):
+    class Meta:
+        model = Analysis
+        exclude = ('search_vector',)
+
+class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    def get_result_link(self, value):
+        return Result.objects.get(uuid=value).get_detail_link(label='type')
+    results = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Results", widget=DisplayText(get_text_method=get_result_link))
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['results'] = [x.uuid for x in kwargs['instance'].results.all()]
+        super(AnalysisDisplayForm, self).__init__(*args, **kwargs)
+        self.fields.move_to_end('categories')
+    class Meta:
+        model = Analysis
+        exclude = ('search_vector',)
+        def get_result_link(self, value):
+            return Result.objects.get(uuid=value).get_detail_link(label='type')
+        def get_process_link(self, value):
+            return Process.objects.get(name=value).get_detail_link()
+        widgets = {'process': DisplayText(get_text_method=get_process_link),
+                   'results': DisplayText(get_text_method=get_result_link)}
+
 
 ##### Search form
 class SearchBarForm(forms.Form):

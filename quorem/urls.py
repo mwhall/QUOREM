@@ -26,8 +26,9 @@ from db.views import (
     ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
     ResultList, ResultDetail,
     StepList, StepCreate, StepDetail, StepUpdate,
-    FeatureList, FeatureDetail,
-    SampleDetail, SampleList, SampleUpdate, #SampleCreate, 
+    FeatureList, FeatureDetail, FeatureCreate,
+    SampleDetail, SampleList, SampleUpdate, SampleCreate, 
+    AnalysisDetail, AnalysisList, AnalysisCreate,
     UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
@@ -57,9 +58,6 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
-    re_path(r'investigation/all(?P<action>/?\w*)/$', InvestigationList.as_view(),
-            name='investigation_all',
-            kwargs={'view_title': 'All Investigations'}),
     re_path(r'investigation/all/$', InvestigationList.as_view(),
             name='investigation_all',
             kwargs={'view_title': 'All Investigations'}),
@@ -83,13 +81,20 @@ urlpatterns = [
     re_path(r'sample/edit/(?P<sample_id>\d+)/$', SampleUpdate.as_view(),
         name='sample_update',
         kwargs={'view_title': 'Sample Update', 'allow_anonymous': False}),
+    re_path(r'sample/create/$', SampleCreate.as_view(),
+        name='sample_create',
+        kwargs={'view_title': 'Create New Sample'}),
 
+    # Feature Routing
     re_path(r'feature/all/$', FeatureList.as_view(),
             name = 'feature_all',
             kwargs = {'view_title': 'All Features'}),
     re_path(r'feature/(?P<feature_id>\d+)/$', FeatureDetail.as_view(),
             name = 'feature_detail',
             kwargs = {'view_title': 'Feature Details'}),
+    re_path(r'feature/create/$', FeatureCreate.as_view(),
+            name = 'feature_create',
+            kwargs = {'view_title': 'Create New Feature'}),
 
     # Process Routing
     re_path(r'process/(?P<process_id>\d+)/$', ProcessDetail.as_view(),
@@ -108,18 +113,29 @@ urlpatterns = [
     # Result Routing
     re_path(r'result/all/$', ResultList.as_view(),
         name = 'result_all',
-        kwargs={'view_title': "Result List", 'alllow_anonymous': False}),
+        kwargs={'view_title': "Result List", 'allow_anonymous': False}),
     re_path(r'result/(?P<result_id>\d+)/$', ResultDetail.as_view(),
             name='result_detail',
             kwargs={'view_title': "Result Detail"}),
+
+    # Analysis Routing
+    re_path(r'analysis/all/$', AnalysisList.as_view(),
+            name = 'analysis_all',
+            kwargs = {'view_title': "Analysis List", 'allow_anonymous': False}),
+    re_path(r'analysis/(?P<analysis_id>\d+)/$', AnalysisDetail.as_view(),
+            name = 'analysis_detail',
+            kwargs={'view_title': "Analysis Detail"}),
+    re_path(r'analysis/create/$', AnalysisCreate.as_view(),
+            name = 'analysis_create',
+            kwargs = {'view_title': "Create New Analysis"}),
 
     # Step Routing
     re_path(r'step/all/$', StepList.as_view(),
             name='step_all',
             kwargs={'view_title': "All Steps"}),
-#    re_path(r'step/create/$', StepCreate.as_view(),
-#        name = 'step_create',
-#        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
+    re_path(r'step/create/$', StepCreate.as_view(),
+        name = 'step_create',
+        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
     re_path(r'step/(?P<step_id>\d+)/$', StepDetail.as_view(),
         name = 'step_detail',
         kwargs={'view_title': "Step Detail"}),

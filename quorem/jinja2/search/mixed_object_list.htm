@@ -18,7 +18,7 @@
         <div class="d-flex w-100 justify-content-between">
           <h5 class="mb-1">Sample {{ item.obj.name|highlight(q) }}</h5>
         </div>
-      <p class="mb-1">Investigation: {{ item.obj.investigation.name|highlight(q) }}</p>
+        <p class="mb-1">Investigations: {% for investigation in item.obj.investigations.all() %} {{ investigation.name|highlight(q) }} {% endfor %}</p>
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>
      {% elif item.otype == 'feature' %}

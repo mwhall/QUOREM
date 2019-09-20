@@ -11,6 +11,7 @@ from django.utils.html import format_html, mark_safe
 from django.db import models
 from django.http import Http404
 from django.http import HttpResponseRedirect
+from django.contrib.contenttypes.models import ContentType
 
 from django.contrib.auth import get_user_model
 
@@ -27,11 +28,12 @@ from django_jinja_knockout.views import (
 
 import django_tables2 as tables
 import io
+from collections import OrderedDict
 
 from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Analysis,
-        Step, Result, Feature, Value,
+        Step, Result, Feature, Value, Category,
         UploadInputFile, load_mixed_objects, UserProfile
 )
 
@@ -39,9 +41,10 @@ from .forms import (
     InvestigationDisplayForm, InvestigationForm,
     ProcessForm, ProcessDisplayForm,
     ResultDisplayForm,
+    AnalysisDisplayForm, AnalysisForm,
     SampleDisplayForm, SampleForm, 
     FeatureDisplayForm, FeatureForm,
-    StepForm, StepDisplayForm,
+    StepDisplayForm, StepForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
     UploadInputFileDisplayWithInlineErrors, NewUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
@@ -51,6 +54,7 @@ from .utils import barchart_html, trendchart_html
 import pandas as pd
 import numpy as np
 import zipfile
+import arrow
 
 ###Stuff for searching
 from django.contrib.postgres.search import(
@@ -63,63 +67,49 @@ from django.views.generic.edit import CreateView, FormView
 ###############################################################################
 ### Database Browse DJK views                                              ####
 ###############################################################################
-class UploadList(ListSortingView):
-    model = UploadInputFile
-    allowed_sort_orders = '__all__'
-    grid_fields = ['upload_file', 'upload_status','userprofile']
 
-    def get_heading(self):
-        return "Upload List"
-
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,}),
-            obj.upload_file
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'upload_file':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
-
-    def get_bs_form_opts(self):
-        return {
-            'title': "All Uploads",
-            'view_title': "All Uploads2",
-            'submit_text': "Save Uploads????"
-        }
-
-class UploadInputFileDetail(InlineDetailView):
-    is_new = False
-    pk_url_kwarg = 'uploadinputfile_id'
-    form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
-    format_view_title = True
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if(self.is_new):
-            context['new_upload'] = True
-        return context
-
-    def get_heading(self):
-        return "Upload File Details"
+## LIST VIEWS ##################################################################
+#  These list *all* the objects of a given type                               ##
+#  Things that are easily controlled here:                                    ##
+#    - Which columns are in the table (grid_fields)                           ##
+#    - Table filters (allowed_filter_fields; kinda complicated)               ##
+#    - Titles                                                                 ##
+#    - Formatting and filtering of values that are output to the table        ##
+#  The core/custom_cbv_list.htm template is a lightly modified djk default    ##
+#  to make the tables less garish and twitchy                                 ##
+#                                                                             ##
+#  Pages here:                                                                ##
+#    - Investigation (/investigation/all)                                     ##
+#    - Sample (/sample/all)                                                   ##
+#    - Feature (/feature/all)                                                 ##
+#    - Analysis (/analysis/all)                                               ##
+#    - Step (/step/all)                                                       ##
+#    - Process (/process/all)                                                 ##
+#    - Result (/result/all)                                                   ##
+#    - Upload (/upload/all)                                                   ##
+#                                                                             ##
+################################################################################
 
 class InvestigationList(ListSortingView):
     model = Investigation
     allowed_sort_orders = '__all__'
-    #allowed_filter_fields = {'description': None}
-    grid_fields = ['name', 'institution', 'description', 'categories']
-    list_display = ['edit_investigation']
+    template_name = "core/custom_cbv_list.htm"
+    grid_fields = ['name', 'institution', 'description']
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="investigation")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
+
     def get_heading(self):
         return "Investigation List"
+
     def edit_investigation(self, obj):
         return format_html(
-           '<a href="{}"><span class="iconui iconui-edit"></span></a>',
+           ' (<a href="{}"><span class="iconui iconui-edit"></span></a>) ',
            reverse('investigation_update', kwargs={'investigation_id': obj.pk}))
 
     def get_name_links(self, obj):
@@ -130,10 +120,7 @@ class InvestigationList(ListSortingView):
         )]
         # is_authenticated is not callable in Django 2.0.
         if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('investigation_update', kwargs={'investigation_id': obj.pk})
-            ))
+            links.append(self.edit_investigation(obj))
         return links
 
     def get_display_value(self, obj, field):
@@ -153,43 +140,23 @@ class InvestigationList(ListSortingView):
             'submit_text': "Save Investigation",
         }
 
-class InvestigationDetail(InlineDetailView):
-    pk_url_kwarg = 'investigation_id'
-    #template_name = 'investigation_edit.htm'
-    form = InvestigationDisplayForm
-    def get_heading(self):
-        return ""
-
-class InvestigationUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'investigation_id'
-    form = InvestigationForm
-    def get_bs_form_opts(self):
-        return {
-            'title': format_html('Edit "{}"', self.object),
-            'submit_text': 'Save Investigation'
-        }
-
-class InvestigationCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    pk_url_kwarg = 'investigation_id'
-    form = InvestigationForm
-    def get_heading(self):
-        return "Create New Investigation"
-    def get_bs_form_opts(self):
-        return {
-            'submit_text': 'Save Investigation'
-        }
-
-    def get_success_url(self):
-        return reverse('investigation_detail', kwargs={'investigation_id': self.object.pk})
-
 class SampleList(ListSortingView):
     model = Sample
     allowed_sort_orders = '__all__'
+    template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'investigations']
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="sample")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
+
     def get_heading(self):
         return "Sample List"
+
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
@@ -219,39 +186,20 @@ class SampleList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
-
-class SampleDetail(InlineDetailView):
-    pk_url_kwarg = 'sample_id'
-    form = SampleDisplayForm
-    def get_heading(self):
-        return ""
-
-#    def get_investigation_links(self, obj):
-#        links = [x.get_detail_link()\
-#         for x in obj.investigations.all() ]
-#        return links
-
-#    def get_display_value(self, obj, field):
-#        if field == 'investigations':
-#            links = self.get_investigation_links(obj)
-#            return mark_safe(', '.join(links))
-#        else:
-#            return super().get_display_value(obj, field)
-
-
-class SampleUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'sample_id'
-    form = SampleForm
-    def get_bs_form_opts(self):
-        return {
-            'submit_text': 'Save Sample'
-        }
-
 class FeatureList(ListSortingView):
     model = Feature
     allowed_sort_orders = '__all__'
+    template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'sequence', 'annotations']
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="feature")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
+
     def get_heading(self):
         return "Feature List"
  
@@ -262,22 +210,62 @@ class FeatureList(ListSortingView):
         if field=='name':
             return self.get_name_links(obj)
 
-class FeatureDetail(InlineDetailView):
-    pk_url_kwarg = "feature_id"
-    form = FeatureDisplayForm
-    def get_heading(self):
-        return ""
+class AnalysisList(ListSortingView):
+    model = Analysis
+    allowed_sort_orders = '__all__'
+    template_name = "core/custom_cbv_list.htm"
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="analysis")
+    allowed_filter_fields = OrderedDict([
+            ('process',
+            {
+                'type': 'choices',
+                'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
+            }), 
+            # BROKEN. There is a Date filter in DJK but it doesn't seem to work
+            # with our field? And using a Choices filter raises that a Datetime 
+            # isn't serializable, and I don't know how else to get equality to
+            # filter properly
+#            ('date',
+#            {'type': None
+#             'choices': [(str(x['date']),str(x['date'])) \ 
+#                          for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
+            ('location',
+            {
+                 'type': 'choices',
+                 'choices': [(x['location'], x['location']) for x in Analysis.objects.all().values("pk","location").distinct().order_by("location")]
+            }),
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
+    grid_fields = ['name', 'process', 'date', 'location']
 
-class StepDetail(InlineDetailView):
-    pk_url_kwarg = "step_id"
-    form = StepDisplayForm
     def get_heading(self):
-        return ""
+        return "Analysis List"
+
+    def get_display_value(self, obj, field):
+        if field == 'name':
+            return obj.get_detail_link()
+        elif field == 'date':
+            return str(arrow.get(obj.date).format("DD/MM/YYYY"))
+        elif field == 'process':
+            return obj.process.get_detail_link()
 
 class StepList(ListSortingView):
     model = Step
     allowed_sort_orders = '__all__'
+    template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'parameters']
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="step")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
     def get_heading(self):
         return "Step List"
     def get_name_links(self, obj):
@@ -305,29 +293,68 @@ class StepList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
-class StepCreate(CreateView):
-    template_name = "base.htm"
-    model = Step
-    form_class = StepForm
+class ProcessList(ListSortingView):
+    model = Process
+    allowed_sort_orders = '__all__'
+    template_name = "core/custom_cbv_list.htm"
+    grid_fields = ['name', 'description']
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="process")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
 
-class StepUpdate(BsTabsMixin, InlineCrudView):
-    format_view_title = True
-    pk_url_kwarg = 'step_id'
-    form = StepForm
-    def get_bs_form_opts(self):
-        return {
-            'title': 'Update Step',
-            'submit_text': 'Save Step',
-        }
+    def get_heading(self):
+        return "Process List"
 
-    def get_success_url(self):
-        return reverse('step_detail', kwargs={'step_id': self.object.pk})
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('process_detail', kwargs={'process_id': obj.pk}),
+            obj.name
+        )]
+        # is_authenticated is not callable in Django 2.0.
+        if self.request.user.is_authenticated:
+            links.append(format_html(
+                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
+                reverse('process_update', kwargs={'process_id': obj.pk})
+            ))
+        return links
 
+    def get_display_value(self, obj, field):
+        if field == 'name':
+            links = self.get_name_links(obj)
+            return mark_safe(''.join(links))
+        else:
+            return super().get_display_value(obj, field)
 
 class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
-    grid_fields = ['uuid', 'analysis',  'source', 'type', 'analysis', 'source_step']
+    template_name = "core/custom_cbv_list.htm"
+    allowed_filter_fields = OrderedDict([('type',
+            {
+                'type': 'choices',
+                'choices': [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")],
+                # Do not display 'All' choice which resets the filter:
+                # List of choices that are active by default:
+                'active_choices': [],
+                # Do not allow to select multiple choices:
+            }), 
+            ('source_step',
+            {
+                'type': 'choices',
+                'choices': [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")],
+                # Do not display 'All' choice which resets the filter:
+                # List of choices that are active by default:
+                'active_choices': [],
+                # Do not allow to select multiple choices:
+            })])
+    grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'input_file']
+
     def get_heading(self):
         return "Result List"
 
@@ -381,33 +408,97 @@ class ResultList(ListSortingView):
             'id' : 'result_table',
         }
 
-class ProcessList(ListSortingView):
-    model = Process
+class UploadList(ListSortingView):
+    model = UploadInputFile
     allowed_sort_orders = '__all__'
-    grid_fields = ['name']
+    template_name = 'core/custom_cbv_list.htm'
+    grid_fields = ['upload_file', 'upload_status','userprofile']
+
     def get_heading(self):
-        return "Process List"
+        return "Upload List"
+
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('process_detail', kwargs={'process_id': obj.pk}),
-            obj.name
+            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,}),
+            obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('process_update', kwargs={'process_id': obj.pk})
-            ))
         return links
 
     def get_display_value(self, obj, field):
-        if field == 'name':
+        if field == 'upload_file':
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
         else:
             return super().get_display_value(obj, field)
 
+    def get_bs_form_opts(self):
+        return {
+            'title': "All Uploads",
+            'view_title': "All Uploads",
+            'submit_text': "Save Uploads"
+        }
+
+## DETAIL VIEWS ################################################################
+#  These list the details of one object of a given type                       ##
+#  By overriding get_context_data we can intercept values and reformat        ##
+#  by setting the get_text_method of the DisplayText widget, which loops      ##
+#  over items if it's a manyto relationship, so should return one name        ##
+#  Can also make CharFields in the DisplayForms and manually override their   ##
+#  values either here or there.                                               ##
+#                                                                             ##
+#  Pages here:                                                                ##
+#    - Investigation (/investigation/###)                                     ##
+#    - Sample (/sample/###)                                                   ##
+#    - Feature (/feature/###)                                                 ##
+#    - Analysis (/analysis/###)                                               ##
+#    - Step (/step/###)                                                       ##
+#    - Process (/process/###)                                                 ##
+#    - Result (/result/###)                                                   ##
+#    - Upload (/upload/###)                                                   ##
+#                                                                             ##
+################################################################################
+
+class InvestigationDetail(InlineDetailView):
+    pk_url_kwarg = 'investigation_id'
+    form = InvestigationDisplayForm
+    def get_heading(self):
+        return ""
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        print([x for x in vars(context['form'].fields['institution'].widget)])
+        # An example of what we've been doing in the forms.py being done here
+        #context['form'].fields['institution'].widget.get_text_method = self.get_institution_name
+        return context
+
+class SampleDetail(InlineDetailView):
+    pk_url_kwarg = 'sample_id'
+    form = SampleDisplayForm
+    def get_heading(self):
+        return ""
+
+class FeatureDetail(InlineDetailView):
+    pk_url_kwarg = "feature_id"
+    form = FeatureDisplayForm
+    def get_heading(self):
+        return ""
+
+class AnalysisDetail(InlineDetailView):
+    pk_url_kwarg = 'analysis_id'
+    form = AnalysisDisplayForm
+    def get_heading(self):
+        return ""
+
+class StepDetail(InlineDetailView):
+    pk_url_kwarg = "step_id"
+    form = StepDisplayForm
+    def get_heading(self):
+        return ""
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        #context['form'].initial['parameters'] = [x for x in context['object'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
+        return context
 
 class ProcessDetail(InlineDetailView):
     pk_url_kwarg = 'process_id'
@@ -415,10 +506,123 @@ class ProcessDetail(InlineDetailView):
     def get_heading(self):
         return ""
 
+class ResultDetail(InlineDetailView):
+    pk_url_kwarg = 'result_id'
+    form = ResultDisplayForm
+    def get_heading(self):
+        return ""
+
+class UploadInputFileDetail(InlineDetailView):
+    is_new = False
+    pk_url_kwarg = 'uploadinputfile_id'
+    form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
+    format_view_title = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if(self.is_new):
+            context['new_upload'] = True
+        return context
+
+    def get_heading(self):
+        return "Upload File Details"
+
+
+## CREATE VIEWS ################################################################
+#  These allow the creation of one object of a given type                     ##
+#  Here we can easily control:                                                ##
+#    - Button names                                                           ##
+#    - Form titles                                                            ##
+#    - Templates for input forms (if the base doesn't work)                   ##
+#    - Success URL routing                                                    ##
+#                                                                             ##
+#  Pages here:                                                                ##
+#    - Investigation (/investigation/create)                                  ##
+#    - Sample (/sample/create)                                                ##
+#    - Feature (/feature/create)                                              ##
+#    - Analysis (/analysis/create)                                            ##
+#    - Step (/step/create)                                                    ##
+#    - Process (/process/create)                                              ##
+#    - Result (/result/create)                                                ##
+#                                                                             ##
+################################################################################
+
+class InvestigationCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = InvestigationForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
+
+    def get_heading(self):
+        return "Create New Investigation"
+    def get_bs_form_opts(self):
+        return {'submit_text': 'Save Investigation'}
+    def get_success_url(self):
+        return reverse('investigation_detail', kwargs={'investigation_id': self.object.pk})
+
+class SampleCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = SampleForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
+    def get_bs_form_opts(self):
+        return {'submit_text': 'Save Sample'}
+    def get_heading(self):
+        return "Create New Sample"
+ 
+class FeatureCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = FeatureForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
+    def get_bs_form_opts(self):
+        return {'submit_text': 'Save Feature'}
+    def get_heading(self):
+        return "Create New Feature"
+
+class AnalysisCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = AnalysisForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
+    def get_bs_form_opts(self):
+        return {'submit_text': 'Save Analysis'}
+    def get_heading(self):
+        return "Create New Analysis"
+ 
+class StepCreate(BsTabsMixin, InlineCreateView):
+    format_view_title = True
+    form = StepForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
+    def get_bs_form_opts(self):
+        return {'submit_text': 'Save Step'}
+    def get_heading(self):
+        return "Create New Step"
+ 
 class ProcessCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
-    pk_url_kwarg = 'process_id'
     form = ProcessForm
+    template_name = "core/custom_cbv_edit_inline.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['active_page'] = "create"
+        return context
     def get_heading(self):
         return "Create New Process"
     def get_bs_form_opts(self):
@@ -427,9 +631,45 @@ class ProcessCreate(BsTabsMixin, InlineCreateView):
             'submit_text': 'Save Process',
             'inline_title': 'Process Steps'
         }
-
     def get_success_url(self):
         return reverse('process_detail', kwargs={'process_id': self.object.pk})
+
+
+
+class InvestigationUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'investigation_id'
+    form = InvestigationForm
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Edit Investigation',
+            'submit_text': 'Save Investigation'
+        }
+
+class SampleUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'sample_id'
+    form = SampleForm
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Edit Sample',
+            'submit_text': 'Save Sample'
+        }
+
+class StepUpdate(BsTabsMixin, InlineCrudView):
+    format_view_title = True
+    pk_url_kwarg = 'step_id'
+    form = StepForm
+    def get_bs_form_opts(self):
+        return {
+            'title': 'Update Step',
+            'submit_text': 'Save Step',
+        }
+
+    def get_success_url(self):
+        return reverse('step_detail', kwargs={'step_id': self.object.pk})
+
+
 
 class ProcessUpdate(BsTabsMixin, InlineCrudView):
     format_view_title = True
@@ -443,12 +683,6 @@ class ProcessUpdate(BsTabsMixin, InlineCrudView):
 
     def get_success_url(self):
         return reverse('process_detail', kwargs={'process_id': self.object.pk})
-
-class ResultDetail(InlineDetailView):
-    pk_url_kwarg = 'result_id'
-    form = ResultDisplayForm
-    def get_heading(self):
-        return ""
 
 
 ###############################################################################
