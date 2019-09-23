@@ -1,12 +1,12 @@
 {% set navigation_bar = [
-  ('/', 'home', "Home"),
-  ('/investigation/all', 'database', "Data Base"),
+  ('/', 'database', "Database"),
+  ('/', 'create', "Create New"),
   ('/search/', 'search', "Search"),
   ('/analyze/', 'analyze', "Analyze"),
   ] -%}
 {% set active_page = active_page|default('database') -%}
 <nav class="navbar navbar-expand-lg navbar-dark bg-info">
-  <a class="navbar-brand" href="#">QUOREM</a>
+  <a class="navbar-brand" href="#">QUOR'EM</a>
   <button class="navbar-toggler" type="button" data-toggle="collapse"
   data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
   aria-expanded="false" aria-label="Toggle navigation">
@@ -21,16 +21,33 @@
          role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
          {{ caption|e }}</a>
          <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-           <a class="dropdown-item" href="/upload/new">Upload Data</a>
-           <div class="dropdown-divider"></div>
            <a class="dropdown-item" href="/investigation/all">Investigations</a>
+           <a class="dropdown-item" href="/analysis/all">Analyses</a>
            <a class="dropdown-item" href="/process/all">Processes</a>
+           <a class="dropdown-item" href="/step/all">Steps</a>
            <a class="dropdown-item" href="/sample/all">Samples</a>
-           <a class="dropdown-item" href="/replicate/all">Replicates</a>
            <a class="dropdown-item" href="/feature/all">Features</a>
            <a class="dropdown-item" href="/result/all">Results</a>
          </div>
       </li>
+      {% elif id == 'create' %}
+      <li id="{{ id|e }}", class="nav-item dropdown {% if id == active_page %} active {% endif %}">
+         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
+         role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         {{ caption|e }}</a>
+         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+           <a class="dropdown-item" href="/upload/new">Submit Spreadsheet</a>
+           <div class="dropdown-divider"></div>
+           <a class="dropdown-item" href="/investigation/create">Investigation</a>
+           <a class="dropdown-item" href="/analysis/create">Analysis</a>
+           <a class="dropdown-item" href="/process/create">Process</a>
+           <a class="dropdown-item" href="/step/create">Step</a>
+           <a class="dropdown-item" href="/sample/create">Sample</a>
+           <a class="dropdown-item" href="/feature/create">Feature</a>
+           <a class="dropdown-item" href="/result/create">Result</a>
+         </div>
+      </li>
+
       {% else %}
       <li id="{{ id|e }}", class="nav-item {% if id == active_page %} active {% endif %}">
         <a class="nav-link " href="{{ href|e }}">{{ caption|e }}</a>

@@ -7,8 +7,8 @@
     {% if type_counts %}
       {% for t in type_counts %}
         <li class='list-group-item'>
-          <a href="{{ {'type': t.name}|add_facet() }}" class="typecounts">
-            {{ t.type }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span>
+          <a href="{{ {'otype': t.name}|add_facet() }}" class="typecounts">
+            {{ t.otype }}  <span class="badge badge-pill badge-secondary">{{ t.n }}</span>
           </a>
         </li>
       {% endfor %}

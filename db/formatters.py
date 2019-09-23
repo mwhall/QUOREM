@@ -62,6 +62,10 @@ def parse_csv_or_tsv(table_file):
     #This bit allows us to have duplicate columns, something we need here
     table.columns = table.loc[0]
     table = table.loc[1:]
+    #And then squash any duplicate columns to the same name
+    #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
+    table.columns = [x[0] for x in table.columns.str.split(".")]
+
     if "result_id" in table:
         if pd.isna(table["result_id"]).all():
             # Then we need to generate a UUID for the entire sheet, which is used across entries

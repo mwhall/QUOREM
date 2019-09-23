@@ -1,19 +1,14 @@
 {% extends 'base.htm' %}
 {% block main %}
 
-<div class="card text-white bg-primary mb-3">
+<div class="card">
   <div class="card-header">
-    <div class="card-title mb-0">Upload Files</div>
-  </div>
-  <div class="card-body text-dark bg-white">
-    <div class="formsets default-padding card bg-default mb-3">
-      <div class="card-header">
-        <div class="card-title mb-0"><span>Upload</span>
-          <span class="badge badge-pill badge-dark float-right"  data-toggle="tool-tip" data-placement="right" title="Upload a .CSV containing sample data, replicate data, or protocol data. Or, Upload a QIIME artifact.">
+           <span class="badge badge-pill badge-dark float-right"  data-toggle="tool-tip" data-placement="right" title="Upload a .CSV containing Investigation, Sample, Feature, Analysis, Process, Step, or Result data. To upload a QIIME artifact, deposit it into an Analysis page.">
             <span class="iconui iconui-question-sign"></span>
           </span>
-        </div>
-      </div>
+    <card-title>Upload Files</card-title>
+  </div>
+  <div class="card-body">
     <form enctype="multipart/form-data" action="/upload/new" method="post">
     {% csrf_token %}
     {% for field in form %}
@@ -27,6 +22,5 @@
     <button type="submit" class="btn btn-primary">Upload</button>
     </form>
   </div>
-</div>
 </div>
 {% endblock %}

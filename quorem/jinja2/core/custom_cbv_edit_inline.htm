@@ -1,0 +1,27 @@
+{% extends 'base.htm' -%}
+{% from 'bs_navs.htm' import bs_navs with context -%}
+{% from 'bs_inline_formsets.htm' import bs_inline_formsets with context -%}
+
+{% block main -%}
+
+{% if main_navs is defined -%}
+{{ bs_navs(navs=main_navs) }}
+{% endif -%}
+
+<div class="card">
+    <div class="card-header">
+        <card-title>{{ view.get_heading() }}</card-title>
+    </div>
+    <div class="card-body">
+        {{ bs_inline_formsets(
+            related_form=form, formsets=formsets, action=view.get_form_action_url(), opts=view.get_bs_form_opts()
+        ) }}
+    </div>
+</div>
+
+{% endblock main -%}
+
+{% block bottom_scripts -%}
+    <script src="{{ static('djk/js/formsets.js') }}"></script>
+{% endblock bottom_scripts -%}
+

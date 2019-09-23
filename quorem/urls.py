@@ -24,10 +24,11 @@ from db.views import (
     InvestigationCreate, InvestigationDetail, InvestigationList,
     InvestigationUpdate,
     ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
-    ResultList,
-    StepList, StepCreate,
-    FeatureList,
-    SampleDetail, SampleList, SampleUpdate, #SampleCreate,
+    ResultList, ResultDetail,
+    StepList, StepCreate, StepDetail, StepUpdate,
+    FeatureList, FeatureDetail, FeatureCreate,
+    SampleDetail, SampleList, SampleUpdate, SampleCreate,
+    AnalysisDetail, AnalysisList, AnalysisCreate,
     UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
@@ -35,6 +36,7 @@ from db.views import (
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
     PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
 )
+from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
 urlpatterns = [
     # Main page routing
@@ -56,9 +58,6 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('', index, name='landing'),
     # Investigation Routing
-    re_path(r'investigation/all(?P<action>/?\w*)/$', InvestigationList.as_view(),
-            name='investigation_all',
-            kwargs={'view_title': 'All Investigations'}),
     re_path(r'investigation/all/$', InvestigationList.as_view(),
             name='investigation_all',
             kwargs={'view_title': 'All Investigations'}),
@@ -82,10 +81,20 @@ urlpatterns = [
     re_path(r'sample/edit/(?P<sample_id>\d+)/$', SampleUpdate.as_view(),
         name='sample_update',
         kwargs={'view_title': 'Sample Update', 'allow_anonymous': False}),
+    re_path(r'sample/create/$', SampleCreate.as_view(),
+        name='sample_create',
+        kwargs={'view_title': 'Create New Sample'}),
 
+    # Feature Routing
     re_path(r'feature/all/$', FeatureList.as_view(),
             name = 'feature_all',
             kwargs = {'view_title': 'All Features'}),
+    re_path(r'feature/(?P<feature_id>\d+)/$', FeatureDetail.as_view(),
+            name = 'feature_detail',
+            kwargs = {'view_title': 'Feature Details'}),
+    re_path(r'feature/create/$', FeatureCreate.as_view(),
+            name = 'feature_create',
+            kwargs = {'view_title': 'Create New Feature'}),
 
     # Process Routing
     re_path(r'process/(?P<process_id>\d+)/$', ProcessDetail.as_view(),
@@ -104,21 +113,35 @@ urlpatterns = [
     # Result Routing
     re_path(r'result/all/$', ResultList.as_view(),
         name = 'result_all',
-        kwargs={'view_title': "Result List", 'alllow_anonymous': False}),
+        kwargs={'view_title': "Result List", 'allow_anonymous': False}),
+    re_path(r'result/(?P<result_id>\d+)/$', ResultDetail.as_view(),
+            name='result_detail',
+            kwargs={'view_title': "Result Detail"}),
 
-    # Process Step Routing
+    # Analysis Routing
+    re_path(r'analysis/all/$', AnalysisList.as_view(),
+            name = 'analysis_all',
+            kwargs = {'view_title': "Analysis List", 'allow_anonymous': False}),
+    re_path(r'analysis/(?P<analysis_id>\d+)/$', AnalysisDetail.as_view(),
+            name = 'analysis_detail',
+            kwargs={'view_title': "Analysis Detail"}),
+    re_path(r'analysis/create/$', AnalysisCreate.as_view(),
+            name = 'analysis_create',
+            kwargs = {'view_title': "Create New Analysis"}),
+
+    # Step Routing
     re_path(r'step/all/$', StepList.as_view(),
             name='step_all',
             kwargs={'view_title': "All Steps"}),
-#    re_path(r'step/create/$', StepCreate.as_view(),
-#        name = 'step_create',
-#        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
-#    re_path(r'process/step/(?P<process_step_id>\d+)/$', StepDetail.as_view(),
-#        name = 'process_step_detail',
-#        kwargs={'view_title': "Process Step Detail"}),
-#    re_path(r'process/step/edit/(?P<process_step_id>\d+)/$', StepUpdate.as_view(),
-#        name = 'process_step_update',
-#        kwargs = {'view_title': "Process Step Update", 'allow_anonymous': False}),
+    re_path(r'step/create/$', StepCreate.as_view(),
+        name = 'step_create',
+        kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
+    re_path(r'step/(?P<step_id>\d+)/$', StepDetail.as_view(),
+        name = 'step_detail',
+        kwargs={'view_title': "Step Detail"}),
+    re_path(r'step/edit/(?P<step_id>\d+)/$', StepUpdate.as_view(),
+        name = 'step_update',
+        kwargs = {'view_title': "Step Update", 'allow_anonymous': False}),
 
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
@@ -143,6 +166,14 @@ urlpatterns = [
     path('ajax/trendx-options/', ajax_plot_trendx_view, name="ajax_trend_x_options"),
     path("ajax/trendy-options/", ajax_plot_trendy_view, name="ajax_trend_y_options"),
     path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
+
+    ## Autocomplete Routing
+    re_path(r'^value-autocomplete/$',
+            ValueAutocomplete.as_view(),
+            name='value-autocomplete'),
+    re_path(r'^category-autocomplete/$',
+            CategoryAutocomplete.as_view(),
+            name='category-autocomplete'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

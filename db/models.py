@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-
+from django.urls import reverse
+from django.forms.utils import flatatt
+from django.utils.html import format_html, mark_safe
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 
@@ -32,6 +34,10 @@ class Investigation(models.Model):
         ]
     def __str__(self):
         return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.pk})}), self.name))
+
     #override save to update the search vector field
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -46,12 +52,12 @@ class Investigation(models.Model):
 #        refresh_automated_report("investigation", pk=self.pk)
 
 class Feature(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, verbose_name="Name")
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
     first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
-    observed_results = models.ManyToManyField('Result', related_name='observed_results')
-    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples')
+    observed_results = models.ManyToManyField('Result', related_name='observed_results', blank=True, null=True)
+    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples', blank=True, null=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
     categories = models.ManyToManyField('Category', related_name="features", blank=True)
@@ -63,6 +69,9 @@ class Feature(models.Model):
         ]
     def __str__(self):
         return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('feature_detail', kwargs={'feature_id': self.pk})}), self.name))
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -80,10 +89,10 @@ class Sample(models.Model):
     Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
     """
     name = models.CharField(max_length=255,unique=True)
-    investigation = models.ForeignKey('Investigation', on_delete=models.CASCADE)  # fk 2
-    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
-
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
+    investigations = models.ManyToManyField('Investigation', related_name='samples', blank=True)  # fk 2
+    analysis = models.ForeignKey('Analysis', related_name='samples', on_delete=models.CASCADE, blank=True)
+    source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
     categories = models.ManyToManyField('Category', related_name='samples', blank=True)
@@ -94,6 +103,9 @@ class Sample(models.Model):
         ]
     def __str__(self):
         return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.pk})}), self.name))
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -115,14 +127,19 @@ class Process(models.Model):
     description = models.TextField(blank=True)
     citation = models.TextField(blank=True)
 
-    upstream = models.ManyToManyField('self', related_name="downstream", blank=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name="downstream", blank=True)
 
     parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
     search_vector = SearchVectorField(null=True)
     def __str__(self):
-        return "%s (%s)" % (self.name, self.citation)
+        return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('process_detail', kwargs={'process_id': self.pk})}), self.name))
+
+
     class Meta:
         indexes = [
             GinIndex(fields=['search_vector'])
@@ -145,13 +162,17 @@ class Step(models.Model):
     description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
-
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
     search_vector = SearchVectorField(null=True)
+
     def __str__(self):
         return '%s' % (self.name,)
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': self.pk})}), self.name))
+
     class Meta:
         indexes = [
             GinIndex(fields=['search_vector'])
@@ -169,14 +190,19 @@ class Step(models.Model):
 class Analysis(models.Model):
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
-    date = models.DateTimeField(blank=True)
-    location = models.CharField(max_length=255, blank=True)
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    date = models.DateTimeField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    # If this is blank, then all the steps must be stored in extra_steps
+    # But if the Process changes: 
+    #  - all the Results with this Process must have their Parameters checked, and if they are the same, make sure it's only stored at the highest level
+    #    but if it's different, specify it in the Result's Parameters
+    #  - Analysis is 
+    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
-    extra_steps = models.ManyToManyField('Step')
+    extra_steps = models.ManyToManyField('Step', blank=True, null=True)
     # Run-specific parameters can go in here, but I guess Measures can too
-    values = models.ManyToManyField('Value', related_name='analyses')
+    values = models.ManyToManyField('Value', related_name='analyses', blank=True, null=True)
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -185,6 +211,13 @@ class Analysis(models.Model):
         ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('analysis_detail', kwargs={'analysis_id': self.pk})}), self.name))
+
 
     @classmethod
     def update_search_vector(self):
@@ -202,15 +235,15 @@ class Result(models.Model):
     list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'parameters', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
-    source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True)
-    type = models.CharField(max_length=255, verbose_name="Result Type")
-    analysis = models.ForeignKey('Analysis', on_delete=models.CASCADE)
+    source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True, null=True)
+    type = models.CharField(max_length=255, verbose_name="Result Type", blank=True, null=True)
+    analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
     # This process result is from this step
-    source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
+    source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step", blank=True, null=True)
     # Samples that this thing is the result for
     samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
     features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
-    upstream = models.ManyToManyField('self', related_name='downstream', blank=True)
+    upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
     categories = models.ManyToManyField('Category', related_name='results', blank=True)
@@ -222,6 +255,13 @@ class Result(models.Model):
         ]
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return str(self.uuid)
+
+    def get_detail_link(self, label='uuid'):
+        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('result_detail', kwargs={'result_id': self.pk})}), str(getattr(self, label))))
+
 
     @classmethod
     def update_search_vector(self):
@@ -243,6 +283,8 @@ class Category(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['name', 'category_of'], name='Only one category of each name per model')
             ]
+    def __str__(self):
+        return self.name
  
 ### Key-Value storage for objects
 
@@ -296,6 +338,8 @@ class DatetimeVal(models.Model):
 class ResultVal(models.Model):
     value = models.ForeignKey('Result', on_delete=models.CASCADE)
     val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="result")
+    def __str__(self):
+        return value.name + ": " + value.type
 
 
 
@@ -351,7 +395,7 @@ def load_mixed_objects(dicts,model_keys):
     #dicts are expected to have 'pk', 'rank', 'type'
     to_fetch = {}
     for d in dicts:
-        to_fetch.setdefault(d['type'], set()).add(d['pk'])
+        to_fetch.setdefault(d['otype'], set()).add(d['pk'])
     fetched = {}
 
     for key, model, ui_string in model_keys:
@@ -363,7 +407,7 @@ def load_mixed_objects(dicts,model_keys):
     #return the list in the same otder as dicts arg
     to_return = []
     for d in dicts:
-        item = fetched.get((d['type'], d['pk'])) or None
+        item = fetched.get((d['otype'], d['pk'])) or None
         if item:
                 item.original_dict = d
         to_return.append(item)
