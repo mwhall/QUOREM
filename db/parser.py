@@ -5,6 +5,7 @@ import pandas as pd
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count
+from django.db import transaction
 from .models import Investigation, Sample, Process, Step, Analysis, \
                     Feature, Category, Value, Result, StrVal, IntVal, FloatVal, \
                     DatetimeVal, ResultVal
@@ -37,6 +38,7 @@ reserved_fields = id_fields + \
                    "feature_sequence", \
                    "value_type", \
                    "value_target", \
+                   "feature_annotation", \
                    "force_overwrite"]
 
 linkable_fields = id_fields + ["extra_step"]
@@ -455,7 +457,7 @@ class ResultValidator(Validator):
                 step_vldtr.save()
         for field, datum in self.data.iteritems():
             if not pd.isna(datum):
-                if "sample_id" in field:
+                if field.startswith("sample_id"):
                     #First just check if the sample exists
                     samp_vldtr = SampleValidator(data=pd.Series({"sample_id": datum}))
                     if not samp_vldtr.in_db():
@@ -468,12 +470,12 @@ class ResultValidator(Validator):
                         samp_vldtr.validate()
                         if save:
                             samp_vldtr.save()
-                elif "feature_id" in field:
+                elif field.startswith("feature_id"):
                     feat_vldtr = FeatureValidator(data=pd.Series({"feature_id": datum}))
                     feat_vldtr.validate()
                     if save and (not feat_vldtr.in_db()):
                         feat_vldtr.save()
-                elif "upstream_result" in field:
+                elif field.startswith("upstream_result"):
                     res_vldtr = ResultValidator(data=pd.Series({"result_id": datum, "analysis_id": self.data["analysis_id"]}))
                     #If it isn't in the database yet, but in a shadow entry
                     #TODO Mark these explicitly
@@ -687,7 +689,6 @@ class ValueValidator(Validator):
             values = self.fetch()
             return values
         except Value.DoesNotExist:
-            print(self.casted_value)
             val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
             val.save()
             value = Value(content_object=val, name=self.id_field, value_type=self.vtype)
@@ -710,7 +711,7 @@ class ValueValidator(Validator):
                         if vldtr.value_field is not None:
                             obj = vldtr.fetch()
                             getattr(obj, vldtr.value_field).add(value)
-        return Value.objects.filter(pk=value.pk)
+        return [value]
 
     def infer_type(self):
         found_types = list(set([x.content_type.model 

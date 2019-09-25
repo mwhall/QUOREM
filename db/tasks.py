@@ -6,7 +6,7 @@ import zipfile
 import time
 from django.template import loader
 from celery import shared_task
-from django.db import models
+from django.db import models, transaction
 from django.apps import apps
 from .formatters import guess_filetype, parse_csv_or_tsv
 from .parser import resolve_input_row
@@ -16,13 +16,13 @@ Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
 ErrorMessage, UploadInputFile
 )
 
-from q2_extractor.Extractor import q2Extractor
+from q2_extractor.Extractor import Extractor
 import pandas as pd
 import io
 import re
 
 @shared_task
-def react_to_file(upload_file_id):
+def react_to_file(upload_file_id, **kwargs):
     #something weird happens sometimes in which uploading a file doens't work.
     #it throws an ID not found error. Trying again and changing nothing seems to work
     #So, make it try twice, then throw an error if it still doesn't work.
@@ -37,21 +37,24 @@ def react_to_file(upload_file_id):
             print("error with upfile. Cannot find the file. Sys Admin should remove.")
             print(e)
     try:
+        from_form = upfile.upload_type
+        # S for Spreadsheet
+        # A for Artifact
         file_from_upload = upfile.upload_file._get_file()
         infile = file_from_upload.open()
-        filetype = guess_filetype(infile)
-        infile.seek(0)
-        print(filetype)
+#        filetype = guess_filetype(infile)
+#        infile.seek(0)
+#        print(filetype)
         status = ""
-        if filetype == 'qz':
-            print("processing qiime file...")
+        if from_form == "A":
+            print("Processing qiime file...")
             try:
-                status = process_qiime_artifact(infile, upfile)
+                status = process_qiime_artifact(infile, upfile, analysis_pk=kwargs["analysis_pk"])
             except Exception as e:
                 print(e)
 
-        elif filetype == 'table':
-            print("processing table ...")
+        elif from_form == "S":
+            print("Processing table ...")
             status = process_table(infile)
             print(status)
         else:
@@ -89,14 +92,34 @@ def process_table(infile):
     return "Success"
 
 @shared_task
-def process_qiime_artifact(infile):
-    q2e = q2Extractor(infile)
-    value_table = q2e.get_values()
-    for index, row in value_table.iterrows():
+def process_qiime_artifact(infile, upfile, analysis_pk):
+    analysis_name = Analysis.objects.get(pk=analysis_pk).name
+    q2e = Extractor(infile)
+    uuid = q2e.base_uuid
+    result_table = q2e.get_result().reset_index()
+    #And then squash any duplicate columns to the same name
+    #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
+    result_table.columns = [x[0] for x in result_table.columns.str.split(".")]
+    for index, row in result_table.iterrows():
         try:
-            resolve_input_row(row)
+            row["analysis_id"] = analysis_name
+            resolve_input_row(row.dropna())
         except Exception as e:
             raise e
+    with transaction.atomic():
+        value_table = q2e.get_values()
+        #And then squash any duplicate columns to the same name
+        #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
+        value_table.columns = [x[0] for x in value_table.columns.str.split(".")]
+        for index, row in value_table.iterrows():
+            try:
+                row["analysis_id"] = analysis_name
+                resolve_input_row(row.dropna())
+            except Exception as e:
+                raise e
+    res = Result.objects.get(uuid=uuid)
+    res.input_file = upfile
+    res.save()
     return "Success"
 
 @shared_task

@@ -8,6 +8,7 @@ from .models import (
     Process, Step, Analysis,
     Result,
     Sample, Feature,
+    Value,
     UploadInputFile, UserProfile, ErrorMessage
 )
 
@@ -93,16 +94,26 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
                                              extra=0,
                                              min_num=1)
 
-################Experiment
-class NewUploadForm(ModelForm):
+################ Upload Forms
+class ArtifactUploadForm(ModelForm):
+    analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(), empty_label="Select an Analysis")
+    register_provenance = forms.BooleanField(initial=True, label="Register Provenance")
+    class Meta:
+        model = UploadInputFile
+        #exclude = ('userprofile', )
+        fields = ('analysis', 'register_provenance', 'upload_file',)
+    def __init__(self, *args, **kwargs):
+        self.userprofile = kwargs.pop('userprofile')
+        super(ArtifactUploadForm, self).__init__(*args, **kwargs)
+
+class SpreadsheetUploadForm(ModelForm):
     class Meta:
         model = UploadInputFile
         #exclude = ('userprofile', )
         fields = ('upload_file',)
     def __init__(self, *args, **kwargs):
         self.userprofile = kwargs.pop('userprofile')
-        super(NewUploadForm, self).__init__(*args, **kwargs)
-
+        super(SpreadsheetUploadForm, self).__init__(*args, **kwargs)
 
 ##########################
 
@@ -181,6 +192,8 @@ def get_step_link(form, value):
 
 
 class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    measures = forms.CharField(max_length=4096, label="Measures", widget=DisplayText())
+    metadata = forms.CharField(max_length=4096, label="Metadata", widget=DisplayText())
     class Meta:
         #def get_name(self, value):
         #    return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
@@ -190,22 +203,36 @@ class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
             return Analysis.objects.get(name=value).get_detail_link()
 
         model = Sample
-        exclude = ['search_vector']
+        exclude = ['search_vector', 'values']
         #widgets = {'name': DisplayText(get_text_method=get_name),
         widgets={'investigations': DisplayText(get_text_method=get_investigations),
                 'source_step': DisplayText(get_text_method=get_step_link),
                 'analysis': DisplayText(get_text_method=get_analysis_link)}
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="measure") ]))
+            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="metadata") ]))
+        super(SampleDisplayForm, self).__init__(*args, **kwargs)
+
 
 class FeatureForm(BootstrapModelForm):
     class Meta:
         model = Feature
         exclude = ['search_vector']
 
-class FeatureDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
+class FeatureDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    measures = forms.CharField(max_length=4096, label="Measures", widget=DisplayText())
+    metadata = forms.CharField(max_length=4096, label="Metadata", widget=DisplayText())
     class Meta:
         model = Feature
-        exclude = ['search_vector']
-
+        exclude = ['search_vector', 'values']
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('instance'):
+            initial=kwargs.setdefault('initial',{})
+            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="measure") ]))
+            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="metadata") ]))
+        super(FeatureDisplayForm, self).__init__(*args, **kwargs)
 
 class ProcessForm(BootstrapModelForm):
     class Meta:
@@ -276,7 +303,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         self.fields.move_to_end('categories')
     class Meta:
         model = Result
-        exclude = ['search_vector', 'samples', 'values']
+        exclude = ['search_vector', 'samples', 'features', 'values']
         def get_feature_link(self, value):
             return Feature.objects.get(name=value).get_detail_link()
         def get_upstream_link(self, value):

@@ -1,8 +1,11 @@
 {% from 'bs_nav_items.htm' import bs_nav_items with context -%}
 {% set navs = [
     {
-    'url': url('upload'),
-    'text': _('Upload Data')},
+    'url': url('upload_spreadsheet'),
+    'text': _('Upload Spreadsheet')},
+    {
+    'url': url('upload_artifact'),
+    'text': _('Upload Artifact')},
     {
     'url': url('investigation_all'),
     'text': _('View All Investigations')},

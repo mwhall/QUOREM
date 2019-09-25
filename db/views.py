@@ -46,7 +46,8 @@ from .forms import (
     FeatureDisplayForm, FeatureForm,
     StepDisplayForm, StepForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
-    UploadInputFileDisplayWithInlineErrors, NewUploadForm,
+    UploadInputFileDisplayWithInlineErrors,
+    SpreadsheetUploadForm, ArtifactUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
 )
 from .utils import barchart_html, trendchart_html
@@ -55,6 +56,7 @@ import pandas as pd
 import numpy as np
 import zipfile
 import arrow
+from celery import current_app
 
 ###Stuff for searching
 from django.contrib.postgres.search import(
@@ -95,14 +97,14 @@ class InvestigationList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'institution', 'description']
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="investigation")
-#    allowed_filter_fields = OrderedDict([
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="investigation")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
 
     def get_heading(self):
         return "Investigation List"
@@ -145,14 +147,14 @@ class SampleList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'investigations']
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="sample")
-#    allowed_filter_fields = OrderedDict([
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="sample")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
 
     def get_heading(self):
         return "Sample List"
@@ -191,14 +193,14 @@ class FeatureList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'sequence', 'annotations']
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="feature")
-#    allowed_filter_fields = OrderedDict([
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="feature")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
 
     def get_heading(self):
         return "Feature List"
@@ -214,32 +216,32 @@ class AnalysisList(ListSortingView):
     model = Analysis
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="analysis")
-#    allowed_filter_fields = OrderedDict([
-#            ('process',
-#            {
-#                'type': 'choices',
-#                'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
-#            }), 
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="analysis")
+    allowed_filter_fields = OrderedDict([
+            ('process',
+            {
+                'type': 'choices',
+                'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
+            }), 
             # BROKEN. There is a Date filter in DJK but it doesn't seem to work
             # with our field? And using a Choices filter raises that a Datetime 
             # isn't serializable, and I don't know how else to get equality to
             # filter properly
-#            ('date',
-#            {'type': None
-#             'choices': [(str(x['date']),str(x['date'])) \ 
-#                          for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
-#            ('location',
-#            {
-#                 'type': 'choices',
-#                 'choices': [(x['location'], x['location']) for x in Analysis.objects.all().values("pk","location").distinct().order_by("location")]
-#            }),
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+            #('date',
+            #{'type': None
+            # 'choices': [(str(x['date']),str(x['date'])) \ 
+            #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
+            ('location',
+            {
+                 'type': 'choices',
+                 'choices': [(x['location'], x['location']) for x in Analysis.objects.all().values("pk","location").distinct().order_by("location")]
+            }),
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
     grid_fields = ['name', 'process', 'date', 'location']
 
     def get_heading(self):
@@ -258,14 +260,14 @@ class StepList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'parameters']
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="step")
-#    allowed_filter_fields = OrderedDict([
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="step")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
     def get_heading(self):
         return "Step List"
     def get_name_links(self, obj):
@@ -298,14 +300,14 @@ class ProcessList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     grid_fields = ['name', 'description']
-#    content_type = ContentType.objects.get(app_label='db',
-#                                           model="process")
-#    allowed_filter_fields = OrderedDict([
-#            ('categories',
-#            {
-#                  'type': 'choices',
-#                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
-#            })])
+    content_type = ContentType.objects.get(app_label='db',
+                                           model="process")
+    allowed_filter_fields = OrderedDict([
+            ('categories',
+            {
+                  'type': 'choices',
+                  'choices': [(x['pk'], x['name']) for x in Category.objects.filter(category_of=content_type).values("pk","name").order_by("name")]
+            })])
 
     def get_heading(self):
         return "Process List"
@@ -335,24 +337,24 @@ class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-#    allowed_filter_fields = OrderedDict([('type',
-#            {
-#                'type': 'choices',
-#                'choices': [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")],
-#                # Do not display 'All' choice which resets the filter:
-#                # List of choices that are active by default:
-#                'active_choices': [],
-#                # Do not allow to select multiple choices:
-#            }), 
-#            ('source_step',
-#            {
-#                'type': 'choices',
-#                'choices': [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")],
-#                # Do not display 'All' choice which resets the filter:
-#                # List of choices that are active by default:
-#                'active_choices': [],
-#                # Do not allow to select multiple choices:
-#            })])
+    allowed_filter_fields = OrderedDict([('type',
+            {
+                'type': 'choices',
+                'choices': [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")],
+                # Do not display 'All' choice which resets the filter:
+                # List of choices that are active by default:
+                'active_choices': [],
+                # Do not allow to select multiple choices:
+            }), 
+            ('source_step',
+            {
+                'type': 'choices',
+                'choices': [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")],
+                # Do not display 'All' choice which resets the filter:
+                # List of choices that are active by default:
+                'active_choices': [],
+                # Do not allow to select multiple choices:
+            })])
     grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'input_file']
 
     def get_heading(self):
@@ -483,6 +485,8 @@ class FeatureDetail(InlineDetailView):
     form = FeatureDisplayForm
     def get_heading(self):
         return ""
+#    def get_context_data(self, **kwargs):
+#        context['form'].fields['measures'].widget.get_text_method = 
 
 class AnalysisDetail(InlineDetailView):
     pk_url_kwarg = 'analysis_id'
@@ -1054,12 +1058,12 @@ def ajax_plot_trendy_view(request):
 ###############################################################################
 ### View for handling file uploads                                          ###
 ###############################################################################
-class new_upload(CreateView):
-    form_class = NewUploadForm
+class spreadsheet_upload(CreateView):
+    form_class = SpreadsheetUploadForm
     template_name = 'core/uploadcard.htm'
 
     def get_form_kwargs(self, *args, **kwargs):
-        kwargs = super(new_upload, self).get_form_kwargs(*args, **kwargs)
+        kwargs = super(spreadsheet_upload, self).get_form_kwargs(*args, **kwargs)
         kwargs['userprofile'] = UserProfile.objects.get(user=self.request.user)
         return kwargs
 
@@ -1068,7 +1072,32 @@ class new_upload(CreateView):
         user = self.request.user
         userprofile = UserProfile.objects.get(user=user)
         self.object.userprofile = userprofile
+        self.object.upload_type = "S"
         self.object.save()
+        current_app.send_task('db.tasks.react_to_file', args=(self.object.pk,))
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk,
+                                                                    'new':"new"})
+
+class artifact_upload(CreateView):
+    form_class = ArtifactUploadForm
+    template_name = 'core/uploadcard_artifact.htm'
+
+    def get_form_kwargs(self, *args, **kwargs):
+        kwargs = super(artifact_upload, self).get_form_kwargs(*args, **kwargs)
+        kwargs['userprofile'] = UserProfile.objects.get(user=self.request.user)
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        user = self.request.user
+        userprofile = UserProfile.objects.get(user=user)
+        self.object.userprofile = userprofile
+        self.object.upload_type = "A"
+        self.object.save()
+        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):

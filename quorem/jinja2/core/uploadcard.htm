@@ -3,13 +3,13 @@
 
 <div class="card">
   <div class="card-header">
-           <span class="badge badge-pill badge-dark float-right"  data-toggle="tool-tip" data-placement="right" title="Upload a .CSV containing Investigation, Sample, Feature, Analysis, Process, Step, or Result data. To upload a QIIME artifact, deposit it into an Analysis page.">
+           <span class="badge badge-pill badge-dark float-right"  data-toggle="tool-tip" data-placement="right" title="Upload a .CSV containing Investigation, Sample, Feature, Analysis, Process, Step, or Result data.">
             <span class="iconui iconui-question-sign"></span>
           </span>
     <card-title>Upload Files</card-title>
   </div>
   <div class="card-body">
-    <form enctype="multipart/form-data" action="/upload/new" method="post">
+    <form enctype="multipart/form-data" action="/upload/spreadsheet" method="post">
     {% csrf_token %}
     {% for field in form %}
     <div class="row form-group pt-3">
