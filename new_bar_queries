@@ -1,0 +1,20 @@
+mapping = {'str value': 'str__value',}
+samples = models.Sample.objects.filter(investigation=inv)
+v_raw = models.Value.objects.filter(samples__in=samples).filter(name=meta)
+v_type = v_raw[0].content_type.name
+
+filter = mapping[v_type]
+count = v_raw.values(filter).order_by(filter).annotate(agg=Count(filter))
+
+-->> e.g
+  - inv=Investigation 0
+  - meta = 'sex'
+  >>>>> <Queryset [{'str__value': 'female', 'agg': 6}, {'str__value': 'male', 'agg': 6}
+
+
+Downstream:
+  for qs in sets:
+	graph_values.append(
+		{'x': [s[filter] for s in qs['data']],
+		 'y': [s['agg'] for s in qs['data']],
+		  ....

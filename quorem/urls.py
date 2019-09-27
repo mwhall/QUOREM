@@ -35,6 +35,7 @@ from db.views import (
     #analysis page
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
     PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
+    onto_view, onto_json
 )
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
@@ -174,6 +175,9 @@ urlpatterns = [
     re_path(r'^category-autocomplete/$',
             CategoryAutocomplete.as_view(),
             name='category-autocomplete'),
+    ##onto test
+    path('ontology/viewer/', onto_view, name='onto_view'),
+    path('ajax/load-onto/', onto_json, name='onto_json'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {
