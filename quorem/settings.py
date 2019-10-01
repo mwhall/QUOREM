@@ -109,6 +109,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
+    "http://oceanman.research.cs.dal.ca",
     "http://localhost:8000",
 ]
 
@@ -156,9 +157,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'circle_test',
-        'USER': 'root',
-        'PASSWORD': '',
+        'NAME': 'quoremtest',
+        'USER': 'alex',
+        'PASSWORD': '15fdnigp',
         'HOST': '127.0.0.1',
     }
 }

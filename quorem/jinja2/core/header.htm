@@ -3,6 +3,7 @@
   ('/', 'create', "Create New"),
   ('/search/', 'search', "Search"),
   ('/analyze/', 'analyze', "Analyze"),
+  ('/ontology/viewer/', 'ontology', "MICON"),
   ] -%}
 {% set active_page = active_page|default('database') -%}
 <nav class="navbar navbar-expand-lg navbar-dark bg-info">
@@ -57,13 +58,22 @@
     <li class="nav-item">
       <a class="nav-link" href="/wiki/">Wiki</a>
     </li>
+
+  </ul>
+  <ul class="navbar-nav ml-auto">
+    <li id="mail" class="nav-item {% if active_page=='mail' %} active {% endif %}">
+      <a class="nav-link" href="{{ url('mail') }}">
+        {{ '0'|show_inbox(request.user) }}
+        <span class="fa fa-envelope"></span>
+      </a>
+    </li>
+    <form class="form-inline my-2 my-lg-0" action="/search/" method="GET">
+      <input name="q" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" value="">
+      <input class="btn btn-success my-2 my-sm-0" type="submit" name="search"></input>
+    </form>
     <li class="nav-item">
       <a class="nav-link" href="{{ url('accounts:logout') }}">Logout</a>
     </li>
   </ul>
-  <form class="form-inline my-2 my-lg-0" action="/search/" method="GET">
-    <input name="q" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" value="">
-    <input class="btn btn-success my-2 my-sm-0" type="submit" name="search"></input>
-  </form>
   </div>
 </nav>

@@ -1,0 +1,182 @@
+{% extends 'base.htm' %}
+{% block head %}
+<style>
+/* Remove default bullets */
+ul, #onto_list {
+  list-style-type: none;
+}
+
+/* Remove margins and padding from the parent ul */
+#onto_list {
+  margin: 0;
+  padding: 0;
+}
+#num-results{
+  font-weight: bold;
+}
+#search-output{
+  max-height: 38rem;
+  width: 100%;
+  overflow-y: scroll;
+}
+
+.sticky{
+  position: sticky;
+  top:2rem;
+}
+/* Style the caret/arrow */
+.caret {
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+}
+
+/* Create the caret/arrow with a unicode, and style it */
+.caret::before {
+  content: "\25B6";
+  color: black;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+.caret-down::before {
+  transform: rotate(90deg);
+}
+
+/* Hide the nested list */
+.nested {
+  display: none;
+}
+
+/* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+.active {
+  display: block;
+}
+.searchlist{
+  cursor: pointer;
+}
+.searchlist:hover{
+  background-color: #20c997;
+}
+</style>
+
+{% endblock %}
+{% block main %}
+<!--  {% include 'ontology/onto_list.htm' %} -->
+  <br>
+  <div class="row">
+    <div id="treeview-searchable" class="col-sm-8 treeview">
+    </div>
+    <div class="col-sm-4 tall">
+      <div class="head">
+        <h5>Find a Term</h5>
+      </div>
+    <div class="form-group ontosearch sticky">
+      <div class="row">
+        <input type="input" class="form-control" id="input-search" value>
+        <br>
+        <button type="button" class="btn btn-success" id="btn-search">Search</button>
+        <button type="button" class="btn btn-default" id="btn-clear-search">Clear</button>
+      </div>
+      <div class='row'>
+        <div id="selected-description" class="border-bottom">
+        </div>
+      </div>
+      <div class="row">
+        <div id="num-results" class="border-top border-bottom">
+        </div>
+        <div id="search-output">
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}
+{% block bottom_scripts %}
+<script src="{{ static('js/treeview.js') }}"></script>
+<script type="text/javascript">
+
+  $.getJSON("{{ static('ontology.json') }}", function(data){
+    console.log(data);
+  var $searchableTree = $('#treeview-searchable').treeview({
+          levels: 1,
+        //  data: getTree(),
+          data: data,
+          showBorder: false,
+          backColor: '#f5f5f5',
+          onhoverColor: '#20c997',
+          searchResultBackColor: '#fdf498',
+          searchResultColor: '#000000',
+          selectedBackColor: '#17a2b8',
+          onNodeSelected: function(event, node){
+            $('#selected-description').html('<br><h4>'+ node.text + '</h4><p>' + node.description + '</p>');
+          },
+          onNodeUnselected: function(event, node){
+            $('#selected-description').html("<p></p>");
+          },
+        });
+
+
+
+  var search = function(e) {
+    var pattern = $('#input-search').val();
+    var options = {
+      ignoreCase: true,
+      exactMatch: false,
+      revealResults: true
+    };
+
+    var results = $searchableTree.treeview('search', [ pattern, options ]);
+    var first = results[0]['nodeId'];
+    var scrollTo = $('[data-nodeId=' + first + ']')[0];
+    if(scrollTo){
+      scrollTo.scrollIntoView();
+    }
+    var numResults = '<p>' + results.length + ' matches found</p>';
+    $('#num-results').html(numResults);
+    var output = "";
+    $.each(results, function (index, result) {
+      output += '<p class="searchlist" nodeval="' + result.nodeId + '">- ' + result.text + '</p>';
+    });
+    $('#search-output').html(output);
+  }
+
+  // Scroll to a result when clicked from search results
+  document.getElementById("search-output").addEventListener("click", function(e){
+    if (e.target && e.target.matches("p.searchlist")){
+      var nodeval = e.target.attributes['nodeval'].value;
+
+      //select the node
+      $searchableTree.treeview('selectNode', [ parseInt(nodeval), { silent: false }]);
+      var scrollTo = $('[data-nodeId=' + nodeval + ']')[0];
+      if(scrollTo){
+        scrollTo.scrollIntoView();
+      }
+    }
+  });
+
+  $('#btn-search').on('click', search);
+  //$('#input-search').on('keyup', search);
+
+  $('#btn-clear-search').on('click', function (e) {
+    $searchableTree.treeview('clearSearch');
+    var selected = $searchableTree.treeview('getSelected');
+    $searchableTree.treeview('unselectNode', [ selected, { silent: false }]);
+    $('#input-search').val('');
+    $('#search-output').html('');
+  });
+});
+
+
+
+  var toggler = document.getElementsByClassName("caret");
+  var i;
+
+  for (i = 0; i < toggler.length; i++) {
+    toggler[i].addEventListener("click", function() {
+      this.parentElement.querySelector(".nested").classList.toggle("active");
+      this.classList.toggle("caret-down");
+    });
+  }
+</script>
+{% endblock %}

@@ -1,3 +1,14 @@
+
+  <nav class="navbar navbar-light bg-light nav-main navbar-expand-md" role="navigation">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggler" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
+    <div class="collapse navbar-collapse navbar-ex1-collapse">
+      <ul class="navmain nav navpills flex-column auto-highlight">
 {% from 'bs_nav_items.htm' import bs_nav_items with context -%}
 {% set navs = [
     {
@@ -27,6 +38,9 @@
     {
     'url':url('upload_all'),
     'text':_('View Uploaded Files')},
-  
+
 ] -%}
 {{ bs_nav_items(navs) }}
+</ul>
+</div>
+</nav>
