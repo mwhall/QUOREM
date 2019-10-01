@@ -1,0 +1,31 @@
+Unnamed: 0,SeaRose,Unnamed: 3,Unnamed: 4,SeaRose.1,Unnamed: 7,Unnamed: 8,SeaRose.2,Unnamed: 11,Unnamed: 12,SeaRose.3,Unnamed: 15,Unnamed: 16
+,MUN,UOC,OU,MUN,UOC,OU,MUN,UOC,OU,MUN,UOC,OU
+Parameters,SC1035 - test hydrocycleone (to degasser),,,SC1013 - MP separator (to MP hydroscyclones),,,SC1032 - MP hydrocyclone B (to PW degasser) ,,,SC1037 - PW degasser,,
+Date Sampled,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18,28-Aug-18
+Date Received,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18,05-Sep-18
+Temperature at Sampling Point (°C),55,55,55,54,54,54,54,54,54,54,54,54
+Operating Pressure (kPag),,,,,,,,,,,,
+Salinity (M of NaCl),,0.568,,,0.542,,,0.563,,,0.72,
+pH (lab),,7.98,,,7.50,,,7.90,,,8.04,
+pH (field),6.2,6.2,6.2,6.2,6.2,6.2,6.2,6.2,6.2,6.2,6.2,6.2
+SRR - no subtrate (umol S/mL/day),,,0.053*,,,0.015,,,0.011,,,0.021
+SRR - with oil (umol S/mL/day),,,0.015,,,0.029*,,,0.011,,,0.085*
+Date Sampled,,5,,,4,,,5,,,4,
+qPCR (#16S copies/mL sample),,,2.24E+06,,3.51E+04,1.51E+07,,7.55E+05,2.11E+06,,1.86E+06,2.48E+06
+Sample community composition (approximate),,,,,,,,,,,,
+,,,,,,,,,,,,
+Caminicella (%),,1,,,2.5,1,,<1,<1,,-,
+Deferribacteraceae (%),,2.5,,,-,,,-,,,-,
+Desulfacinum (%),,2,,,1,<1,,-,<1,,10,
+Desulfomicrobium (%),,5,,,2,1,,2,10,,3,
+Flexistipes (%),,1,,,-,,,-,,,-,
+Halothiobacillus (%),,<1,,,<1,,,2,,,<1,
+Kosmotoga (%),,3,,,2,<1,,<1,2,,5,
+Marinobacterium (%),,5,,,<1,-,,15,20,,<1,
+Methermicoccus (%),,1.5,,,<1,<1,,<1,2,,10,
+Sulfurospirillum (%),,15,,,<1,,,-,,,-,
+Thermacetogenium (%),,<1,,,<1,,,<1,,,<1,
+Thermoanaerobacter (%),,50,,,88,92,,80,58,,60,
+Thermovirga (%),,<1,,,<1,,,<1,,,2,
+Thauera (%),,,,,,1,,-,-,,,
+Unassigned + misc (%),,10,,,3,2,,2,2,,2,

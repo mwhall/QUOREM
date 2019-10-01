@@ -1,0 +1,89 @@
+making valid charts: a process.
+
+1. Allow the user to select an arbitrary X value. This will be a Top-down process.
+   User Story:
+	Jill is presented with a from. First, she needs to select all investigations from which she wants
+        to view data. 
+	Next, the form will present her all the Models found in the form (I.e. Samples, Values, Features..etc)
+	Jill selects the model she is interested in. If that model should be further filtered, she is presented the option to filter the model.
+
+2. Show the user VALID options for Y value. 
+   What is a valid option?
+
+   To be able to plot trends, data need to have a one-to-one relationship. 
+   That is, EVERY datum with a vlue on X needs to have a correspongin value on y.
+   
+   To obtain valid options for y, the software need to be identify options which have at least one 
+   value for both x and y.
+
+   Within the same model, this is as simple as adding a second filter. 
+   e.g. Sample with sex value 'male' and species value 'ooze'.
+
+   Among samples, this becomes more difficult. We need to keep track of valid joins in the db.
+   What is the best way to do this? explicit joins, storing tables??
+   If tables were stored it would be easy enough to populate the y drop down with options found in the table the contains x. 
+
+  
+
+
+Thought process
+-May have to configure different option choices for each initial model choice.
+
+**** SAMPLE X ****
+choose sample. 
+You are given meta filters.
+Choose a meta filter.
+** new model: Option for original sample or replicates??
+   	      or maybe UI will still have chocice for replicates, selected differently on the backend.
+
+qs:
+"Samples that have a {{meta}} associated".
+
+Next:
+What else can be associated to those samples?
+-other meta filters certainly
+-maybe nothing else for sample.
+
+*** PROCESS ON X ***
+Choose process.
+...doesnt really work.
+Maybe choose a step.
+plot parameters vs results. 
+                vs features.
+
+
+**** Replicates on X ****
+Reps wont exist anymore but could still be presented as an option via logic.
+Reps vs features
+Reps vs rep metadata values
+
+
+
+
+
+
+
+
+Samples Chosen
+>> x_opts = Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=invs)).order_by('name').distinct('name')
+
+- Choose meta category.
+>>> xqs = Values.objects.filter(samples__in=sample_qs).filter(name=xmeta)
+>>> x_type=xqs[0].content_type.name
+>>> x_filt = filter_map[x_type]
+>>> xqs = xqs.order_by(x_filt)
+>>> qs = Sample.objects.filter(values__in=xqs).order_by("values__type__value")
+
+- offer other sample metas for y.
+>>>y_opts = Value.objects.filter(samples__in=qs).order_by('name').distinct('name')
+>>>yqs = Value.objects.filter(samples__in=qs).filter(name=ymeta)
+>>> yfilt same as x filt
+>>> yqs.order_by(x_filt)
+
+x_vals = [xval for x in xqs]
+y_vals = [yval for y in yqs]
+
+QS: Find the SAMPLE with value__name=xmeta AND value__name=ymeta, order_by xvals__type__valuey
+
+
+

@@ -34,7 +34,7 @@ from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Analysis,
         Step, Result, Feature, Value, Category,
-        UploadInputFile, load_mixed_objects, UserProfile
+        UploadInputFile, load_mixed_objects, UserProfile, UserMail
 )
 
 from .forms import (
@@ -42,7 +42,7 @@ from .forms import (
     ProcessForm, ProcessDisplayForm,
     ResultDisplayForm,
     AnalysisDisplayForm, AnalysisForm,
-    SampleDisplayForm, SampleForm, 
+    SampleDisplayForm, SampleForm,
     FeatureDisplayForm, FeatureForm,
     StepDisplayForm, StepForm,
     UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
@@ -65,6 +65,7 @@ from django.contrib.postgres.search import(
 from django.db.models import F, Q
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
+from django.views.generic import TemplateView
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
@@ -204,7 +205,7 @@ class FeatureList(ListSortingView):
 
     def get_heading(self):
         return "Feature List"
- 
+
     def get_name_links(self, obj):
         return obj.get_detail_link()
 
@@ -223,14 +224,14 @@ class AnalysisList(ListSortingView):
             {
                 'type': 'choices',
                 'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
-            }), 
+            }),
             # BROKEN. There is a Date filter in DJK but it doesn't seem to work
-            # with our field? And using a Choices filter raises that a Datetime 
+            # with our field? And using a Choices filter raises that a Datetime
             # isn't serializable, and I don't know how else to get equality to
             # filter properly
             #('date',
             #{'type': None
-            # 'choices': [(str(x['date']),str(x['date'])) \ 
+            # 'choices': [(str(x['date']),str(x['date'])) \
             #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
             ('location',
             {
@@ -345,7 +346,7 @@ class ResultList(ListSortingView):
                 # List of choices that are active by default:
                 'active_choices': [],
                 # Do not allow to select multiple choices:
-            }), 
+            }),
             ('source_step',
             {
                 'type': 'choices',
@@ -486,7 +487,7 @@ class FeatureDetail(InlineDetailView):
     def get_heading(self):
         return ""
 #    def get_context_data(self, **kwargs):
-#        context['form'].fields['measures'].widget.get_text_method = 
+#        context['form'].fields['measures'].widget.get_text_method =
 
 class AnalysisDetail(InlineDetailView):
     pk_url_kwarg = 'analysis_id'
@@ -579,7 +580,7 @@ class SampleCreate(BsTabsMixin, InlineCreateView):
         return {'submit_text': 'Save Sample'}
     def get_heading(self):
         return "Create New Sample"
- 
+
 class FeatureCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     form = FeatureForm
@@ -605,7 +606,7 @@ class AnalysisCreate(BsTabsMixin, InlineCreateView):
         return {'submit_text': 'Save Analysis'}
     def get_heading(self):
         return "Create New Analysis"
- 
+
 class StepCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     form = StepForm
@@ -618,7 +619,7 @@ class StepCreate(BsTabsMixin, InlineCreateView):
         return {'submit_text': 'Save Step'}
     def get_heading(self):
         return "Create New Step"
- 
+
 class ProcessCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True
     form = ProcessForm
@@ -1103,3 +1104,48 @@ class artifact_upload(CreateView):
     def get_success_url(self):
         return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk,
                                                                     'new':"new"})
+################################################################################
+## onto testing                                                              ###
+###############################################################################
+
+def onto_view(request):
+    return render(request, 'ontology/ontoview.htm', {'active_page': 'ontology'})
+
+import json
+def onto_json(request):
+    with open('ontology/ontology.json', 'r') as f:
+        onto = json.load(f)
+    return JsonResponse(onto)
+
+
+class MailBoxView(View):
+    template_name="mail/mailbox.htm"
+    def get(self, request):
+        if request.user.is_authenticated:
+            userProfile = UserProfile.objects.get(user=request.user)
+            mailBox = UserMail.objects.filter(user=userProfile).order_by('-date_created')
+            unread = mailBox.filter(read=False).count()
+            return render(request, self.template_name, {'user':userProfile,
+                                                        'mail': mailBox,
+                                                        'unread': unread,
+                                                        'active_page': 'mail',})
+
+class MailOpen(View):
+    template_name="mail/mailbox.htm"
+    def get(self, request, mail_id):
+        mail_pk = self.kwargs['mail_id']
+        if request.user.is_authenticated:
+            mail = UserMail.objects.get(pk=mail_pk)
+            userProfile = UserProfile.objects.get(user=request.user)
+            if mail.user != userProfile:
+                print("nah")
+                return
+            mail.read = True
+            mail.save()
+            mailBox = UserMail.objects.filter(user=userProfile).order_by('-date_created')
+            unread = mailBox.filter(read=False).count()
+            return render(request, "mail/mailbox.htm", {'user':userProfile,
+                                                        'mail': mailBox,
+                                                        'unread': unread,
+                                                        'active_page': 'mail',
+                                                        'selected': mail,})

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+    {% endblock head -%}
+    <style>
+      /*style stuff */
+      .marketing .row{
+        padding-top: 3rem;
+      }
+      .marketing .col-lg-4 {
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      .marketing h2 {
+        font-weight: 400;
+      }
+      .marketing .col-lg-4 p {
+        margin-right: .75rem;
+        margin-left: .75rem;
+      }
+      .sticky{
+        position: sticky;
+        top:2rem;
+      }
+      .no-selection{
+        color: grey;
+      }
+      .sent-date{
+        color: grey;
+      }
+      #inbox{
+        max-height:38rem;
+        width: 100%;
+        overflow-y: scroll;
+      }
+      .maillist{
+        cursor: pointer;
+      }
+      .maillist:hover{
+        background-color: #bfbfbf;
+      }
+      .selected{
+        background-color: #d7f6f6;
+      }
+      .mailbox-title{
+        display: flex;
+        justify-content: space-around;
+      }
+      .unread{
+        color: blue;
+      }
+    </style>
+  </head>
+  <body>
+    {% set active_page = "mail" %}
+    {% include 'core/header.htm' -%}
+    <div class="container-fluid marketing">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card sticky">
+            <div class="card-header mailbox-title">
+              <span>Inbox</span><span><b>{{ unread }}</b> Unread</span>
+            </div>
+            <div class="card-body text-center">
+              {% if mail %}
+              <ul id="inbox" class="list-group list-group-flush">
+                {% for letter in mail %}
+                  <a href="{{ url('open_mail', kwargs={'mail_id':letter.pk} ) }}"
+                  class="maillist list-group-item {% if letter.read == False %} unread {% endif %}
+                  {% if letter == selected %} selected {% endif %}"
+                  >
+                    {{ letter.title }}
+                  </a>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <h5 class="card-title text-center">Looks like you have no mail!</h5>
+              <!--i class="fa fa-envelope-open-o fa-5x"></i-->
+              <p class="card-text pt-3 text-center">Mail is generated from uploading data. We will use your
+                mailbox to notify you of completed uploads, errors, and any data validation that
+                may be required of you.
+              </p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card">
+            <div id="mail-message" class="card-body mail-contents">
+              {% if selected %}
+              <h5 class="card-title">{{ selected.title }}</h5>
+              <p class="sent-date">{{ selected.date_created }}</p>
+              <div class="card-body">
+                <p class="card-text">{{ selected.message }}</p>
+              </div>
+              {% else %}
+              <h5 class="no-selection card-title text-center">
+                There's nothing here yet.
+              </h5>
+              <div class="no-selection text-center">
+                <i class="pt-3 fa fa-envelope-o fa-5x"></i>
+                <p class="pt-3">Select mail from your inbox to view its contents.</p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% include 'base_bottom_scripts.htm' -%}
+    {% block bottom_scripts -%}
+    {% endblock bottom_scripts -%}
+  </body>
+</html>
