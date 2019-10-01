@@ -35,7 +35,7 @@ from db.views import (
     #analysis page
     analyze, new_upload, plot_view, ajax_aggregates_meta_view,
     PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
-    onto_view, onto_json
+    onto_view, onto_json, MailBoxView, MailOpen,
 )
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
@@ -178,6 +178,8 @@ urlpatterns = [
     ##onto test
     path('ontology/viewer/', onto_view, name='onto_view'),
     path('ajax/load-onto/', onto_json, name='onto_json'),
+    path('mail/', MailBoxView.as_view(), name='mail'),
+    re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

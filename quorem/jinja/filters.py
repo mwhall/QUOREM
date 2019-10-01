@@ -3,6 +3,8 @@ from jinja2 import Markup
 from jinja2 import contextfilter
 from django.utils.http import urlencode
 from django.shortcuts import render
+from db.models import UserMail, UserProfile
+from django.contrib.auth import get_user_model
 
 def highlight(text, selection):
     if not text:
@@ -16,6 +18,20 @@ def highlight(text, selection):
     for i in l:
         text = text.replace(i, "<mark>{0}</mark>".format(i))
     return Markup(text)
+
+def show_inbox(label, user):
+    User = get_user_model()
+    num_unreads = UserMail.objects.filter(user=UserProfile.objects.get(user=User.objects.get(email=user)),
+                                            read=False).count()
+    out = ""
+    if num_unreads > 0:
+        out = "<span class='badge badge-pill badge-warning'>"
+    else:
+        out = "<span class='badge badge-pill badge-secondary'>"
+    out += str(num_unreads)
+    out += "</span>"
+    return Markup(out)
+
 
 @contextfilter
 def add_type(context, type_name):

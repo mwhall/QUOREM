@@ -13,7 +13,7 @@ from .parser import resolve_input_row
 from .models import (
 Investigation, Sample, Feature, Process, Step, Analysis,
 Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
-ErrorMessage, UploadInputFile
+ErrorMessage, UploadInputFile, UserProfile, UserMail
 )
 
 from q2_extractor.Extractor import q2Extractor
@@ -37,6 +37,9 @@ def react_to_file(upload_file_id):
             print("error with upfile. Cannot find the file. Sys Admin should remove.")
             print(e)
     try:
+        #user will recieve mail to let them know the atstus of their upload.
+        mail = UserMail(user=upfile.userprofile)
+
         file_from_upload = upfile.upload_file._get_file()
         infile = file_from_upload.open()
         filetype = guess_filetype(infile)
@@ -44,6 +47,7 @@ def react_to_file(upload_file_id):
         print(filetype)
         status = ""
         if filetype == 'qz':
+            mail.title="The artifact you uploaded "
             print("processing qiime file...")
             try:
                 status = process_qiime_artifact(infile, upfile)
@@ -51,10 +55,16 @@ def react_to_file(upload_file_id):
                 print(e)
 
         elif filetype == 'table':
+            mail.title="The spreadsheet you uploaded "
             print("processing table ...")
             status = process_table(infile)
             print(status)
         else:
+            mail.title="A rare error occurred with your upload."
+            mail.message="The system was unable to recognize your upload file.\
+                          Please double check your file selection. If this problem\
+                          persists, please contact the devlopers of QUOR'em. "
+            mail.save()
             upfile.upload_status = 'E'
             upfile.update()
             errorMessage = ErrorMessage(uploadinputfile=upfile,
@@ -62,13 +72,26 @@ def react_to_file(upload_file_id):
                                         filetype. Please contact Sys Admin.")
             errorMessage.save()
         if status == 'Success':
+            mail.title += "was successfully added to QUOR'em."
+            mail.message = "Your file upload completed successfully. You will now \
+            be able to browse, visualize, and search for your data."
+            mail.save()
             report_success(upfile)
         else:
+            mail.title += "failed."
+            mail.message = "Your file upload failed. Please try again."
+            mail.save()
             upfile.upload_status = 'E'
             upfile.update()
             errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Upload failure.")
             errorMessage.save()
+
     except Exception as e:
+        mail.title += "failed."
+        mail.message = "Your file upload failed. The system gave the following error: "
+        mail.message += e
+        mail.message += " please try reformatting your data and reuploading."
+        mail.save()
         print("Except here")
         print(e)
         upfile.upload_status = 'E'

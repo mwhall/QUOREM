@@ -120,7 +120,7 @@ class Sample(models.Model):
         )
 #        refresh_automated_report("sample", pk=self.pk)
 
-   
+
 
 class Process(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -193,10 +193,10 @@ class Analysis(models.Model):
     date = models.DateTimeField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     # If this is blank, then all the steps must be stored in extra_steps
-    # But if the Process changes: 
+    # But if the Process changes:
     #  - all the Results with this Process must have their Parameters checked, and if they are the same, make sure it's only stored at the highest level
     #    but if it's different, specify it in the Result's Parameters
-    #  - Analysis is 
+    #  - Analysis is
     process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
@@ -285,7 +285,7 @@ class Category(models.Model):
             ]
     def __str__(self):
         return self.name
- 
+
 ### Key-Value storage for objects
 
 class Value(models.Model):
@@ -353,6 +353,16 @@ class UserProfile(models.Model):
         return userprofile
     def __str__(self):
         return self.user.email
+
+#a class for mail messages sent to users.
+class UserMail(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    date_created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    title = models.TextField()
+    message = models.TextField()
+    #mail is oviously not read when it's first created
+    read = models.BooleanField(default = False)
+
 
 class UploadInputFile(models.Model):
     STATUS_CHOICES = (

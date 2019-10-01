@@ -34,7 +34,7 @@ from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Analysis,
         Step, Result, Feature, Value, Category,
-        UploadInputFile, load_mixed_objects, UserProfile
+        UploadInputFile, load_mixed_objects, UserProfile, UserMail
 )
 
 from .forms import (
@@ -63,6 +63,7 @@ from django.contrib.postgres.search import(
 from django.db.models import F, Q
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
+from django.views.generic import TemplateView
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
@@ -1086,3 +1087,36 @@ def onto_json(request):
     with open('ontology/ontology.json', 'r') as f:
         onto = json.load(f)
     return JsonResponse(onto)
+
+
+class MailBoxView(View):
+    template_name="mail/mailbox.htm"
+    def get(self, request):
+        if request.user.is_authenticated:
+            userProfile = UserProfile.objects.get(user=request.user)
+            mailBox = UserMail.objects.filter(user=userProfile).order_by('-date_created')
+            unread = mailBox.filter(read=False).count()
+            return render(request, self.template_name, {'user':userProfile,
+                                                        'mail': mailBox,
+                                                        'unread': unread,
+                                                        'active_page': 'mail',})
+
+class MailOpen(View):
+    template_name="mail/mailbox.htm"
+    def get(self, request, mail_id):
+        mail_pk = self.kwargs['mail_id']
+        if request.user.is_authenticated:
+            mail = UserMail.objects.get(pk=mail_pk)
+            userProfile = UserProfile.objects.get(user=request.user)
+            if mail.user != userProfile:
+                print("nah")
+                return
+            mail.read = True
+            mail.save()
+            mailBox = UserMail.objects.filter(user=userProfile).order_by('-date_created')
+            unread = mailBox.filter(read=False).count()
+            return render(request, "mail/mailbox.htm", {'user':userProfile,
+                                                        'mail': mailBox,
+                                                        'unread': unread,
+                                                        'active_page': 'mail',
+                                                        'selected': mail,})
