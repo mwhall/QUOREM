@@ -33,9 +33,9 @@ from db.views import (
     #SearchResultList
     search,
     #analysis page
-    analyze, new_upload, plot_view, ajax_aggregates_meta_view,
-    PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
-    onto_view, onto_json, MailBoxView, MailOpen,
+    analyze, spreadsheet_upload, artifact_upload,
+    plot_view, ajax_aggregates_meta_view,
+    PlotAggregateView, PlotTrendView,
 )
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
@@ -46,7 +46,8 @@ urlpatterns = [
     path('notifications/', include('django_nyt.urls')),
     path('wiki/', include('wiki.urls')),
     # Upload routing
-    path('upload/new', new_upload.as_view(), name='upload'),
+    path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
+    path('upload/artifact', artifact_upload.as_view(), name='upload_artifact'),
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),

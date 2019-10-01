@@ -56,8 +56,8 @@ class Feature(models.Model):
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
     first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
-    observed_results = models.ManyToManyField('Result', related_name='observed_results', blank=True, null=True)
-    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples', blank=True, null=True)
+    observed_results = models.ManyToManyField('Result', related_name='observed_results', blank=True)
+    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples', blank=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
     categories = models.ManyToManyField('Category', related_name="features", blank=True)
@@ -192,17 +192,12 @@ class Analysis(models.Model):
     name = models.CharField(max_length=255)
     date = models.DateTimeField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    # If this is blank, then all the steps must be stored in extra_steps
-    # But if the Process changes:
-    #  - all the Results with this Process must have their Parameters checked, and if they are the same, make sure it's only stored at the highest level
-    #    but if it's different, specify it in the Result's Parameters
-    #  - Analysis is
-    process = models.ForeignKey('Process', on_delete=models.CASCADE, blank=True)
+    process = models.ForeignKey('Process', on_delete=models.CASCADE)
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
-    extra_steps = models.ManyToManyField('Step', blank=True, null=True)
+    extra_steps = models.ManyToManyField('Step', blank=True)
     # Run-specific parameters can go in here, but I guess Measures can too
-    values = models.ManyToManyField('Value', related_name='analyses', blank=True, null=True)
+    values = models.ManyToManyField('Value', related_name='analyses', blank=True)
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
     search_vector = SearchVectorField(null=True)
     class Meta:
@@ -244,6 +239,7 @@ class Result(models.Model):
     samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
     features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
+    #from_provenance = models.BooleanField(default=False)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
     categories = models.ManyToManyField('Category', related_name='results', blank=True)
@@ -313,8 +309,8 @@ class Value(models.Model):
     def update_search_vector(self):
         Value.objects.update(
             search_vector= (SearchVector('name', weight='A') +
-                            SearchVector('content_object__value', weight='B') +
-                            SearchVector('value_type', weight='C'))
+#                            SearchVector('', weight='B') +
+                            SearchVector('value_type', weight='B'))
         )
 
 
@@ -370,10 +366,13 @@ class UploadInputFile(models.Model):
         ('S', "Success"),
         ('E', "Error")
     )
+    TYPE_CHOICES = (
+        ('S', 'Spreadsheet'),
+        ('A', 'Artifact'))
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
     upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
-
+    upload_type = models.CharField(max_length=1, choices=TYPE_CHOICES)
     #Should upload files be indexed by the search??
     #search_vector = SearchVectorField(null=True)
 
@@ -384,7 +383,7 @@ class UploadInputFile(models.Model):
         self.upload_status = 'P'
         super().save(*args, **kwargs)
         #Call to celery, without importing from tasks.py (avoids circular import)
-        current_app.send_task('db.tasks.react_to_file', (self.pk,))
+    #    current_app.send_task('db.tasks.react_to_file', (self.pk,))
         #output = result.collect()
         ##    print(i)
     def update(self, *args, **kwargs):
