@@ -1,0 +1,24 @@
+ how to interpret what a Value means/covers based on what it's linked to
+Parameter Link Contexts:
+General: Always attached to a Step to know what it applies to.
+Parameter attached to Sample AND Step -> This Step's Parameter for this Result, which overrides the Sample's Process and Steps.
+Parameter attached to Result AND Step -> This Step's Parameter for this Result. Exists only if differing from below.
+Parameter attached to Analysis AND Step -> Default for this Step's Parameter for this Analysis, if not present in Result
+Parameter attached to Process AND Step -> Default for this Step's Parameter for this Process (overrides Step's default)
+Parameter attached to Step only -> Default Parameter for this Step
+Measure Link Contexts:
+Always attached to a Result to know where it came from (Step it originated from, in particular, allowing Parameters to be yanked)
+Measure attached to Sample(s) AND Result -> This(ese) Sample(s) had this measure with this value from this Result
+Measure attached to Feature(s) AND Result -> This(ese) Feature(s) had this measure with this value from this Result
+Measure attached to Sample(s) AND Feature(s) AND Result -> This(ese) Sample/Feature combos had this measure with this value from this Result
+Measure attached to Result -> Applies to all Features and Samples linked in this Result
+Metadata Link Contexts:
+A bit willy-nilly. Metadata means a lot of things to a lot of people.
+Metadata attached to Investigation -> Covers the Investigation and all Samples in that Investigation
+Metadata attached to Process -> Covers the Process and all Samples and Results produced by that Process
+Metadata attached to Step -> Covers the Step and all Samples and Results produced by that source_step
+Metadata attached to Analysis -> Covers the Analysis and all Samples and Results attached to it
+Metadata attached to Sample -> Covers the Sample
+Metadata attached to Feature -> Covers the Feature
+Metadata attached to Sample(s) AND/OR Feature(s) -> Covers the cross section of features in a group of samples (or individual sample/feature groups)
+For now: Any other link contexts are out of the search scope when it comes to tracing the Metadata, Measures, and Parameters from one to another.

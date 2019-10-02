@@ -120,7 +120,7 @@ class Sample(models.Model):
         )
 #        refresh_automated_report("sample", pk=self.pk)
 
-   
+
 
 class Process(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -281,7 +281,7 @@ class Category(models.Model):
             ]
     def __str__(self):
         return self.name
- 
+
 ### Key-Value storage for objects
 
 class Value(models.Model):
@@ -349,6 +349,16 @@ class UserProfile(models.Model):
         return userprofile
     def __str__(self):
         return self.user.email
+
+#a class for mail messages sent to users.
+class UserMail(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    date_created = models.DateTimeField(auto_now=False, auto_now_add=True)
+    title = models.TextField()
+    message = models.TextField()
+    #mail is oviously not read when it's first created
+    read = models.BooleanField(default = False)
+
 
 class UploadInputFile(models.Model):
     STATUS_CHOICES = (

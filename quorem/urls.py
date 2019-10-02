@@ -27,13 +27,13 @@ from db.views import (
     ResultList, ResultDetail,
     StepList, StepCreate, StepDetail, StepUpdate,
     FeatureList, FeatureDetail, FeatureCreate,
-    SampleDetail, SampleList, SampleUpdate, SampleCreate, 
+    SampleDetail, SampleList, SampleUpdate, SampleCreate,
     AnalysisDetail, AnalysisList, AnalysisCreate,
     UploadList, UploadInputFileDetail,
     #SearchResultList
     search,
     #analysis page
-    analyze, spreadsheet_upload, artifact_upload, 
+    analyze, spreadsheet_upload, artifact_upload,
     plot_view, ajax_aggregates_meta_view,
     PlotAggregateView, PlotTrendView,
 )
@@ -165,6 +165,8 @@ urlpatterns = [
     path('analyze/plot/aggregate/', PlotAggregateView.as_view(), name='plot_aggregate'),
     path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
     ## Trend Routing
+    path('ajax/trendx-options/', ajax_plot_trendx_view, name="ajax_trend_x_options"),
+    path("ajax/trendy-options/", ajax_plot_trendy_view, name="ajax_trend_y_options"),
     path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
 
     ## Autocomplete Routing
@@ -174,6 +176,11 @@ urlpatterns = [
     re_path(r'^category-autocomplete/$',
             CategoryAutocomplete.as_view(),
             name='category-autocomplete'),
+    ##onto test
+    path('ontology/viewer/', onto_view, name='onto_view'),
+    path('ajax/load-onto/', onto_json, name='onto_json'),
+    path('mail/', MailBoxView.as_view(), name='mail'),
+    re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

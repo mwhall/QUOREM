@@ -1,0 +1,572 @@
+execution:
+    uuid: ca359575-396e-47d7-9298-845a567b9053
+    runtime:
+        start: 2018-05-30T20:53:47.897326-03:00
+        end: 2018-05-30T20:53:51.175659-03:00
+        duration: 3 seconds, and 278333 microseconds
+
+action:
+    type: import
+    format: SingleLanePerSamplePairedEndFastqDirFmt
+    manifest:
+    -   name: MANIFEST
+        md5sum: 0fb943f11553c79f4f4b88fe4e62fe5b
+    -   name: SRR3202913_S0_L001_R1_001.fastq.gz
+        md5sum: ed1eef579e0b60ceb12d7c2af5104866
+    -   name: SRR3202913_S0_L001_R2_001.fastq.gz
+        md5sum: 0a121c665b611ad7b7a6f2354f26bb9e
+    -   name: SRR3202914_S0_L001_R1_001.fastq.gz
+        md5sum: 03e413b4ea9a0bb3097bccce978e8339
+    -   name: SRR3202914_S0_L001_R2_001.fastq.gz
+        md5sum: 5caac843eba0fc746d810c84bd4d4740
+    -   name: SRR3202915_S0_L001_R1_001.fastq.gz
+        md5sum: a326c8d3f835e107924deeb86888eefe
+    -   name: SRR3202915_S0_L001_R2_001.fastq.gz
+        md5sum: ebd8584418b70ea3edca57c77d1dda5d
+    -   name: SRR3202916_S0_L001_R1_001.fastq.gz
+        md5sum: 344513e4a30b05d4f28e323a2c1d153c
+    -   name: SRR3202916_S0_L001_R2_001.fastq.gz
+        md5sum: ad4e51f0f6da53d0d9c3d0d3c257260a
+    -   name: SRR3202917_S0_L001_R1_001.fastq.gz
+        md5sum: 8443b46a7e3d8f308a5cd21ca73d4703
+    -   name: SRR3202917_S0_L001_R2_001.fastq.gz
+        md5sum: f9ceb79ca94e6070318849467255a145
+    -   name: SRR3202918_S0_L001_R1_001.fastq.gz
+        md5sum: 60d671cbfea60532c7463260f6d769f1
+    -   name: SRR3202918_S0_L001_R2_001.fastq.gz
+        md5sum: 7cb671f917ab78447c2f531cebc9b80c
+    -   name: SRR3202919_S0_L001_R1_001.fastq.gz
+        md5sum: 8e515d286b54e95127bafac3ed72fea0
+    -   name: SRR3202919_S0_L001_R2_001.fastq.gz
+        md5sum: b36f32b2f08c363d32dcdda19f5aa375
+    -   name: SRR3202920_S0_L001_R1_001.fastq.gz
+        md5sum: 3378dc461f14d2e1cfcddd4c9973e273
+    -   name: SRR3202920_S0_L001_R2_001.fastq.gz
+        md5sum: 46bcf0443976dc5e738515b8996b6c04
+    -   name: SRR3202921_S0_L001_R1_001.fastq.gz
+        md5sum: 1df244f058a1121e6ffb1c54eab03b0d
+    -   name: SRR3202921_S0_L001_R2_001.fastq.gz
+        md5sum: a38534de97ddc7625ce373492324973e
+    -   name: SRR3202922_S0_L001_R1_001.fastq.gz
+        md5sum: 6f3361d4b5a5dedc27ee1704c611890c
+    -   name: SRR3202922_S0_L001_R2_001.fastq.gz
+        md5sum: 35dfb6553fe342cebfc6ecac643241b3
+    -   name: SRR3202923_S0_L001_R1_001.fastq.gz
+        md5sum: ffd34963dafd5e4bfae0ca5c20c58bb3
+    -   name: SRR3202923_S0_L001_R2_001.fastq.gz
+        md5sum: eaf7376f09b742917fe2d8b00a25f83e
+    -   name: SRR3202924_S0_L001_R1_001.fastq.gz
+        md5sum: 6f26575755846736c6bd1fe42653791c
+    -   name: SRR3202924_S0_L001_R2_001.fastq.gz
+        md5sum: 9166724946835e5dfdb2cbc1c7fd81f8
+    -   name: SRR3202925_S0_L001_R1_001.fastq.gz
+        md5sum: 019b5a518f8c1a8b5505fb8e39c20d3f
+    -   name: SRR3202925_S0_L001_R2_001.fastq.gz
+        md5sum: 2ac4dbfc8c53d25c2f6a1286f529f4a7
+    -   name: SRR3202926_S0_L001_R1_001.fastq.gz
+        md5sum: 69fdcd200718d771337630649096f8f6
+    -   name: SRR3202926_S0_L001_R2_001.fastq.gz
+        md5sum: e826e69d0f102fd5c1c9b4475a6bdfe4
+    -   name: SRR3202927_S0_L001_R1_001.fastq.gz
+        md5sum: 12b87a09bf37ab5179a8b7e746f489fb
+    -   name: SRR3202927_S0_L001_R2_001.fastq.gz
+        md5sum: 29827d19ff155795666bb75aac37230e
+    -   name: SRR3202928_S0_L001_R1_001.fastq.gz
+        md5sum: 4ce3bc13335b5c39351b2b521a7225e0
+    -   name: SRR3202928_S0_L001_R2_001.fastq.gz
+        md5sum: fbab85b8239713ec35fa9ea692e7456a
+    -   name: SRR3202929_S0_L001_R1_001.fastq.gz
+        md5sum: 0ec578e559fd2d3190b7d689d3e840cc
+    -   name: SRR3202929_S0_L001_R2_001.fastq.gz
+        md5sum: 58821b94240bd3b039dea9c2bf3424dc
+    -   name: SRR3202930_S0_L001_R1_001.fastq.gz
+        md5sum: be1980263b33071a76fea11b168b21d4
+    -   name: SRR3202930_S0_L001_R2_001.fastq.gz
+        md5sum: 346040139ce50edd9855e0bf4dee6784
+    -   name: SRR3202931_S0_L001_R1_001.fastq.gz
+        md5sum: e0ce2444e32a5e02805ac94ef60bd478
+    -   name: SRR3202931_S0_L001_R2_001.fastq.gz
+        md5sum: f665bb2238f1bd8f16422642769475a5
+    -   name: SRR3202932_S0_L001_R1_001.fastq.gz
+        md5sum: 16cf200dc8c170f7f468a08616e23de2
+    -   name: SRR3202932_S0_L001_R2_001.fastq.gz
+        md5sum: b86f9451f6252d1461f5c61ac7a56906
+    -   name: SRR3202933_S0_L001_R1_001.fastq.gz
+        md5sum: 1b1c6000b05eee5c89b5ee506145665b
+    -   name: SRR3202933_S0_L001_R2_001.fastq.gz
+        md5sum: ad7f8e98542c9dfcffad8a1fc2e68665
+    -   name: SRR3202934_S0_L001_R1_001.fastq.gz
+        md5sum: c865550e0fc0e6a603de437121f9175a
+    -   name: SRR3202934_S0_L001_R2_001.fastq.gz
+        md5sum: 7dac538c1342cb9c32fa857d54432646
+    -   name: SRR3202935_S0_L001_R1_001.fastq.gz
+        md5sum: 90e4154968778301827673a8c8ea11a4
+    -   name: SRR3202935_S0_L001_R2_001.fastq.gz
+        md5sum: d37164edab82551a3a0da6dc1329564c
+    -   name: SRR3202936_S0_L001_R1_001.fastq.gz
+        md5sum: 5df3021c5734d59252b45bfb071ee2bf
+    -   name: SRR3202936_S0_L001_R2_001.fastq.gz
+        md5sum: da22a8656ced939b428f81b87ea61c64
+    -   name: SRR3202937_S0_L001_R1_001.fastq.gz
+        md5sum: c527aa61381cf6deb506cd71b99238a0
+    -   name: SRR3202937_S0_L001_R2_001.fastq.gz
+        md5sum: 3405401c41148a0bfa201a24107e0173
+    -   name: SRR3202938_S0_L001_R1_001.fastq.gz
+        md5sum: bf6e4a7103e35ba48a1714885224f6ff
+    -   name: SRR3202938_S0_L001_R2_001.fastq.gz
+        md5sum: 14b0bdc514217d5203250dc5b16cc8d7
+    -   name: SRR3202939_S0_L001_R1_001.fastq.gz
+        md5sum: 42bc94b0d58cc5dbdb205df5d311f9fb
+    -   name: SRR3202939_S0_L001_R2_001.fastq.gz
+        md5sum: 49e3002b62064ac9dc4b6aa4fd7887e2
+    -   name: SRR3202940_S0_L001_R1_001.fastq.gz
+        md5sum: 5a3f58def22fb6ca328c3d3e2774dabe
+    -   name: SRR3202940_S0_L001_R2_001.fastq.gz
+        md5sum: c520bec2c64380988a197028c6ff8507
+    -   name: SRR3202941_S0_L001_R1_001.fastq.gz
+        md5sum: e1f94cdd7eb9fb151c21cf99e7e3a16c
+    -   name: SRR3202941_S0_L001_R2_001.fastq.gz
+        md5sum: bc9faf6b6641fc52293ddae0aa1279a2
+    -   name: SRR3202942_S0_L001_R1_001.fastq.gz
+        md5sum: f7d6c637242bcc93fcae87b70c734a2f
+    -   name: SRR3202942_S0_L001_R2_001.fastq.gz
+        md5sum: 421b6531ecd53b3b7e0f683227c9ea1b
+    -   name: SRR3202943_S0_L001_R1_001.fastq.gz
+        md5sum: e1e760d78fa904270ceb6dff00703269
+    -   name: SRR3202943_S0_L001_R2_001.fastq.gz
+        md5sum: 5d4adacd87a378c1598a687c1705f3ba
+    -   name: SRR3202944_S0_L001_R1_001.fastq.gz
+        md5sum: 519c39f9484d14767ba20add50371d79
+    -   name: SRR3202944_S0_L001_R2_001.fastq.gz
+        md5sum: d47116e40458ace374ecd9aac69ffe46
+    -   name: SRR3202945_S0_L001_R1_001.fastq.gz
+        md5sum: 9573614a72c2cbc48b4f0233d1760df6
+    -   name: SRR3202945_S0_L001_R2_001.fastq.gz
+        md5sum: 2a598dfe71281b33fe637038fadd26b5
+    -   name: SRR3202946_S0_L001_R1_001.fastq.gz
+        md5sum: 8a73a441c20f5de4299389c737fc6ced
+    -   name: SRR3202946_S0_L001_R2_001.fastq.gz
+        md5sum: a082d8d456de235c6a641e8f210c8e53
+    -   name: SRR3202947_S0_L001_R1_001.fastq.gz
+        md5sum: a464cc57a719bde41ffd6fa489499726
+    -   name: SRR3202947_S0_L001_R2_001.fastq.gz
+        md5sum: 3fdedc01b8e359995852a341637dce4f
+    -   name: SRR3202948_S0_L001_R1_001.fastq.gz
+        md5sum: 1bfd84e0ea476db5478b0fc08b594af3
+    -   name: SRR3202948_S0_L001_R2_001.fastq.gz
+        md5sum: 9dd79ee6fbff8e6d7923d7705c9c36ce
+    -   name: SRR3202949_S0_L001_R1_001.fastq.gz
+        md5sum: 6e9acf63b6f4551425644d4de8921610
+    -   name: SRR3202949_S0_L001_R2_001.fastq.gz
+        md5sum: 94eba9da7eab1c5a86747aec918c615d
+    -   name: SRR3202950_S0_L001_R1_001.fastq.gz
+        md5sum: bda896b36fa24ab843ef8748f0695613
+    -   name: SRR3202950_S0_L001_R2_001.fastq.gz
+        md5sum: 89982f12f37d776b38c1986ba6dd1241
+    -   name: SRR3202951_S0_L001_R1_001.fastq.gz
+        md5sum: 5797dd14db6a13a938a0c3929bf6da80
+    -   name: SRR3202951_S0_L001_R2_001.fastq.gz
+        md5sum: 6a03a156120ba86f2cebfee0fcf79b74
+    -   name: SRR3202952_S0_L001_R1_001.fastq.gz
+        md5sum: 79b206bda876be94c7f17fadc013b94e
+    -   name: SRR3202952_S0_L001_R2_001.fastq.gz
+        md5sum: f2a8b495d5d76f12223199cdf6c5d2d9
+    -   name: SRR3202953_S0_L001_R1_001.fastq.gz
+        md5sum: 654457ef892e1c60dedd586e39aa030b
+    -   name: SRR3202953_S0_L001_R2_001.fastq.gz
+        md5sum: 402e87f6cc76241f6c597890dc21abe6
+    -   name: SRR3202954_S0_L001_R1_001.fastq.gz
+        md5sum: 545d437d76e6674e5f8d291b10331e7d
+    -   name: SRR3202954_S0_L001_R2_001.fastq.gz
+        md5sum: 2a83607bce797a4f2646e4cd1543cb95
+    -   name: SRR3202955_S0_L001_R1_001.fastq.gz
+        md5sum: 758fa0354ee7911afbbd35ef5219493a
+    -   name: SRR3202955_S0_L001_R2_001.fastq.gz
+        md5sum: 458447d1ed4507b06faf0787a0eaae19
+    -   name: SRR3202956_S0_L001_R1_001.fastq.gz
+        md5sum: eb9a8ca796ca4d4437e67bc9702f5ff9
+    -   name: SRR3202956_S0_L001_R2_001.fastq.gz
+        md5sum: 3ec34be3896adb85afe68a4165831e65
+    -   name: SRR3202957_S0_L001_R1_001.fastq.gz
+        md5sum: 17d9372a0cae239e3ba3e59b1cbd316a
+    -   name: SRR3202957_S0_L001_R2_001.fastq.gz
+        md5sum: cc31e5d5c5e2efb75cefa7e4829732eb
+    -   name: SRR3202958_S0_L001_R1_001.fastq.gz
+        md5sum: c9999291fb12de7ea9c62633d2ed0816
+    -   name: SRR3202958_S0_L001_R2_001.fastq.gz
+        md5sum: 3acee00e9e0494792a7d6e54afe8d7a3
+    -   name: SRR3202959_S0_L001_R1_001.fastq.gz
+        md5sum: 932e6f810edb4a19275e7baedc1b8b5f
+    -   name: SRR3202959_S0_L001_R2_001.fastq.gz
+        md5sum: 634161e3ac6599bada3fb1b01e2ff251
+    -   name: SRR3202960_S0_L001_R1_001.fastq.gz
+        md5sum: 60dbda32b73af769f49618043eecee53
+    -   name: SRR3202960_S0_L001_R2_001.fastq.gz
+        md5sum: 29bc8e8f1a5d5925880973d7410e9eed
+    -   name: SRR3202961_S0_L001_R1_001.fastq.gz
+        md5sum: 0bd58d31c0bb4e54b2c0b10de931ea65
+    -   name: SRR3202961_S0_L001_R2_001.fastq.gz
+        md5sum: 007847420b8dd25938461923d8505f1f
+    -   name: SRR3202962_S0_L001_R1_001.fastq.gz
+        md5sum: d2d3b82b41b4872530bd4372259c8172
+    -   name: SRR3202962_S0_L001_R2_001.fastq.gz
+        md5sum: f77c17d8a7b7da84c360cdf9e3f01851
+    -   name: SRR3202963_S0_L001_R1_001.fastq.gz
+        md5sum: 3c5f7e310b30e3d17a359a14f379df8c
+    -   name: SRR3202963_S0_L001_R2_001.fastq.gz
+        md5sum: 4075b8806f6b4ff4b2153f31ae750163
+    -   name: SRR3202964_S0_L001_R1_001.fastq.gz
+        md5sum: b98a2be6663459eb4dcf2d1b7f4f5326
+    -   name: SRR3202964_S0_L001_R2_001.fastq.gz
+        md5sum: 8f798608e137823326c52375185bef87
+    -   name: SRR3202965_S0_L001_R1_001.fastq.gz
+        md5sum: d9a758fbba4e2098c5858eb4834bb517
+    -   name: SRR3202965_S0_L001_R2_001.fastq.gz
+        md5sum: 6619845c5d2499b4159b5d69e774f8e9
+    -   name: SRR3202966_S0_L001_R1_001.fastq.gz
+        md5sum: 4638295163b3a5f929e74e95fc4888cd
+    -   name: SRR3202966_S0_L001_R2_001.fastq.gz
+        md5sum: 43eb0be3d86f7d3e14d105779766b2c5
+    -   name: SRR3202967_S0_L001_R1_001.fastq.gz
+        md5sum: f2b1453ada923f363cb44dc76d5a660e
+    -   name: SRR3202967_S0_L001_R2_001.fastq.gz
+        md5sum: b94cb8a29939c72f57526cff888171b1
+    -   name: SRR3202968_S0_L001_R1_001.fastq.gz
+        md5sum: 91ee1b96da9fa82961a0690615ccefee
+    -   name: SRR3202968_S0_L001_R2_001.fastq.gz
+        md5sum: 6b11f904fe22392c92a4038c666816fc
+    -   name: SRR3202969_S0_L001_R1_001.fastq.gz
+        md5sum: 95065c12f7bb949878825f42e4f84aea
+    -   name: SRR3202969_S0_L001_R2_001.fastq.gz
+        md5sum: 8b9aa17c6aa8dd8d41bc420ca0187185
+    -   name: SRR3202970_S0_L001_R1_001.fastq.gz
+        md5sum: 61aba6c28ebd4cbf0ca45e7d22a8f09c
+    -   name: SRR3202970_S0_L001_R2_001.fastq.gz
+        md5sum: e89fb9ea9a678b7df4e3c26c389acd8a
+    -   name: SRR3202971_S0_L001_R1_001.fastq.gz
+        md5sum: e8d46ffa13e4140b60ac2e26f88fa378
+    -   name: SRR3202971_S0_L001_R2_001.fastq.gz
+        md5sum: 9d3b307862dcb8729436c5b3a5f9e8fe
+    -   name: SRR3202972_S0_L001_R1_001.fastq.gz
+        md5sum: 620062032ea2169d75659cc3a20e1bd9
+    -   name: SRR3202972_S0_L001_R2_001.fastq.gz
+        md5sum: 948987a9443a24ef94813a60ce4682f0
+    -   name: SRR3202973_S0_L001_R1_001.fastq.gz
+        md5sum: f1831008bcbbddc0d1e4dced7b63c260
+    -   name: SRR3202973_S0_L001_R2_001.fastq.gz
+        md5sum: 0dc3b911727c3a7d7c47fd3e7829f0d6
+    -   name: SRR3202974_S0_L001_R1_001.fastq.gz
+        md5sum: 1c97cf7d950bc2c41f28212551f46cff
+    -   name: SRR3202974_S0_L001_R2_001.fastq.gz
+        md5sum: ba595ec933d043c19f5c5ec19f31b650
+    -   name: SRR3202975_S0_L001_R1_001.fastq.gz
+        md5sum: 9969d33dc5e611faf6c9c9b3ae0cae5f
+    -   name: SRR3202975_S0_L001_R2_001.fastq.gz
+        md5sum: 6dedc0682cccd6fd48366c6d11c11a4a
+    -   name: SRR3202976_S0_L001_R1_001.fastq.gz
+        md5sum: 1146309d8180dfe5f7b6a606fbb229fe
+    -   name: SRR3202976_S0_L001_R2_001.fastq.gz
+        md5sum: c70544edc3642718ea19e7bfb6698375
+    -   name: SRR3202977_S0_L001_R1_001.fastq.gz
+        md5sum: 21fabcab39f71eb4b90e5f4ee7e925f6
+    -   name: SRR3202977_S0_L001_R2_001.fastq.gz
+        md5sum: 9450fb82cde6b4bd63e5c5999e443add
+    -   name: SRR3202978_S0_L001_R1_001.fastq.gz
+        md5sum: 052e780d5bb2cb1fc413b1370f9f76af
+    -   name: SRR3202978_S0_L001_R2_001.fastq.gz
+        md5sum: e1a26943c1ad3c99cbcf057c373b428d
+    -   name: SRR3202979_S0_L001_R1_001.fastq.gz
+        md5sum: 914b7f1c5cb5c4affcae1515f242e5db
+    -   name: SRR3202979_S0_L001_R2_001.fastq.gz
+        md5sum: 1e2405ba2cd4c827973722b0ebf06b17
+    -   name: SRR3202980_S0_L001_R1_001.fastq.gz
+        md5sum: 72ba9ee6dba525a3b964cc8040e90a72
+    -   name: SRR3202980_S0_L001_R2_001.fastq.gz
+        md5sum: 1d24ce87ea9e9f275c5db6e4a60c91ea
+    -   name: SRR3202981_S0_L001_R1_001.fastq.gz
+        md5sum: a19b06462eda682fa728148f2709ffe7
+    -   name: SRR3202981_S0_L001_R2_001.fastq.gz
+        md5sum: 22017ce51ca367320f79ad6a635bcd97
+    -   name: SRR3202982_S0_L001_R1_001.fastq.gz
+        md5sum: a26d15df951b0bf315582ef10384f1bd
+    -   name: SRR3202982_S0_L001_R2_001.fastq.gz
+        md5sum: 670db14f14ad71063782cdd7b4e0998a
+    -   name: SRR3202983_S0_L001_R1_001.fastq.gz
+        md5sum: bdad6317d21bbb096d09b8b545c33b68
+    -   name: SRR3202983_S0_L001_R2_001.fastq.gz
+        md5sum: 2af66821d3eed326d06bfa30a6ab0c3d
+    -   name: SRR3202984_S0_L001_R1_001.fastq.gz
+        md5sum: f3cc6386287d1d606625cff437e13eeb
+    -   name: SRR3202984_S0_L001_R2_001.fastq.gz
+        md5sum: 63f784b0d9a831b1fbce0ff35c7224e7
+    -   name: SRR3202985_S0_L001_R1_001.fastq.gz
+        md5sum: aef44eaf3ec77c2c4f8607773c0555ec
+    -   name: SRR3202985_S0_L001_R2_001.fastq.gz
+        md5sum: b422c67841cd05d9141377fecb3b794e
+    -   name: SRR3202986_S0_L001_R1_001.fastq.gz
+        md5sum: 2526e0c57ca1c8c935082c2ba6bc8cbe
+    -   name: SRR3202986_S0_L001_R2_001.fastq.gz
+        md5sum: 42d6b7d395de92327bd7d4bd39122ad3
+    -   name: SRR3202987_S0_L001_R1_001.fastq.gz
+        md5sum: a881f45886e8317c5e1b25b4fafbe632
+    -   name: SRR3202987_S0_L001_R2_001.fastq.gz
+        md5sum: 624c075e8f5129438be66459db41b2fd
+    -   name: SRR3202988_S0_L001_R1_001.fastq.gz
+        md5sum: 74dc2ecb17d040a792f619bb7dce6f2f
+    -   name: SRR3202988_S0_L001_R2_001.fastq.gz
+        md5sum: 094aef0ebe3c4c555ec6e87132b0f439
+    -   name: SRR3202989_S0_L001_R1_001.fastq.gz
+        md5sum: 7b41dab50ad18c58b3513dc32d4e7d8b
+    -   name: SRR3202989_S0_L001_R2_001.fastq.gz
+        md5sum: d84ee59319e4ef248293d2e6df62c883
+    -   name: SRR3202990_S0_L001_R1_001.fastq.gz
+        md5sum: 58c83da3951b1c2fe9032e8ac01a0655
+    -   name: SRR3202990_S0_L001_R2_001.fastq.gz
+        md5sum: 78d32205b95c05b33cbd17d5ee0b3eb4
+    -   name: SRR3202991_S0_L001_R1_001.fastq.gz
+        md5sum: 392754ead5f5bcb09250478c922146b3
+    -   name: SRR3202991_S0_L001_R2_001.fastq.gz
+        md5sum: 416db4f7b13de7cb62d4b2ba0c9e63c6
+    -   name: SRR3202992_S0_L001_R1_001.fastq.gz
+        md5sum: e88f12984438dc7f006dd3d248a3352a
+    -   name: SRR3202992_S0_L001_R2_001.fastq.gz
+        md5sum: 47b57419c241ab09aae5747ef65c2d80
+    -   name: SRR3202993_S0_L001_R1_001.fastq.gz
+        md5sum: 562daf2d13489a4a07fec622b0cd3ea0
+    -   name: SRR3202993_S0_L001_R2_001.fastq.gz
+        md5sum: 96ab31ec83dc02ad7f1d135dadfb6d1d
+    -   name: SRR3202994_S0_L001_R1_001.fastq.gz
+        md5sum: 18ff7a45f690a2d2ee23f450b5243fce
+    -   name: SRR3202994_S0_L001_R2_001.fastq.gz
+        md5sum: f4696a2763184e50c8fcafbe0f05c97d
+    -   name: SRR3202995_S0_L001_R1_001.fastq.gz
+        md5sum: 73b53c51d893a435ea339c1d40aee630
+    -   name: SRR3202995_S0_L001_R2_001.fastq.gz
+        md5sum: bf75050cff3b776cc83f382d241d3f4a
+    -   name: SRR3202996_S0_L001_R1_001.fastq.gz
+        md5sum: 12795b59a9964be531b5cedd14e1d220
+    -   name: SRR3202996_S0_L001_R2_001.fastq.gz
+        md5sum: e3871d95f7ff448467baf730436a1ad2
+    -   name: SRR3202997_S0_L001_R1_001.fastq.gz
+        md5sum: d68c428d145dc4deb661e8040cde251f
+    -   name: SRR3202997_S0_L001_R2_001.fastq.gz
+        md5sum: 295f877b21a87ab63f9f05763baa54b2
+    -   name: SRR3202998_S0_L001_R1_001.fastq.gz
+        md5sum: d16e24ca0982248ad574d9c5aaa62ea7
+    -   name: SRR3202998_S0_L001_R2_001.fastq.gz
+        md5sum: d1a975a2cd49a00101d04d79f3d87be1
+    -   name: SRR3202999_S0_L001_R1_001.fastq.gz
+        md5sum: 83202d8471eaa3be04d8e1a48eec2915
+    -   name: SRR3202999_S0_L001_R2_001.fastq.gz
+        md5sum: da8eaaf2716f05634491acd8013d66cb
+    -   name: SRR3203000_S0_L001_R1_001.fastq.gz
+        md5sum: d9f991f77d0c4ad53b0dc01f3723ad73
+    -   name: SRR3203000_S0_L001_R2_001.fastq.gz
+        md5sum: 707992c69d7bb9a2ec590f17ea7e0a0b
+    -   name: SRR3203001_S0_L001_R1_001.fastq.gz
+        md5sum: 8a6e6b7e949e142cb7430e4c25b6be56
+    -   name: SRR3203001_S0_L001_R2_001.fastq.gz
+        md5sum: 9293d2631f5926f096d9c6c5dbe3f4dc
+    -   name: SRR3203002_S0_L001_R1_001.fastq.gz
+        md5sum: da3481f193af69f9855b8e4743b1c5ff
+    -   name: SRR3203002_S0_L001_R2_001.fastq.gz
+        md5sum: 67c5af8a4e7dc487b73520c766f1117e
+    -   name: SRR3203003_S0_L001_R1_001.fastq.gz
+        md5sum: 8a20873b7081904faf936e9f63094c8c
+    -   name: SRR3203003_S0_L001_R2_001.fastq.gz
+        md5sum: 684ea6ff1dac74b28568d2fb3d09d098
+    -   name: SRR3203004_S0_L001_R1_001.fastq.gz
+        md5sum: 5565c0d76035f6d27d0cb766dccb3428
+    -   name: SRR3203004_S0_L001_R2_001.fastq.gz
+        md5sum: 8341de79b165bf8a0b52bfc10c19052b
+    -   name: SRR3203005_S0_L001_R1_001.fastq.gz
+        md5sum: 7bb80e492d4e00b865c13890f26bb143
+    -   name: SRR3203005_S0_L001_R2_001.fastq.gz
+        md5sum: 107d2bcf2d2c8ddee16494d2477101a0
+    -   name: SRR3203006_S0_L001_R1_001.fastq.gz
+        md5sum: 4f65d46a007d5b3886241fb13be7c335
+    -   name: SRR3203006_S0_L001_R2_001.fastq.gz
+        md5sum: b29971d9090feb9aeabd21fbfab288f1
+    -   name: SRR3203007_S0_L001_R1_001.fastq.gz
+        md5sum: 9fb1b13f6f071cb8720e604e3c51189e
+    -   name: SRR3203007_S0_L001_R2_001.fastq.gz
+        md5sum: d4eb37de89d0d602cafe3b38b502856f
+    -   name: SRR3203008_S0_L001_R1_001.fastq.gz
+        md5sum: ba1384db7e79a7f854e49d621e78d464
+    -   name: SRR3203008_S0_L001_R2_001.fastq.gz
+        md5sum: 7310ba9165949e039cb5d5dd0bb10ab3
+    -   name: SRR3203009_S0_L001_R1_001.fastq.gz
+        md5sum: 3ef0285141287009fb9ceb61f8c8ccbb
+    -   name: SRR3203009_S0_L001_R2_001.fastq.gz
+        md5sum: 244305528f0e2de225253a96dc3c5a76
+    -   name: SRR3203010_S0_L001_R1_001.fastq.gz
+        md5sum: b6979454810c1b37230d33bb4e818625
+    -   name: SRR3203010_S0_L001_R2_001.fastq.gz
+        md5sum: 173cb39b3a59c3f2dcd1ef80f6a05cbe
+    -   name: SRR3203011_S0_L001_R1_001.fastq.gz
+        md5sum: cf50b08e8502e758c9dc55bf328ad679
+    -   name: SRR3203011_S0_L001_R2_001.fastq.gz
+        md5sum: 6efe9f5cb443a9c4db19ec4837ad35a5
+    -   name: SRR3203012_S0_L001_R1_001.fastq.gz
+        md5sum: 8b9414f25b5f49ba207b9d15fdcdb49d
+    -   name: SRR3203012_S0_L001_R2_001.fastq.gz
+        md5sum: d475b72cd0c56acc29e2ef73a1695dfd
+    -   name: SRR3203013_S0_L001_R1_001.fastq.gz
+        md5sum: 69761edd603fa92c840a800e66bed659
+    -   name: SRR3203013_S0_L001_R2_001.fastq.gz
+        md5sum: 79cc3ab150c89cb7c17eb8fe9496e32e
+    -   name: SRR3203014_S0_L001_R1_001.fastq.gz
+        md5sum: 2b3f95981c152c6024fca634ab03467c
+    -   name: SRR3203014_S0_L001_R2_001.fastq.gz
+        md5sum: 5185fd413fb1c01ecc5a9d71d2f8c0ce
+    -   name: SRR3203015_S0_L001_R1_001.fastq.gz
+        md5sum: bb84f79f437e4e64862b6d6d966a4432
+    -   name: SRR3203015_S0_L001_R2_001.fastq.gz
+        md5sum: 6325c226d51b53c2550d1b4c59e087a3
+    -   name: SRR3203016_S0_L001_R1_001.fastq.gz
+        md5sum: 333d3b95d13e53ad19a6d29d534b6b02
+    -   name: SRR3203016_S0_L001_R2_001.fastq.gz
+        md5sum: cc5b513bef8aee7cf14dac838b186523
+    -   name: SRR3203017_S0_L001_R1_001.fastq.gz
+        md5sum: 82e90877f15dabae3d340127ac534ea9
+    -   name: SRR3203017_S0_L001_R2_001.fastq.gz
+        md5sum: 2c1e138423a9bb798dca4227cdfce886
+    -   name: SRR3203018_S0_L001_R1_001.fastq.gz
+        md5sum: 9c575007f6996a57795a61b0e52ab6af
+    -   name: SRR3203018_S0_L001_R2_001.fastq.gz
+        md5sum: a01a0e686fad855e2d977ae9d0556f2b
+    -   name: metadata.yml
+        md5sum: d02765369f5746e33a87ff4bdc4f5759
+
+transformers:
+    output:
+    -   from: SingleLanePerSamplePairedEndFastqDirFmt
+        to: SingleLanePerSamplePairedEndFastqDirFmt
+
+environment:
+    platform: linux-x86_64
+    python: |-
+        3.5.5 | packaged by conda-forge | (default, Apr  6 2018, 13:41:05)
+        [GCC 4.8.2 20140120 (Red Hat 4.8.2-15)]
+    framework:
+        version: 2018.4.0
+        website: https://qiime2.org
+        citations:
+        - !cite 'framework|qiime2:2018.4.0|0'
+    plugins:
+        types:
+            version: 2018.4.0
+            website: https://github.com/qiime2/q2-types
+    python-packages:
+        widgetsnbextension: 3.2.1
+        wheel: 0.31.0
+        webencodings: '0.5'
+        wcwidth: 0.1.7
+        urllib3: '1.22'
+        unifrac: 0.9.2
+        traitlets: 4.3.2
+        tornado: 5.0.2
+        testpath: 0.3.1
+        terminado: 0.8.1
+        statsmodels: 0.8.0
+        six: 1.11.0
+        simplegeneric: 0.8.1
+        setuptools: 39.0.1
+        Send2Trash: 1.5.0
+        seaborn: 0.8.1
+        scipy: 0.19.1
+        scikit-learn: 0.19.1
+        scikit-bio: 0.5.1
+        requests: 2.18.4
+        qiime2: 2018.4.0
+        q2templates: 2018.4.0
+        q2cli: 2018.4.0
+        q2-vsearch: 2018.4.0
+        q2-types: 2018.4.0
+        q2-taxa: 2018.4.0
+        q2-sample-classifier: 2018.4.0
+        q2-quality-filter: 2018.4.0
+        q2-quality-control: 2018.4.0
+        q2-phylogeny: 2018.4.0
+        q2-metadata: 2018.4.0
+        q2-longitudinal: 2018.4.0
+        q2-gneiss: 2018.4.0
+        q2-feature-table: 2018.4.0
+        q2-feature-classifier: 2018.4.0
+        q2-emperor: 2018.4.0
+        q2-diversity: 2018.4.0
+        q2-demux: 2018.4.0
+        q2-deblur: 2018.4.0
+        q2-dada2: 2018.4.0
+        q2-cutadapt: 2018.4.0
+        q2-composition: 2018.4.0
+        q2-alignment: 2018.4.0
+        pyzmq: 17.0.0
+        PyYAML: '3.12'
+        pytz: '2018.4'
+        python-dateutil: 2.7.2
+        PySocks: 1.6.8
+        pyparsing: 2.2.0
+        pyOpenSSL: 17.5.0
+        Pygments: 2.2.0
+        pycparser: '2.18'
+        ptyprocess: 0.5.2
+        psutil: 5.4.5
+        prompt-toolkit: 1.0.15
+        pip: 9.0.3
+        pickleshare: 0.7.4
+        pexpect: 4.5.0
+        patsy: 0.5.0
+        parso: 0.2.0
+        pandocfilters: 1.4.2
+        pandas: 0.22.0
+        packaging: '17.1'
+        numpy: 1.12.1
+        notebook: 5.4.1
+        nose: 1.3.7
+        nbformat: 4.4.0
+        nbconvert: 5.3.1
+        natsort: 5.3.0
+        msgpack-python: 0.5.6
+        mistune: 0.8.3
+        matplotlib: 2.2.2
+        MarkupSafe: '1.0'
+        lockfile: 0.12.2
+        kiwisolver: 1.0.1
+        jupyter-core: 4.4.0
+        jupyter-client: 5.2.3
+        jsonschema: 2.6.0
+        Jinja2: '2.10'
+        jedi: 0.12.0
+        ipywidgets: 7.2.1
+        ipython: 6.3.1
+        ipython-genutils: 0.2.0
+        ipykernel: 4.8.2
+        idna: '2.6'
+        html5lib: 1.0.1
+        h5py: 2.7.0
+        future: 0.16.0
+        fastcluster: 1.1.24
+        entrypoints: 0.2.3
+        emperor: 1.0.0b16
+        decorator: 4.3.0
+        deblur: 1.0.4
+        Cython: 0.28.2
+        cutadapt: '1.16'
+        cryptography: 2.2.1
+        click: '6.7'
+        chardet: 3.0.4
+        cffi: 1.11.5
+        certifi: 2018.4.16
+        CacheControl: 0.12.4
+        bokeh: 0.12.15
+        bleach: 2.1.3
+        bibtexparser: 1.0.1
+        backcall: 0.1.0
+        asn1crypto: 0.24.0
+        biom-format: 2.1.6
+        cycler: 0.10.0
+        gneiss: 0.4.2
+        ijson: '2.3'
+        tzlocal: '1.3'
+        xopen: 0.3.2
