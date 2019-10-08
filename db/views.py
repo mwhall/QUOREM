@@ -232,14 +232,14 @@ class AnalysisList(ListSortingView):
                 {
                     'type': 'choices',
                     'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
-                }), 
+                }),
                 # BROKEN. There is a Date filter in DJK but it doesn't seem to work
-                # with our field? And using a Choices filter raises that a Datetime 
+                # with our field? And using a Choices filter raises that a Datetime
                 # isn't serializable, and I don't know how else to get equality to
                 # filter properly
                 #('date',
                 #{'type': None
-                # 'choices': [(str(x['date']),str(x['date'])) \ 
+                # 'choices': [(str(x['date']),str(x['date'])) \
                 #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
                 ('location',
                 {
@@ -360,7 +360,7 @@ class ResultList(ListSortingView):
                     # List of choices that are active by default:
                     'active_choices': [],
                     # Do not allow to select multiple choices:
-                }), 
+                }),
                 ('source_step',
                 {
                     'type': 'choices',
@@ -415,7 +415,8 @@ class ResultList(ListSortingView):
             feats = ', '.join(np.unique([x.name for x in obj.features.all()]))
             return feats
         elif field == 'source_step':
-            return obj.source_step.get_detail_link()
+            if obj.source_step:
+                return obj.source_step.get_detail_link()
         elif field == 'uuid':
             return obj.get_detail_link()
         else:
@@ -763,7 +764,12 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(values__name=meta) #only works with samples
+            if selected_type == 'step':
+                qs = qs.filter(parameters__name=meta)
+
+            #this works with sample, feature, result. step needs another
+            else:
+                qs = qs.filter(values__name=meta) #only works with samples
 
             if min_selected and max_selected:
                 vals = Value.objects.filter(name=meta)
@@ -775,6 +781,10 @@ def search(request):
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
+
+        #We need to be able to accomodate different choices for meta.
+        #Not every filtered object will have 'values'
+
         qs = qs.distinct()
         if q:
             #SearchQuery matches with stemming, but not partial string matching.
@@ -865,10 +875,18 @@ def search(request):
             filt = q_map[meta_type]
             vals = vals.order_by(filt).distinct()
             facets = [v.content_object.value for v in vals]
-            print("facets should be in order now: ", facets)
 
     elif selected['otype'] == 'step':
         metadata = Value.objects.filter(steps__isnull=False).order_by('name').distinct('name')
+
+    elif selected['otype'] == 'feature':
+        metadata = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
+
+    elif selected['otype'] == 'result':
+        metadata = Value.objects.filter(results__isnull=False).order_by('name').distinct('name')
+
+    #Those 4 are all that make sense right now. later, allow selection of
+    #analysis, investigation, process as an "query in" option
 
     else:
         metadata = None
@@ -1114,7 +1132,8 @@ class artifact_upload(CreateView):
         self.object.userprofile = userprofile
         self.object.upload_type = "A"
         self.object.save()
-        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
+        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk,
+                                                                                   'register_provenance': form['register_provenance'].value()})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
@@ -1165,3 +1184,7 @@ class MailOpen(View):
                                                         'unread': unread,
                                                         'active_page': 'mail',
                                                         'selected': mail,})
+
+
+def testView(request):
+    return render(request, 'newlanding.htm')

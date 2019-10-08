@@ -9,7 +9,7 @@ from celery import shared_task
 from django.db import models, transaction
 from django.apps import apps
 from .formatters import guess_filetype, parse_csv_or_tsv
-from .parser import resolve_input_row
+from .parser import resolve_input_row, resolve_table
 from .models import (
 Investigation, Sample, Feature, Process, Step, Analysis,
 Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
@@ -20,7 +20,9 @@ from q2_extractor.Extractor import Extractor
 import pandas as pd
 import io
 import re
-
+############### For Testing, delete later.
+import time
+#########################################
 @shared_task
 def react_to_file(upload_file_id, **kwargs):
     #something weird happens sometimes in which uploading a file doens't work.
@@ -53,14 +55,14 @@ def react_to_file(upload_file_id, **kwargs):
             mail.title="The qiime artifact you uploaded "
             print("Processing qiime file...")
             try:
-                status = process_qiime_artifact(infile, upfile, analysis_pk=kwargs["analysis_pk"])
+                status = process_qiime_artifact(infile, upfile, analysis_pk=kwargs["analysis_pk"], register_provenance=kwargs["register_provenance"])
             except Exception as e:
                 print(e)
 
         elif from_form == "S":
             mail.title="The spreadsheet you uploaded "
             print("Processing table ...")
-            status = process_table(infile)
+            status = process_table_cache(infile)
             print(status)
         else:
             mail.title="A rare error occurred with your upload."
@@ -92,7 +94,7 @@ def react_to_file(upload_file_id, **kwargs):
     except Exception as e:
         mail.title += "failed."
         mail.message = "Your file upload failed. The system gave the following error: "
-        mail.message += e
+        mail.message += str(e)
         mail.message += " please try reformatting your data and reuploading."
         mail.save()
         print("Except here")
@@ -115,34 +117,58 @@ def process_table(infile):
     return "Success"
 
 @shared_task
-def process_qiime_artifact(infile, upfile, analysis_pk):
+def process_table_cache(infile):
+    resolve_table(parse_csv_or_tsv(infile))
+    return "Success"
+
+@shared_task
+def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
+    start_time = time.time()
     analysis_name = Analysis.objects.get(pk=analysis_pk).name
     q2e = Extractor(infile)
     uuid = q2e.base_uuid
-    result_table = q2e.get_result().reset_index()
+    if register_provenance:
+        result_table = q2e.get_result().reset_index()
+    else:
+        result_table = q2e.get_result(upstream=False).reset_index()
     #And then squash any duplicate columns to the same name
     #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
     result_table.columns = [x[0] for x in result_table.columns.str.split(".")]
-    for index, row in result_table.iterrows():
-        try:
-            row["analysis_id"] = analysis_name
-            resolve_input_row(row.dropna())
-        except Exception as e:
-            raise e
-    with transaction.atomic():
-        value_table = q2e.get_values()
-        #And then squash any duplicate columns to the same name
-        #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
-        value_table.columns = [x[0] for x in value_table.columns.str.split(".")]
-        for index, row in value_table.iterrows():
-            try:
-                row["analysis_id"] = analysis_name
-                resolve_input_row(row.dropna())
-            except Exception as e:
-                raise e
+    result_table["analysis_id"] = analysis_name
+    if register_provenance:
+        prov_str = "with"
+    else:
+        prov_str = "without"
+    print("Resolving artifact %s provenance" % (prov_str,))
+    resolve_table(result_table)
+    #for index, row in result_table.iterrows():
+    #    try:
+    #        row["analysis_id"] = analysis_name
+    #        resolve_input_row(row.dropna())
+    #    except Exception as e:
+    #        raise e
+    print("Getting values")
+    value_table = q2e.get_values()
+    print("Got values")
+    #And then squash any duplicate columns to the same name
+    #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
+    value_table.columns = [x[0] for x in value_table.columns.str.split(".")]
+    value_table["analysis_id"] = analysis_name
+    #for index, row in value_table.iterrows():
+    #    try:
+    #        row["analysis_id"] = analysis_name
+    #        resolve_input_row(row.dropna())
+    #    except Exception as e:
+    #        raise e
+    print("Resolving values")
+    resolve_table(value_table)
     res = Result.objects.get(uuid=uuid)
     res.input_file = upfile
     res.save()
+    print("#\n#\n")
+    print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
+    print(time.time() - start_time)
+    print("#\n#\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     return "Success"
 
 @shared_task
