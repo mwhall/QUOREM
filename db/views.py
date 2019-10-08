@@ -415,7 +415,8 @@ class ResultList(ListSortingView):
             feats = ', '.join(np.unique([x.name for x in obj.features.all()]))
             return feats
         elif field == 'source_step':
-            return obj.source_step.get_detail_link()
+            if obj.source_step:
+                return obj.source_step.get_detail_link()
         elif field == 'uuid':
             return obj.get_detail_link()
         else:
@@ -763,7 +764,12 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(values__name=meta) #only works with samples
+            if selected_type == 'step':
+                qs = qs.filter(parameters__name=meta)
+
+            #this works with sample, feature, result. step needs another
+            else:
+                qs = qs.filter(values__name=meta) #only works with samples
 
             if min_selected and max_selected:
                 vals = Value.objects.filter(name=meta)
@@ -775,6 +781,10 @@ def search(request):
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
+
+        #We need to be able to accomodate different choices for meta.
+        #Not every filtered object will have 'values'
+
         qs = qs.distinct()
         if q:
             #SearchQuery matches with stemming, but not partial string matching.
@@ -865,10 +875,18 @@ def search(request):
             filt = q_map[meta_type]
             vals = vals.order_by(filt).distinct()
             facets = [v.content_object.value for v in vals]
-            print("facets should be in order now: ", facets)
 
     elif selected['otype'] == 'step':
         metadata = Value.objects.filter(steps__isnull=False).order_by('name').distinct('name')
+
+    elif selected['otype'] == 'feature':
+        metadata = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
+
+    elif selected['otype'] == 'result':
+        metadata = Value.objects.filter(results__isnull=False).order_by('name').distinct('name')
+
+    #Those 4 are all that make sense right now. later, allow selection of
+    #analysis, investigation, process as an "query in" option
 
     else:
         metadata = None

@@ -185,7 +185,6 @@ urlpatterns = [
     path('ajax/load-onto/', onto_json, name='onto_json'),
     path('mail/', MailBoxView.as_view(), name='mail'),
     re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
-    path('test/', testView, name='test_view'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {
