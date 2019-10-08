@@ -117,6 +117,7 @@ def process_table(infile):
 @shared_task
 def process_table_cache(infile):
     resolve_table(parse_csv_or_tsv(infile))
+    return "Success"
 
 @shared_task
 def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):

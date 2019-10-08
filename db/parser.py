@@ -131,18 +131,19 @@ class ValidatorCache():
             self.value_cache[id_field + "___" + str(name)].append(value_object)
 
     def save_values(self):
-        print("Bulk saving vals")
+        #print("Bulk saving vals")
         #for val_type in self.val_cache.keys():
         #    self.TYPE_MODEL_MAP[val_type].objects.bulk_create(self.val_cache[val_type])
-        print("Bulk saving %d values" % (len(self.value_list),))
+        #print("Bulk saving %d values" % (len(self.value_list),))
         Value.objects.bulk_create(self.value_list)
         #Now add the links to these objects, in bulk
-        print("Bulk linking externals")
+        #print("Bulk linking externals")
         for field in self.value_cache.keys():
             id_field, name = field.split("___")
             vldtr = self.get_validator(id_field, name)
             obj = vldtr.fetch()
             getattr(obj, vldtr.value_field).add(*self.value_cache[field])
+        #print("Done linking")
 
     def __contains__(self, a):
         id_field, name = a.split("___")
@@ -301,6 +302,10 @@ class Validator():
                 #print("Made")
                 # See if we can scrape a minimal entry together
                 # and then we can overwrite a blank entry later
+                #TODO: Properly handle when a step is upstream of itself
+                if (field == "upstream_step") and (datum == self.data["step_id"]):
+                    print("Warning: Step is upstream of itself; not recording this fact")
+                    continue
                 keep = vldtr.required_if_new
                 data = copy.deepcopy(self.data)
                 drop_fields = [self.id_field, field] + [x for x in data.index if x not in keep]
@@ -418,11 +423,9 @@ class ProcessValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.required_if_new = ["process_citation"]
-        self.optional_fields = ["process_description", "step_id"]
-        self.manytomany_fields = ["step_id"]
+        self.optional_fields = ["process_description"]
         self.django_mapping = {self.id_field: "name",
                                self.optional_fields[0]: "description",
-                               self.optional_fields[1]: "steps",
                                self.required_if_new[0]: "citation",
                                "upstream_process": "upstream"}
 
@@ -435,9 +438,11 @@ class StepValidator(Validator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.required_if_new = []
-        self.optional_fields = ["step_description"]
+        self.optional_fields = ["step_description", "process_id"]
+        self.manytomany_fields = ["process_id"]
         self.django_mapping = {self.id_field: "name",
                                self.optional_fields[0]: "description",
+                               self.optional_fields[1]: "processes",
                                "upstream_step": "upstream"}
 
 class AnalysisValidator(Validator):
@@ -512,10 +517,11 @@ class ResultValidator(Validator):
             if field.startswith("upstream_result"):
                 vldtr = vldtr_cache.get_validator("result_id", datum)
                 if not vldtr:
-                    vldtr = ResultValidator(data=pd.Series({"result_id": datum, "analysis_id": self.data["analysis_id"]}))
+                    vldtr = ResultValidator(data=pd.Series({"result_id": datum, 
+                                                            "analysis_id": self.data["analysis_id"]}))
+                    # Vacuously true at the moment vldtr.validate()
                     vldtr_cache.add_validator(vldtr)
-                    vldtr.validate()
-                if save and (not vldtr.saved) and (not vldtr.in_db()):
+                if save and (not vldtr.saved):
                     vldtr.save()
         return True
 
@@ -590,7 +596,7 @@ class ValueValidator(Validator):
                                "intval": "int",
                                "floatval": "float",
                                "datetimeval": "date",
-                               "resultval": "result"}
+                               "resultval": "uuid"}
         self.TYPE_MODEL_MAP = {"strval" : StrVal,
                                "intval": IntVal,
                                "floatval": FloatVal,
@@ -622,15 +628,11 @@ class ValueValidator(Validator):
                 self.casted_value = vldtr.fetch()
             else:
                 if "analysis_id" in self.data:
-                    #print("result not in db but can create")
-                    res_vldtr = ResultValidator(data=pd.Series({"result_id": self.value, "analysis_id": self.data["analysis_id"]}))
+                    res_vldtr = ResultValidator(data=pd.Series({"result_id": self.value, 
+                                                                "analysis_id": self.data["analysis_id"]}))
                     #If it isn't in the database yet, put in a shadow entry
                     #TODO Mark these explicitly
-                    if not res_vldtr.in_db():
-                        res_vldtr.validate()
-                        self.casted_value = res_vldtr.save()
-                    else:
-                        self.casted_value = res_vldtr.fetch()
+                    self.casted_value = res_vldtr.save()
                 else:
                     raise ValueError("Generic Value %s is a UUID inferred to be a ResultVal. This UUID is not in the database as a Result. Please upload this Result, or add an 'analysis_id' column pointing to the analysis that this Result was generated from, so a dummy entry can be created and filled at a later date (if possible and desired)." % (self.id_value,))
         elif self.type is not "datetimeval":
@@ -656,33 +658,14 @@ class ValueValidator(Validator):
                   self.TYPE_FIELD_MAP[self.type] + "__value__exact": self.casted_value,
                   "value_type__exact": self.vtype}
         # This gets us all values of a certain name and type (parameter, measure, metadata)
-        # which we can then check for 
-#        values = Value.objects.filter(**kwargs)
-#        if len(values) == 0:
-#            return False
-#
-#        # First, we whittle it down to make sure it has the fields we're explicitly looking for 
-        for link_field in self.targets:
-            if link_field is None:
-                continue
-            if link_field == "extra_step":
-                link_field = "step_id"
-            kwargs[plural_mapper[link_field.split("_")[0]] + "__isnull"] = False
-        for field in linkable_fields:
-            if field is not "extra_step":
-                if plural_mapper[field.split("_")[0]] + "__isnull" not in kwargs:
-                    kwargs[plural_mapper[field.split("_")[0]] + "__isnull"] = True
-        values = Value.objects.filter(**kwargs)
-        if len(values) == 0:
-            return False
-
-        # At this point, we know that we have an object with the same name
-        # and the same types of connections
-        set_Q = Q()
+        # which we can then check for
+        # Start with nothing
+        val_obj = None
+        prev_queryset = None
         for field in self.targets:
-            if field == "extra_step":
+            if field == 'extra_step':
+                #TODO: Implement this
                 continue
-            #Check to make sure that nothing exists in each of these
             link_data = self.data[field]
             if isinstance(link_data, pd.Series):
                 link_data = link_data.values
@@ -692,22 +675,43 @@ class ValueValidator(Validator):
                 vldtr = vldtr_cache.get_validator(field, datum)
                 if not vldtr:
                     vldtr = validator_mapper[field.split("_")[0]](data=pd.Series({field: datum}))
-                    vldtr.validate()
                     if not vldtr.in_db():
+                        vldtr.validate()
                         vldtr.save()
+                    else:
+                        # It's in the database, so manually flag it to avoid redundancy later
+                        vldtr.saved = saved
+                        vldtr.validated = validated
                     vldtr_cache.add_validator(vldtr)
-                obj = vldtr.fetch()
-                set_Q = (set_Q & Q(**{plural_mapper[field.split("_")[0]]:obj}))
-        print("Query built, executing")
-        values = values.filter(set_Q)
-        print("Executed")
-        if len(values) == 0:
+                if vldtr.value_field is not None: #Feels like a foregone conclusion at this point though
+                    obj = vldtr.fetch()
+                    # Each object should have at least one Value of this name, type, and value in its value_field
+                    # and if not, we know we can short-circuit this
+                    vals_on_obj = getattr(obj, vldtr.value_field).filter(**kwargs)
+                    if not vals_on_obj.exists():
+                        # If the object we pulled has NOTHING like this name in its values, we can bail out now
+                        return False
+                    elif prev_queryset is None:
+                        prev_queryset = vals_on_obj
+                    else:
+                        prev_queryset = prev_queryset.intersection(vals_on_obj)
+                        if len(prev_queryset) == 0:
+                            # Not ALL objects in link targets share one of the values we found, bail out
+                            return False
+        if prev_queryset is None:
+            #??? No targets, shouldn't occur
+            raise ValueError("Generic Value provided but targets list empty")
+        elif len(prev_queryset) == 0:
+            #??? At this point it should've already bailed out above, but just in case?
             return False
-        if return_if_found:
-            print("FOUND EXACT VALUE, WITH EXACT LINKS!!")
-            return values
+        elif len(prev_queryset) == 1:
+            if return_if_found:
+                return prev_queryset.get()
+            else:
+                return True
         else:
-            return True 
+            #>1
+            raise ValueError("Duplicate Values with name %s registered to the same Objects" % (self.id_field,))
 
     def validate(self):
         #Must raise an exception if failure to add to database
@@ -726,6 +730,7 @@ class ValueValidator(Validator):
                 vldtr = vldtr_cache.get_validator(link_field, _id)
                 if not vldtr:
                     vldtr = validator_mapper[link_field.split("_")[0]](data=pd.Series({link_field: _id}))
+                #print(vldtr.data[vldtr.id_field])
                 self.link_objects.append((vldtr, vldtr.fetch()))
         self.validated = True
         return True 
@@ -737,7 +742,7 @@ class ValueValidator(Validator):
         return values
 
     def save(self):
-        #print("Saving Value")
+        #print("Saving Value %s" % (self.id_field,))
         # First look to see if a Value with the same content exists, and we link that instead of making a new one
         # If Value does not exist, make the appropriate *Val and Value
         # Find each of the linkable items and add the value to its value_field, making sure that it's the right kind for that linkable
@@ -749,6 +754,7 @@ class ValueValidator(Validator):
             permitted_types = {'parameter': ['result','step','process','analysis', 'sample'],
                                'metadata': ['result','analysis', 'investigation','step', 'process', 'sample', 'feature'],
                                'measure': ['result','sample', 'feature']}
+            #print("Saving Val %s" % (str(self.casted_value),))
             val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
             #If this isn't saved here, then it causes issues bulk saving the values later...
             val.save()
@@ -847,7 +853,7 @@ def resolve_table(table):
         #print(_idx, end="\r")
         row = row.dropna()
         #with transaction.atomic():
-        print("Inputting objects")
+        #print("Inputting objects")
         for id_field in save_order:
             if id_field in row:
                 id_rows = row[id_field]
@@ -875,7 +881,7 @@ def resolve_table(table):
         # Now that we've validated all objects in the row and made sure they exist,
         # we can save their values
         #print(vldtr_cache)
-        print("Inputting values")
+        #print("Inputting values")
         for field, datum in row.iteritems():
             if field not in reserved_fields:
                 data = copy.deepcopy(row)
@@ -884,10 +890,10 @@ def resolve_table(table):
                 data[field] = datum
                 #print("Creating ValueValidator for %s" % (field,))
                 validator = ValueValidator(name=field, data=data)
-                print("Validating")
+                #print("Validating")
                 validator.validate()
-                print("Initial save")
+                #print("Initial save")
                 validator.save() # NOTE: Does not save the links! Only the value! Which makes them useless orphans. Must call vldtr_cache.save_values()
-    print("Saving all value links in bulk")
+    #print("Saving all value links in bulk")
     vldtr_cache.save_values()
     vldtr_cache.clear()
