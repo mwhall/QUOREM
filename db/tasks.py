@@ -92,7 +92,7 @@ def react_to_file(upload_file_id, **kwargs):
     except Exception as e:
         mail.title += "failed."
         mail.message = "Your file upload failed. The system gave the following error: "
-        mail.message += e
+        mail.message += str(e)
         mail.message += " please try reformatting your data and reuploading."
         mail.save()
         print("Except here")

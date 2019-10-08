@@ -232,14 +232,14 @@ class AnalysisList(ListSortingView):
                 {
                     'type': 'choices',
                     'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
-                }), 
+                }),
                 # BROKEN. There is a Date filter in DJK but it doesn't seem to work
-                # with our field? And using a Choices filter raises that a Datetime 
+                # with our field? And using a Choices filter raises that a Datetime
                 # isn't serializable, and I don't know how else to get equality to
                 # filter properly
                 #('date',
                 #{'type': None
-                # 'choices': [(str(x['date']),str(x['date'])) \ 
+                # 'choices': [(str(x['date']),str(x['date'])) \
                 #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
                 ('location',
                 {
@@ -360,7 +360,7 @@ class ResultList(ListSortingView):
                     # List of choices that are active by default:
                     'active_choices': [],
                     # Do not allow to select multiple choices:
-                }), 
+                }),
                 ('source_step',
                 {
                     'type': 'choices',
@@ -1165,3 +1165,7 @@ class MailOpen(View):
                                                         'unread': unread,
                                                         'active_page': 'mail',
                                                         'selected': mail,})
+
+
+def testView(request):
+    return render(request, 'newlanding.htm')

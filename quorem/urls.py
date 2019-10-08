@@ -35,7 +35,8 @@ from db.views import (
     #analysis page
     analyze, spreadsheet_upload, artifact_upload,
     plot_view, ajax_aggregates_meta_view,
-    PlotAggregateView, PlotTrendView,
+    PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
+    onto_view, onto_json, MailBoxView, MailOpen, testView
 )
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
@@ -181,6 +182,7 @@ urlpatterns = [
     path('ajax/load-onto/', onto_json, name='onto_json'),
     path('mail/', MailBoxView.as_view(), name='mail'),
     re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
+    path('test/', testView, name='test_view'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

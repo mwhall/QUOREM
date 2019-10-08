@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+    {% endblock head -%}
+    <style>
+      /*style stuff */
+      .marketing .row{
+        padding-top: 3rem;
+      }
+      .marketing .col-lg-4 {
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      .marketing h2 {
+        font-weight: 400;
+      }
+      .marketing .col-lg-4 p {
+        margin-right: .75rem;
+        margin-left: .75rem;
+      }
+    </style>
+  </head>
+  <body>
+    {% set active_page = "analyze" %}
+    {% include 'core/header.htm' -%}
+    <div class="container marketing">
+      <div class="row">
+        <div class="col-lg-4">
+          <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
+          alt="graph image" width="140" height="140">
+          <h2>Graph Vizualisations</h2>
+          <p>Visualize data from the QUOR'em database to discover trends and patterns.
+          </p>
+          <p>
+            <a class="btn btn-secondary" href="plot" role="button">
+              Visualize</a>
+          </p>
+      </div>
+      <div class="col-lg-4">
+        <img class="rounded-circle" src="{{ static ('img/microscope.png') }}"
+        alt="graph image" width="140" height="140">
+        <h2>Data Analysis</h2>
+        <p>Perform data analysis techniques on QUOR'em data. Click to find out more.
+        </p>
+        <p>
+          <a class="btn btn-secondary" href="#" role="button">
+            Analyse</a>
+        </p>
+    </div>
+    <div class="col-lg-4">
+      <img class="rounded-circle" src="{{ static ('img/report.png') }}"
+      alt="graph image" width="140" height="140">
+      <h2>Detailed Reports</h2>
+      <p>Get custom reports about the data in a team-specific manner.
+      </p>
+      <p>
+        <a class="btn btn-secondary" href="#" role="button">
+          Summarize</a>
+      </p>
+  </div>
+</div>
+<hr class="featurette-divider">
+
+    <div class="row featurette">
+      <div class="col-md-7">
+        <h2 class="featurette-heading">First featurette heading. <span class="text-muted">It’ll blow your mind.</span></h2>
+        <p class="lead">Donec ullamcorper nulla non metus auctor fringilla. Vestibulum id ligula porta felis euismod semper. Praesent commodo cursus magna, vel scelerisque nisl consectetur. Fusce dapibus, tellus ac cursus commodo.</p>
+      </div>
+      <div class="col-md-5">
+        <svg class="bd-placeholder-img bd-placeholder-img-lg featurette-image img-fluid mx-auto" width="200" height="200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" focusable="false" role="img" aria-label="Placeholder: 500x500"><title>Placeholder</title><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" fill="#aaa" dy=".3em">500x500</text></svg>
+      </div>
+    </div>
+
+    <hr class="featurette-divider">
+
+    <div class="row featurette">
+      <div class="col-md-7 order-md-2">
+        <h2 class="featurette-heading">Oh yeah, it’s that good. <span class="text-muted">See for yourself.</span></h2>
+        <p class="lead">Donec ullamcorper nulla non metus auctor fringilla. Vestibulum id ligula porta felis euismod semper. Praesent commodo cursus magna, vel scelerisque nisl consectetur. Fusce dapibus, tellus ac cursus commodo.</p>
+      </div>
+      <div class="col-md-5 order-md-1">
+        <svg class="bd-placeholder-img bd-placeholder-img-lg featurette-image img-fluid mx-auto" width="200" height="200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" focusable="false" role="img" aria-label="Placeholder: 500x500"><title>Placeholder</title><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" fill="#aaa" dy=".3em">500x500</text></svg>
+      </div>
+    </div>
+
+    <hr class="featurette-divider">
+
+    <div class="row featurette">
+      <div class="col-md-7">
+        <h2 class="featurette-heading">And lastly, this one. <span class="text-muted">Checkmate.</span></h2>
+        <p class="lead">Donec ullamcorper nulla non metus auctor fringilla. Vestibulum id ligula porta felis euismod semper. Praesent commodo cursus magna, vel scelerisque nisl consectetur. Fusce dapibus, tellus ac cursus commodo.</p>
+      </div>
+      <div class="col-md-5">
+        <svg class="bd-placeholder-img bd-placeholder-img-lg featurette-image img-fluid mx-auto" width="200" height="200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" focusable="false" role="img" aria-label="Placeholder: 500x500"><title>Placeholder</title><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" fill="#aaa" dy=".3em">500x500</text></svg>
+      </div>
+    </div>
+
+    <hr class="featurette-divider">
+</div>
+    {% include 'base_bottom_scripts.htm' -%}
+    {% block bottom_scripts -%}
+    {% endblock bottom_scripts -%}
+  </body>
+</html>
