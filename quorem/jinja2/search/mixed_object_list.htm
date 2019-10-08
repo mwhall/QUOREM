@@ -50,6 +50,27 @@
       <p class="mb-1"> Used in {% for process in item.obj.processes.all() %} {{ process.name }} {% endfor %}</p>
       {% endif %}
     </a>
+
+    {% elif item.otype == 'result' %}
+    <a class="list-group-item list-group-item-action flex-column align-items start"
+    href="/result/{{ item.obj.pk }}">
+    <div class="d-flex w-100 justify-content-between">
+      <h5 class="mb-1">{{ item.obj.type }} result </h5>
+    </div>
+    <p class="mb-1">UUID {{ item.obj.uuid }}</p>
+    <p class="mb-1">Sourced from {{ item.obj.source }}</p>
+    <a>
+
+
+    {% elif item.otype == 'analysis' %}
+    <a class="list-group-item list-group-item-action flex-column align-items start"
+    href="/analysis/{{ item.obj.pk }}">
+    <div class="d-flex w-100 justify-content-between">
+      <h5 class="mb-1">{{ item.obj.name }}</h5>
+    </div>
+    <p class="mb-1">Using process {{ item.obj.process }}</p>
+    <p class="mb-1">From {{ item.obj.location }}</p>
+    <a>
     {% endif %}
   {% endfor %}
 </div>

@@ -2,7 +2,7 @@
 <catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
     <uri id="Imports Wizard Entry" name="http://purl.obolibrary.org/obo/uo/releases/2019-04-01/uo.owl" uri="file:/home/alex/Documents/ontology/uo.owl"/>
     <group id="Folder Repository, directory=, recursive=true, Auto-Update=true, version=2" prefer="public" xml:base="">
-        <uri id="Automatically generated entry, Timestamp=1565095506470" name="http://www.quorem.ca/ontologies/micon.owl" uri="testmicon001.owl"/>
-        <uri id="Automatically generated entry, Timestamp=1565095506470" name="http://www.quorem.ca/ontology/micon.owl" uri="micon.owl"/>
+        <uri id="Automatically generated entry, Timestamp=1570026982104" name="http://www.quorem.ca/ontologies/micon.owl" uri="testmicon001.owl"/>
+        <uri id="Automatically generated entry, Timestamp=1570026982104" name="http://www.quorem.ca/ontology/micon.owl" uri="micon.owl"/>
     </group>
 </catalog>

@@ -20,7 +20,9 @@ from q2_extractor.Extractor import Extractor
 import pandas as pd
 import io
 import re
-
+############### For Testing, delete later.
+import time
+#########################################
 @shared_task
 def react_to_file(upload_file_id, **kwargs):
     #something weird happens sometimes in which uploading a file doens't work.
@@ -92,7 +94,7 @@ def react_to_file(upload_file_id, **kwargs):
     except Exception as e:
         mail.title += "failed."
         mail.message = "Your file upload failed. The system gave the following error: "
-        mail.message += e
+        mail.message += str(e)
         mail.message += " please try reformatting your data and reuploading."
         mail.save()
         print("Except here")
@@ -121,6 +123,7 @@ def process_table_cache(infile):
 
 @shared_task
 def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
+    start_time = time.time()
     analysis_name = Analysis.objects.get(pk=analysis_pk).name
     q2e = Extractor(infile)
     uuid = q2e.base_uuid
@@ -162,6 +165,10 @@ def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
     res = Result.objects.get(uuid=uuid)
     res.input_file = upfile
     res.save()
+    print("#\n#\n")
+    print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
+    print(time.time() - start_time)
+    print("#\n#\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     return "Success"
 
 @shared_task
