@@ -97,7 +97,7 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
 ################ Upload Forms
 class ArtifactUploadForm(ModelForm):
     analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(), empty_label="Select an Analysis")
-    register_provenance = forms.BooleanField(initial=True, label="Register Provenance")
+    register_provenance = forms.BooleanField(initial=False, required=False, label="Register Provenance")
     class Meta:
         model = UploadInputFile
         #exclude = ('userprofile', )
@@ -319,7 +319,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
 class AnalysisForm(BootstrapModelForm):
     class Meta:
         model = Analysis
-        exclude = ('search_vector',)
+        exclude = ('search_vector','values',)
 
 class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     def get_result_link(self, value):

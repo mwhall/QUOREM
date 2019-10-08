@@ -333,7 +333,7 @@ class DatetimeVal(models.Model):
 #This is if the input parameter is another result, ie. another artifact searched by UUID
 class ResultVal(models.Model):
     value = models.ForeignKey('Result', on_delete=models.CASCADE)
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="result")
+    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="uuid")
     def __str__(self):
         return value.name + ": " + value.type
 

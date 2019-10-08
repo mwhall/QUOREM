@@ -35,8 +35,11 @@ from db.views import (
     #analysis page
     analyze, spreadsheet_upload, artifact_upload,
     plot_view, ajax_aggregates_meta_view,
-    PlotAggregateView, PlotTrendView, ajax_plot_trendx_view, ajax_plot_trendy_view,
-    onto_view, onto_json, MailBoxView, MailOpen, testView
+    ajax_plot_trendx_view, ajax_plot_trendy_view,
+    PlotAggregateView, PlotTrendView,
+    onto_view, onto_json,
+    MailBoxView, MailOpen
+
 )
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
