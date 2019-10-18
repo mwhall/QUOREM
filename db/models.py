@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -17,7 +19,6 @@ from celery import current_app
 from quorem.wiki import refresh_automated_report
 
 User = get_user_model()
-
 
 class Investigation(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -304,6 +305,61 @@ class Value(models.Model):
 
     def __str__(self):
         return self.name + ": " + str(self.content_object.value)
+
+    @classmethod
+    def disambiguate(cls, name, value_type=None, linked_to=None, only=False):
+        linkable_objects = ["sample", "feature", "analysis", "step", "process",\
+                            "result", "investigation"]
+        #Like most functions, try to kick out as soon as we know there's an ambiguity we can resolve
+        qs = Value.objects.filter(name=name)
+        if value_type is not None:
+            qs = qs.filter(value_type=value_type)
+        qs = qs.prefetch_related("samples","features","analyses",
+                                 "investigations","steps","processes","results")
+        qs = qs.annotate(sample_count=models.Count("samples"),
+                         feature_count=models.Count("features"),
+                         analysis_count=models.Count("analyses"),
+                         investigation_count=models.Count("investigations"),
+                         result_count=models.Count("results"),
+                         process_count=models.Count("processes"),
+                         step_count=models.Count("steps"))
+        if linked_to is not None:
+            if isinstance(linked_to, list):
+                kwargs = {}
+                for link in linked_to:
+                    kwargs[link + "_count__gt"] = 0
+                if only:
+                    for obj in linkable_objects:
+                        if obj + "_count__gt" not in kwargs:
+                            kwargs[obj + "_count"] = 0
+                qs = qs.filter(**kwargs)
+            else:
+                 kwargs = {linked_to + "_count__gt": 0}
+                 if only:
+                     for obj in linkable_objects:
+                         if obj != linked_to:
+                             kwargs[obj + "_count"] = 0
+                 qs = qs.filter(**kwargs)
+                
+        qs = qs.values("value_type","sample_count","feature_count",
+                       "analysis_count","investigation_count","result_count",
+                       "process_count","step_count")
+        qs = qs.distinct()
+        #Unambiguous if 1 signature, or vacuously if not in DB at all
+        if (len(qs) <= 1):
+            return True
+        else:
+            #Collect ambiguities
+            signatures = list(qs)
+            signature_dict = defaultdict(set)
+            for signature in signatures:
+                link_list = []
+                for key in signature:
+                    if key.endswith("_count") and (signature[key]>0):
+                        link_list.append(key.split("_")[0])
+                if link_list:
+                    signature_dict[signature["value_type"]].add(tuple(link_list))
+            return signature_dict
 
     @classmethod
     def update_search_vector(self):
