@@ -20,7 +20,88 @@ from quorem.wiki import refresh_automated_report
 
 User = get_user_model()
 
-class Investigation(models.Model):
+class Object(models.Model):
+    search_vector = SearchVectorField(null=True)
+    has_upstream = False
+
+    class Meta:
+        abstract = True
+        indexes = [
+            GinIndex(fields=['search_vector'])
+        ]
+
+    def __str__(self):
+        return self.name
+
+    # Override if upstream exists and/or value_field is not "values"
+    @classmethod
+    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False, value_field="values", has_upstream=False):
+        if search_set is None: #QuerySet
+            search_set = cls.objects.all()
+        search_set = search_set.prefetch_related(value_field)
+        if has_upstream & upstream:
+            search_set = search_set.prefetch_related("all_upstream")
+            upstream_set = self.__class__.objects.filter(pk__in=search_set.values_list("all_upstream__pk", flat=True).distinct())
+            search_set = search_set.union(upstream_set)
+        kwargs = {value_field + "__name": name}
+        if value_type is not None:
+            kwargs[value_field + "__value_type"] = value_type
+        hits = search_set.filter(**kwargs).distinct()
+        if not hits.exists():
+            return False
+        else:
+            return hits
+
+    def search_metadata(self, name, linked_to=None):
+        return self.search_values(name, "metadata", linked_to, 
+                                  search_set=self.__class__.objects.filter(pk=self.pk))
+
+    def search_measure(self, name, linked_to=None):
+        return self.search_values(name, "measure", linked_to, 
+                                  search_set=self.__class__.objects.filter(pk=self.pk))
+
+    def search_parameter(self, name, linked_to=None):
+        return self.search_values(name, "parameter", linked_to, 
+                                  search_set=self.__class__.objects.filter(pk=self.pk))
+
+    # Default search methods, using only internal methods
+    # At least one of these has to be overridden
+    def related_samples(self, upstream=False):
+        samples = Sample.objects.filter(source_step__in=self.related_steps(upstream=upstream)).distinct()
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=samples.values("all_upstream").distinct())
+        return samples
+
+    def related_processes(self, upstream=False):
+        processes = Process.objects.filter(pk__in=self.related_steps(upstream=upstream).values("processes").distinct())
+        if upstream:
+            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+        return processes
+
+    def related_features(self):
+        return Feature.objects.filter(samples__in=self.related_samples()).distinct()
+
+    def related_steps(self, upstream=False):
+        # Return the source_step for each sample
+        steps = Step.objects.filter(pk__in=self.related_samples(upstream=upstream).values("source_step").distinct())
+        if upstream:
+            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+        return steps
+
+    def related_analyses(self):
+        return Analysis.objects.filter(results__in=self.related_results()).distinct()
+
+    def related_results(self, upstream=False):
+        results = Result.objects.filter(samples__in=self.related_samples(upstream=upstream)).distinct()
+        if upstream:
+            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
+
+    def related_investigations(self):
+        return Investigation.objects.filter(samples__in=self.related_samples()).distinct()
+
+
+class Investigation(Object):
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
@@ -28,20 +109,8 @@ class Investigation(models.Model):
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
     categories = models.ManyToManyField('Category', related_name='investigations', blank=True)
     #Stuff for searching
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def __str__(self):
-        return self.name
-
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.pk})}), self.name))
-
-    #override save to update the search vector field
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     @classmethod
     def update_search_vector(self):
@@ -52,30 +121,26 @@ class Investigation(models.Model):
 #        refresh_automated_report("investigation")
 #        refresh_automated_report("investigation", pk=self.pk)
 
-class Feature(models.Model):
+    def related_samples(self, upstream=False):
+        # SQL Depth: 1
+        samples = self.samples.all()
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+        return samples
+
+
+class Feature(Object):
     name = models.CharField(max_length=255, verbose_name="Name")
     sequence = models.TextField(null=True, blank=True)
-    annotations = models.ManyToManyField('Value', related_name='annotations', blank=True)
-    first_discovered_in = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
-    observed_results = models.ManyToManyField('Result', related_name='observed_results', blank=True)
-    observed_samples = models.ManyToManyField('Sample', related_name='observed_samples', blank=True)
+    annotations = models.ManyToManyField('Value', related_name='+', blank=True)
+    first_result = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
+    samples = models.ManyToManyField('Sample', related_name='features', blank=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
     categories = models.ManyToManyField('Category', related_name="features", blank=True)
 
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def __str__(self):
-        return self.name
-
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('feature_detail', kwargs={'feature_id': self.pk})}), self.name))
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     @classmethod
     def update_search_vector(self):
@@ -84,32 +149,40 @@ class Feature(models.Model):
                              SearchVector(StringAgg('annotations__str', delimiter=' '), weight='B'))
         )
 
+    def related_samples(self, upstream=False):
+        #SQL Depth: 1
+        samples = self.samples.all()
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+        return samples
 
-class Sample(models.Model):
+    def related_results(self, upstream=False):
+        # SQL Depth: 2
+        results = self.results.all()
+        if upstream:
+            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
+
+class Sample(Object):
     """
     Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
     """
     name = models.CharField(max_length=255,unique=True)
     investigations = models.ManyToManyField('Investigation', related_name='samples', blank=True)  # fk 2
-    analysis = models.ForeignKey('Analysis', related_name='samples', on_delete=models.CASCADE, blank=True)
     source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
+    # A cache of all of the upstream Samples up the chain
+    all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
     categories = models.ManyToManyField('Category', related_name='samples', blank=True)
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def __str__(self):
-        return self.name
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.pk})}), self.name))
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    @classmethod
+    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().search_values(name, value_type, linked_to, search_set, has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -121,65 +194,77 @@ class Sample(models.Model):
         )
 #        refresh_automated_report("sample", pk=self.pk)
 
+    def related_investigations(self):
+        return self.investigations.all()
 
+    def related_features(self):
+        return self.features.all()
 
-class Process(models.Model):
+    def related_steps(self, upstream=False):
+        steps = Step.objects.filter(pk=self.source_step.pk)
+        if upstream:
+            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+        return steps
+
+    def related_results(self, upstream=False):
+        # SQL Depth: 1
+        results = self.results.all()
+        if upstream:
+            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
+
+class Process(Object):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     citation = models.TextField(blank=True)
 
     upstream = models.ManyToManyField('self', symmetrical=False, related_name="downstream", blank=True)
+    all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
     parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
-    search_vector = SearchVectorField(null=True)
-    def __str__(self):
-        return self.name
-
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('process_detail', kwargs={'process_id': self.pk})}), self.name))
 
-
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    @classmethod
+    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().search_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
         Process.objects.update(
             search_vector = (SearchVector('name', weight='A') +
                              SearchVector('citation', weight='B') +
-                             SearchVector('description', weight='C') +
-                             SearchVector('category__name', weight='D'))
+                             SearchVector('description', weight='C'))
         )
 
+    def related_steps(self, upstream=False):
+        steps = self.steps.all()
+        if upstream:
+            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+        return steps
 
-class Step(models.Model):
+    def related_analyses(self):
+        return self.analyses.all()
+
+
+class Step(Object):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
+    all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
     parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
-    search_vector = SearchVectorField(null=True)
-
-    def __str__(self):
-        return '%s' % (self.name,)
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': self.pk})}), self.name))
 
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    @classmethod
+    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().search_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -188,7 +273,31 @@ class Step(models.Model):
                             SearchVector('description', weight='B'))
         )
 
-class Analysis(models.Model):
+    def related_samples(self, upstream=False):
+        samples = Sample.objects.filter(source_step__pk=self.pk)
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+        return samples
+
+    def related_processes(self, upstream=False):
+        processes = self.processes.all()
+        if upstream:
+            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+        return processes
+
+    def related_analyses(self):
+        # SQL Depth: 2
+        return Analysis.objects.filter(extra_steps__pk=self.pk,
+                                       process__in=self.related_process()).distinct()
+
+    def related_results(self, upstream=False):
+        # Results ejected from this step
+        results = Result.objects.filter(source_step__pk=self.pk)
+        if upstream:
+            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
+
+class Analysis(Object):
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
     date = models.DateTimeField(blank=True, null=True)
@@ -200,20 +309,9 @@ class Analysis(models.Model):
     # Run-specific parameters can go in here, but I guess Measures can too
     values = models.ManyToManyField('Value', related_name='analyses', blank=True)
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.name
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('analysis_detail', kwargs={'analysis_id': self.pk})}), self.name))
-
 
     @classmethod
     def update_search_vector(self):
@@ -223,8 +321,32 @@ class Analysis(models.Model):
                             SearchVector('location', weight='C'))
         )
 
+    def related_samples(self, upstream=False):
+        # All samples for all Results coming out of this Analysis
+        samples = Sample.objects.filter(pk__in=self.results.values("samples").distinct())
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+        return samples
 
-class Result(models.Model):
+    def related_steps(self, upstream=False):
+        steps = self.extra_steps.all() | self.process.steps.all()
+        if upstream:
+            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+        return steps
+
+    def related_processes(self, upstream=False):
+        results = Process.objects.filter(pk=self.process.pk)
+        if upstream:
+            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+        return processes
+
+    def related_results(self, upstream=False):
+        results = self.results.all()
+        if upstream:
+            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
+
+class Result(Object):
     """
     Some kind of result from an analysis
     """
@@ -240,25 +362,17 @@ class Result(models.Model):
     samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
     features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
+    all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
     #from_provenance = models.BooleanField(default=False)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
     categories = models.ManyToManyField('Category', related_name='results', blank=True)
-
-    search_vector = SearchVectorField(null=True)
-    class Meta:
-        indexes = [
-            GinIndex(fields=['search_vector'])
-        ]
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.uuid)
 
     def get_detail_link(self, label='uuid'):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('result_detail', kwargs={'result_id': self.pk})}), str(getattr(self, label))))
-
 
     @classmethod
     def update_search_vector(self):
@@ -267,6 +381,32 @@ class Result(models.Model):
                             SearchVector('type', weight='B') +
                             SearchVector('uuid', weight='C'))
         )
+
+    def related_samples(self, upstream=False):
+        samples = self.samples.all()
+        if upstream:
+            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+        return samples
+
+    def related_features(self):
+        return self.features.all()
+
+    def related_steps(self, upstream=False):
+        if not self.source_step:
+            return Step.objects.none()
+        steps = Step.objects.filter(pk=self.source_step.pk)
+        if upstream:
+            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+        return steps
+
+    def related_processes(self, upstream=False):
+        processes = Process.objects.filter(pk=self.analysis.process.pk)
+        if upstream:
+            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+        return processes
+
+    def related_analyses(self):
+        return Analysis.objects.filter(pk=self.analysis.pk)
 
 # This allows the users to define a process as they wish
 # Could be split into "wet-lab process" and "computational process"
@@ -304,10 +444,10 @@ class Value(models.Model):
     search_vector = SearchVectorField(null=True)
 
     def __str__(self):
-        return self.name + ": " + str(self.content_object.value)
+        return self.name + ": " + str(self.content_object.value) + ", " + str(linked_to)
 
     @classmethod
-    def disambiguate(cls, name, value_type=None, linked_to=None, only=False):
+    def disambiguate(cls, name, value_type=None, linked_to=None, only=False, return_queryset=False):
         linkable_objects = ["sample", "feature", "analysis", "step", "process",\
                             "result", "investigation"]
         #Like most functions, try to kick out as soon as we know there's an ambiguity we can resolve
@@ -341,15 +481,20 @@ class Value(models.Model):
                              kwargs[obj + "_count"] = 0
                  qs = qs.filter(**kwargs)
                 
-        qs = qs.values("value_type","sample_count","feature_count",
-                       "analysis_count","investigation_count","result_count",
-                       "process_count","step_count")
         qs = qs.distinct()
         #Unambiguous if 1 signature, or vacuously if not in DB at all
         if (len(qs) <= 1):
-            return True
+            if return_queryset:
+                return qs
+            else:
+                return True
         else:
             #Collect ambiguities
+            if return_queryset:
+                return qs
+            qs = qs.values("value_type","sample_count","feature_count",
+                       "analysis_count","investigation_count","result_count",
+                       "process_count","step_count")
             signatures = list(qs)
             signature_dict = defaultdict(set)
             for signature in signatures:

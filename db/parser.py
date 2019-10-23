@@ -359,11 +359,13 @@ class Validator():
         for field, datum in m2m_links:
             getattr(obj, self.django_mapping[field]).add(datum)
         #Commit categories
-        for cat in categories_to_add:
-            obj.categories.add(cat)
+        if categories_to_add:
+            obj.categories.add(*categories_to_add)
         #Commit upstream links
-        for upobj in upstream_to_add:
-            obj.upstream.add(upobj)
+        if upstream_to_add:
+            obj.upstream.add(*upstream_to_add)
+            obj.all_upstream.add(*upstream_to_add)
+            obj.all_upstream.add(*Result.objects.filter(pk__in=obj.upstream.values("all_upstream").distinct()))
         self.saved = True
         return obj
 
@@ -389,13 +391,12 @@ class SampleValidator(Validator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.required_if_new = ["analysis_id", "step_id"]
+        self.required_if_new = ["step_id"]
         self.optional_fields = ["investigation_id"]
         self.manytomany_fields = ["investigation_id"]
         self.django_mapping = {self.id_field: "name",
                                self.optional_fields[0]: "investigations",
-                               self.required_if_new[0]: "analysis",
-                               self.required_if_new[1]: "source_step",
+                               self.required_if_new[0]: "source_step",
                                "upstream_sample": "upstream"}
 
 class FeatureValidator(Validator):
@@ -411,8 +412,8 @@ class FeatureValidator(Validator):
         self.manytomany_fields = ["result_id", "sample_id"]
         self.django_mapping = {self.id_field: "name",
                                self.optional_fields[0]: "sequence",
-                               self.optional_fields[1]: "observed_results",
-                               self.optional_fields[2]: "observed_samples"}
+                               self.optional_fields[1]: "results",
+                               self.optional_fields[2]: "samples"}
 
 class ProcessValidator(Validator):
     model_name = "Process"
@@ -561,6 +562,9 @@ class ResultValidator(Validator):
         result.samples.add(*samples)
         result.features.add(*features)
         result.upstream.add(*upstream)
+        # Add this Result's upstream, and all of their upstreams to the collective upstream field
+        result.all_upstream.add(*upstream)
+        result.all_upstream.add(*Result.objects.filter(pk__in=upstream.values("all_upstream").distinct()))
         result.categories.add(*categories)
         return result
         #TODO:
@@ -711,6 +715,8 @@ class ValueValidator(Validator):
                 return True
         else:
             #>1
+            print(self.data)
+            print(prev_queryset.all())
             raise ValueError("Duplicate Values with name %s registered to the same Objects" % (self.id_field,))
 
     def validate(self):
@@ -751,9 +757,9 @@ class ValueValidator(Validator):
             self.validate()
         obj = self.in_db(return_if_found=True)
         if not obj:
-            permitted_types = {'parameter': ['result','step','process','analysis', 'sample'],
-                               'metadata': ['result','analysis', 'investigation','step', 'process', 'sample', 'feature'],
-                               'measure': ['result','sample', 'feature']}
+            permitted_types = {'parameter': ['result','step','process','analysis','sample'],
+                               'metadata': ['result','analysis','investigation','step','process','sample','feature'],
+                               'measure': ['result','sample','feature']}
             #print("Saving Val %s" % (str(self.casted_value),))
             val = self.TYPE_MODEL_MAP[self.type](value=self.casted_value)
             #If this isn't saved here, then it causes issues bulk saving the values later...
