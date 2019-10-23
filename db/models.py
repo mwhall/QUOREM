@@ -21,8 +21,9 @@ from quorem.wiki import refresh_automated_report
 User = get_user_model()
 
 class Object(models.Model):
-    search_vector = SearchVectorField(null=True)
     has_upstream = False
+
+    search_vector = SearchVectorField(null=True)
 
     class Meta:
         abstract = True
@@ -167,6 +168,8 @@ class Sample(Object):
     """
     Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
     """
+    has_upstream = True
+
     name = models.CharField(max_length=255,unique=True)
     investigations = models.ManyToManyField('Investigation', related_name='samples', blank=True)  # fk 2
     source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
@@ -214,6 +217,8 @@ class Sample(Object):
         return results
 
 class Process(Object):
+    has_upstream = True
+
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     citation = models.TextField(blank=True)
@@ -250,6 +255,8 @@ class Process(Object):
 
 
 class Step(Object):
+    has_upstream = True
+
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
@@ -350,6 +357,8 @@ class Result(Object):
     """
     Some kind of result from an analysis
     """
+    has_upstream = True
+
     list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'parameters', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
