@@ -36,7 +36,7 @@ class Object(models.Model):
 
     # Override if upstream exists and/or value_field is not "values"
     @classmethod
-    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False, value_field="values", has_upstream=False):
+    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False, value_field="values", has_upstream=False):
         if search_set is None: #QuerySet
             search_set = cls.objects.all()
         search_set = search_set.prefetch_related(value_field)
@@ -53,16 +53,16 @@ class Object(models.Model):
         else:
             return hits
 
-    def search_metadata(self, name, linked_to=None):
-        return self.search_values(name, "metadata", linked_to, 
+    def with_metadata(self, name, linked_to=None):
+        return self.with_values(name, "metadata", linked_to, 
                                   search_set=self.__class__.objects.filter(pk=self.pk))
 
-    def search_measure(self, name, linked_to=None):
-        return self.search_values(name, "measure", linked_to, 
+    def with_measure(self, name, linked_to=None):
+        return self.with_values(name, "measure", linked_to, 
                                   search_set=self.__class__.objects.filter(pk=self.pk))
 
-    def search_parameter(self, name, linked_to=None):
-        return self.search_values(name, "parameter", linked_to, 
+    def with_parameter(self, name, linked_to=None):
+        return self.with_values(name, "parameter", linked_to, 
                                   search_set=self.__class__.objects.filter(pk=self.pk))
 
     # Default search methods, using only internal methods
@@ -184,8 +184,8 @@ class Sample(Object):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.pk})}), self.name))
 
     @classmethod
-    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().search_values(name, value_type, linked_to, search_set, has_upstream=True, upstream=upstream)
+    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().with_values(name, value_type, linked_to, search_set, has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -233,8 +233,8 @@ class Process(Object):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('process_detail', kwargs={'process_id': self.pk})}), self.name))
 
     @classmethod
-    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().search_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
+    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().with_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -270,8 +270,8 @@ class Step(Object):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': self.pk})}), self.name))
 
     @classmethod
-    def search_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().search_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
+    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
+        return super().with_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
