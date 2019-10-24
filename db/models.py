@@ -15,13 +15,19 @@ from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.aggregates import StringAgg
 
 from celery import current_app
+from combomethod import combomethod
+
+import pandas as pd
 
 from quorem.wiki import refresh_automated_report
 
 User = get_user_model()
 
 class Object(models.Model):
+    base_name = "object"
+    plural_name = "objects"
     has_upstream = False
+    search_set = None
 
     search_vector = SearchVectorField(null=True)
 
@@ -34,36 +40,75 @@ class Object(models.Model):
     def __str__(self):
         return self.name
 
-    # Override if upstream exists and/or value_field is not "values"
-    @classmethod
-    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False, value_field="values", has_upstream=False):
-        if search_set is None: #QuerySet
-            search_set = cls.objects.all()
-        search_set = search_set.prefetch_related(value_field)
-        if has_upstream & upstream:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, *kwargs)
+        self.id_column = base_name + "_id"
+        if self.has_upstream:
+            self.upstream_column = "upstream_" + base_name
+        self.category_column = base_name + "_category"
+        self.search_set = self.__class__.objects.filter(pk=self.pk)
+
+    @combomethod
+    def with_values(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
+        linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
+                            "results", "investigations"]
+        if search_set is None:
+            search_set = receiver._meta.model.objects.all()
+        search_set = search_set.prefetch_related("values")
+        if self.has_upstream & upstream:
             search_set = search_set.prefetch_related("all_upstream")
-            upstream_set = self.__class__.objects.filter(pk__in=search_set.values_list("all_upstream__pk", flat=True).distinct())
-            search_set = search_set.union(upstream_set)
-        kwargs = {value_field + "__name": name}
+            upstream_set = receiver._meta.model.objects.filter(pk__in=search_set.values("all_upstream__pk").distinct())
+            search_set = search_set.union(upstream_set).distinct()
+        kwargs = {"values__name": name, "pk__in": search_set}
         if value_type is not None:
-            kwargs[value_field + "__value_type"] = value_type
-        hits = search_set.filter(**kwargs).distinct()
+            kwargs["values__value_type"] = value_type
+        #For some reason whittling down the search_set QuerySet doesn't work
+        # So we have to go to the whole table
+        if linked_to is not None:
+            if isinstance(linked_to, list):
+                for link in linked_to:
+                    kwargs["values__" + link + "__isnull"] = False
+                if only:
+                    for obj in linkable_objects:
+                        if "values__" + obj + "__isnull" not in kwargs:
+                            kwargs["values__" + obj + "__isnull"] = True
+            else:
+                 kwargs = {"values__" + linked_to + "__isnull": False}
+                 if only:
+                     for obj in linkable_objects:
+                         if obj != linked_to:
+                             kwargs["values__" + obj + "__isnull"] = True
+        hits = receiver._meta.model.objects.all()
+        hits = hits.filter(**kwargs).distinct()
         if not hits.exists():
             return False
         else:
             return hits
 
-    def with_metadata(self, name, linked_to=None):
-        return self.with_values(name, "metadata", linked_to, 
-                                  search_set=self.__class__.objects.filter(pk=self.pk))
+    # In a combomethod, obj is either the class, or an instance
+    @combomethod
+    def with_metadata(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
+        if (search_set is None) and (receiver.search_set is not None):
+            # Go to instance default
+            search_set = receiver.search_set
+        return receiver.with_values(name, "metadata", linked_to, 
+                                    search_set, upstream, only)
 
-    def with_measure(self, name, linked_to=None):
-        return self.with_values(name, "measure", linked_to, 
-                                  search_set=self.__class__.objects.filter(pk=self.pk))
+    @combomethod
+    def with_measure(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
+        if (search_set is None) and (receiver.search_set is not None):
+            # Go to instance default
+            search_set = receiver.search_set
+        return receiver.with_values(name, "measure", linked_to, 
+                                    search_set, upstream, only)
 
-    def with_parameter(self, name, linked_to=None):
-        return self.with_values(name, "parameter", linked_to, 
-                                  search_set=self.__class__.objects.filter(pk=self.pk))
+    @combomethod
+    def with_parameter(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
+        if (search_set is None) and (receiver.search_set is not None):
+            # Go to instance default
+            search_set = receiver.search_set
+        return receiver.with_values(name, "parameter", linked_to, 
+                                    search_set, upstream, only)
 
     # Default search methods, using only internal methods
     # At least one of these has to be overridden
@@ -101,8 +146,32 @@ class Object(models.Model):
     def related_investigations(self):
         return Investigation.objects.filter(samples__in=self.related_samples()).distinct()
 
+    # Generic wrapper so we can get objects by string name instead of use getattr or something
+    def related_objects(self, object_name, upstream=False):
+        name_map = {"samples": self.related_samples,
+                    "features": self.related_features,
+                    "steps": self.related_steps,
+                    "processes": self.related_processes,
+                    "analyses": self.related_analyses,
+                    "results": self.related_results,
+                    "investigations": self.related_investigations}
+        kwargs = {}
+        if object_name in ["samples", "steps", "processes", "results"]:
+            kwargs["upstream"] = upstream
+        return name_map[object_name](**kwargs)
+
+    def get_values(self, name, value_type):
+        return self.values.filter(name=name, value_type=value_type)
+
+    def get_upstream_values(self, name, value_type):
+        if not self.has_upstream:
+            return Value.objects.none()
+        return Value.objects.filter(pk__in=self.all_upstream.values("values__pk"))
 
 class Investigation(Object):
+    base_name = "investigation"
+    plural_name = "investigations"
+
     name = models.CharField(max_length=255, unique=True)
     institution = models.CharField(max_length=255)
     description = models.TextField()
@@ -131,6 +200,9 @@ class Investigation(Object):
 
 
 class Feature(Object):
+    base_name = "feature"
+    plural_name = "features"
+
     name = models.CharField(max_length=255, verbose_name="Name")
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='+', blank=True)
@@ -168,6 +240,9 @@ class Sample(Object):
     """
     Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
     """
+    base_name = "sample"
+    plural_name = "samples"
+
     has_upstream = True
 
     name = models.CharField(max_length=255,unique=True)
@@ -182,10 +257,6 @@ class Sample(Object):
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.pk})}), self.name))
-
-    @classmethod
-    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().with_values(name, value_type, linked_to, search_set, has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -214,9 +285,12 @@ class Sample(Object):
         results = self.results.all()
         if upstream:
             results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
-        return results
+        return results.distinct()
 
 class Process(Object):
+    base_name = "process"
+    plural_name = "processes"
+
     has_upstream = True
 
     name = models.CharField(max_length=255, unique=True)
@@ -226,15 +300,11 @@ class Process(Object):
     upstream = models.ManyToManyField('self', symmetrical=False, related_name="downstream", blank=True)
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
-    parameters = models.ManyToManyField('Value', related_name="processes", blank=True)
+    values = models.ManyToManyField('Value', related_name="processes", blank=True)
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('process_detail', kwargs={'process_id': self.pk})}), self.name))
-
-    @classmethod
-    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().with_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -253,8 +323,10 @@ class Process(Object):
     def related_analyses(self):
         return self.analyses.all()
 
-
 class Step(Object):
+    base_name = "step"
+    plural_name = "steps"
+
     has_upstream = True
 
     name = models.CharField(max_length=255)
@@ -263,15 +335,11 @@ class Step(Object):
 
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
-    parameters = models.ManyToManyField('Value', related_name='steps', blank=True)
+    values = models.ManyToManyField('Value', related_name='steps', blank=True)
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': self.pk})}), self.name))
-
-    @classmethod
-    def with_values(cls, name, value_type=None, linked_to=None, search_set=None, upstream=False):
-        return super().with_values(name, value_type, linked_to, search_set, value_field="parameters", has_upstream=True, upstream=upstream)
 
     @classmethod
     def update_search_vector(self):
@@ -295,7 +363,7 @@ class Step(Object):
     def related_analyses(self):
         # SQL Depth: 2
         return Analysis.objects.filter(extra_steps__pk=self.pk,
-                                       process__in=self.related_process()).distinct()
+                                       process__in=self.related_processes()).distinct()
 
     def related_results(self, upstream=False):
         # Results ejected from this step
@@ -305,6 +373,9 @@ class Step(Object):
         return results
 
 class Analysis(Object):
+    base_name = "analysis"
+    plural_name = "analyses"
+
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
     date = models.DateTimeField(blank=True, null=True)
@@ -357,9 +428,12 @@ class Result(Object):
     """
     Some kind of result from an analysis
     """
+    base_name = "result"
+    plural_name = "results"
+
     has_upstream = True
 
-    list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'parameters', 'uuid')
+    list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'values', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
     input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
     source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True, null=True)
@@ -449,61 +523,129 @@ class Value(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey()
+    linkable_objects = ["samples", "features", "analyses", "steps", \
+                        "processes", "results", "investigations"]
 
     search_vector = SearchVectorField(null=True)
 
     def __str__(self):
-        return self.name + ": " + str(self.content_object.value) + ", " + str(linked_to)
+        return self.name + ": " + str(self.content_object.value)
+
+    def get_links(self):
+        linked_to = [ x for x in self.linkable_objects if getattr(self, x).exists() ]
+        self_link_ids = {}
+        for field in linked_to:
+            self_link_ids[field] = []
+            for obj in getattr(self, field).all():
+                if field == "results":
+                    _id = str(obj.uuid)
+                else:
+                    _id = str(obj.name)
+                self_link_ids[field].append(_id)
+        return self_link_ids
+
+    def related_values(self, name, value_type, linked_to, upstream=False, only=False):
+        #Reach out to find each of the relevant related objects linked to
+        #everything tied to this Value, and then search those sets
+        records = [] # Format (self.name, self_value, name, val.content_object.value, B_id)
+        self_links = self.get_links()
+        self_value = self.content_object.value
+        values = Value.objects.none()
+        for link_field in linked_to:
+            queryset = getattr(self, link_field).none()
+            for field in self.linkable_objects:
+                if field is not link_field:
+                    search_set = getattr(self, field).all()
+                    #TODO: make related_* functions handle QuerySets instead of just self
+                    for obj in search_set:
+                        queryset = queryset | obj.related_objects(link_field, upstream)
+            if queryset.exists():
+                model = queryset[0]._meta.model
+                related_with_target = model.with_values(name, value_type,
+                                         linked_to, queryset, upstream, only)
+                if related_with_target != False:
+                    for obj in related_with_target:
+                        values = values | obj.get_values(name=name, value_type=value_type)
+        return values
+
+    def upstream_values(self, name, value_type, linked_to, only=False, include_self=True):
+        # Search strictly upstream objects of the links of this one
+        pass
+
+    def export_values(self, values):
+        if not values.exists():
+            return pd.DataFrame.from_records([])
+        records = []
+        self_links = self.get_links()
+        self_val = self.content_object.value
+        values = values.prefetch_related("content_object")
+        values = values.prefetch_related(*self.linkable_objects)
+        for val in values:
+            rec = list(self_links.values())
+            rec.extend([self.name, self_val, val.name, val.content_object.value])
+            val_links = val.get_links()
+            rec.extend(list(val_links.values()))
+            records.append(rec)
+        cols = []
+        cols.extend(["source_" + x for x in list(self_links.keys())])
+        cols.extend(["source_value_name", "source_value", "related_value_name", "related_value"])
+        cols.extend(["related_" + x for x in list(val_links.keys())])
+        return pd.DataFrame.from_records(records, columns=cols)
+ 
+    @classmethod
+    def relate_value_sets(cls, A, B):
+        # Link all Values in A to all Values in B, if possible
+        pass
 
     @classmethod
     def disambiguate(cls, name, value_type=None, linked_to=None, only=False, return_queryset=False):
-        linkable_objects = ["sample", "feature", "analysis", "step", "process",\
-                            "result", "investigation"]
+        linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
+                            "results", "investigations"]
         #Like most functions, try to kick out as soon as we know there's an ambiguity we can resolve
         qs = Value.objects.filter(name=name)
         if value_type is not None:
             qs = qs.filter(value_type=value_type)
         qs = qs.prefetch_related("samples","features","analyses",
                                  "investigations","steps","processes","results")
-        qs = qs.annotate(sample_count=models.Count("samples"),
-                         feature_count=models.Count("features"),
-                         analysis_count=models.Count("analyses"),
-                         investigation_count=models.Count("investigations"),
-                         result_count=models.Count("results"),
-                         process_count=models.Count("processes"),
-                         step_count=models.Count("steps"))
         if linked_to is not None:
             if isinstance(linked_to, list):
                 kwargs = {}
                 for link in linked_to:
-                    kwargs[link + "_count__gt"] = 0
+                    kwargs[link + "__isnull"] = False
                 if only:
                     for obj in linkable_objects:
-                        if obj + "_count__gt" not in kwargs:
-                            kwargs[obj + "_count"] = 0
+                        if obj + "__isnull" not in kwargs:
+                            kwargs[obj + "__isnull"] = True
                 qs = qs.filter(**kwargs)
             else:
-                 kwargs = {linked_to + "_count__gt": 0}
+                 kwargs = {linked_to + "__isnull": False}
                  if only:
                      for obj in linkable_objects:
                          if obj != linked_to:
-                             kwargs[obj + "_count"] = 0
+                             kwargs[obj + "__isnull"] = True
                  qs = qs.filter(**kwargs)
-                
+        values = qs
+        qs = qs.annotate(samples_count=models.Count("samples"),
+                         features_count=models.Count("features"),
+                         analyses_count=models.Count("analyses"),
+                         investigations_count=models.Count("investigations"),
+                         results_count=models.Count("results"),
+                         processes_count=models.Count("processes"),
+                         steps_count=models.Count("steps"))
+        qs = qs.values("value_type","samples_count","features_count",
+                       "analyses_count","investigations_count","results_count",
+                       "processes_count","steps_count")
         qs = qs.distinct()
         #Unambiguous if 1 signature, or vacuously if not in DB at all
         if (len(qs) <= 1):
             if return_queryset:
-                return qs
+                return values
             else:
                 return True
         else:
             #Collect ambiguities
             if return_queryset:
-                return qs
-            qs = qs.values("value_type","sample_count","feature_count",
-                       "analysis_count","investigation_count","result_count",
-                       "process_count","step_count")
+                return values
             signatures = list(qs)
             signature_dict = defaultdict(set)
             for signature in signatures:
