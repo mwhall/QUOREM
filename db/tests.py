@@ -41,6 +41,7 @@ class SeleniumTest(LiveServerTestCase):
 
 class SearchTest(SeleniumTest):
     #fixtures = ['testdump.json']
+    pass
     """
     def test_searchpage(self):
         #init
@@ -108,6 +109,7 @@ class SearchTest(SeleniumTest):
         """
 #simply test if the basic forms work
 class BasicFormTests(TestCase):
+    """
     #initialize objects into testdb to allow form tests.
     def setUp(self):
         initialize_wiki()
@@ -122,8 +124,6 @@ class BasicFormTests(TestCase):
         test_process = models.Process.objects.create(name="test P", citation="blep" , description="a test", category=test_category)
         test_step = models.Step.objects.create(name="step 1", method="do the step", description="step and walk")
         test_step.processes.add(test_process)
-        test_replicate =models.Replicate.objects.create(name="TR001", sample=test_sample, process=test_process)
-
 
 
     def test_investigation_form(self):
@@ -132,12 +132,11 @@ class BasicFormTests(TestCase):
                      'description': "A simple test."}
         form = forms.InvestigationForm(data=form_data)
         self.assertTrue(form.is_valid())
-
+    """
 
 
 #Note that functions with prefix "test_" will be run by manage.py test
 class RegistrationTest(SeleniumTest):
-#    fixtures = ['testdump.json']
     def test_register(self):
         driver = self.driver
         #nav to web page

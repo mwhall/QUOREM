@@ -22,6 +22,9 @@ django-jinja-knockout = {editable = true,git = "https://github.com/Dmitri-Sintso
 q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor.git",ref = "master"}
 django-wiki = {editable = true,git = "https://github.com/django-wiki/django-wiki.git"}
 Django = "==2.2"
+django-autocomplete-light = "==3.3.0"
+combomethod = "==1.0.12"
+arrow = "==0.13.1"
 
 [requires]
 python_version = "3.7"
