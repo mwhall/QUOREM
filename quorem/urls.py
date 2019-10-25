@@ -29,7 +29,7 @@ from db.views import (
     FeatureList, FeatureDetail, FeatureCreate,
     SampleDetail, SampleList, SampleUpdate, SampleCreate,
     AnalysisDetail, AnalysisList, AnalysisCreate,
-    UploadList, UploadInputFileDetail,
+    UploadList, FileDetail,
     #SearchResultList
     search,
     #analysis page
@@ -55,10 +55,10 @@ urlpatterns = [
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),
-    re_path(r'upload/(?P<uploadinputfile_id>\d+)/$', UploadInputFileDetail.as_view(),
+    re_path(r'upload/(?P<uploadinputfile_id>\d+)/$', FileDetail.as_view(),
             name='uploadinputfile_detail',
             kwargs={'view_title': "Upload Details"}),
-    path('upload/<int:uploadinputfile_id>/<new>/', UploadInputFileDetail.as_view(is_new=True),
+    path('upload/<int:uploadinputfile_id>/<new>/', FileDetail.as_view(is_new=True),
             name='uploadinputfile_detail_new',
             kwargs={'view_title':"Upload Details"}),
     path('accounts/', include('accounts.urls')),

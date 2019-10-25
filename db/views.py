@@ -34,7 +34,7 @@ from .formatters import guess_filetype
 from .models import (
         Sample, Investigation, Process, Analysis,
         Step, Result, Feature, Value, Category,
-        UploadInputFile, load_mixed_objects, UserProfile, UserMail
+        File, load_mixed_objects, UserProfile, UserMail
 )
 
 from .forms import (
@@ -45,8 +45,8 @@ from .forms import (
     SampleDisplayForm, SampleForm,
     FeatureDisplayForm, FeatureForm,
     StepDisplayForm, StepForm,
-    UploadForm, UserWithInlineUploads, UploadInputFileDisplayForm,
-    UploadInputFileDisplayWithInlineErrors,
+    UploadForm, UserWithInlineUploads, FileDisplayForm,
+    FileDisplayWithInlineErrors,
     SpreadsheetUploadForm, ArtifactUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
 )
@@ -269,7 +269,7 @@ class StepList(ListSortingView):
     model = Step
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'parameters']
+    grid_fields = ['name', 'values']
     def __init__(self, *args, **kwargs):
         content_type = ContentType.objects.get(app_label='db',
                                                model="step")
@@ -300,9 +300,9 @@ class StepList(ListSortingView):
         if field == 'name':
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
-        elif field == 'parameters':
+        elif field == 'values':
             default_params = [x.name + ": " + str(x.content_object.value) \
-                               for x in obj.parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
+                               for x in obj.values.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
             return mark_safe('</br>'.join(default_params))
         else:
             return super().get_display_value(obj, field)
@@ -429,7 +429,7 @@ class ResultList(ListSortingView):
         }
 
 class UploadList(ListSortingView):
-    model = UploadInputFile
+    model = File
     allowed_sort_orders = '__all__'
     template_name = 'core/custom_cbv_list.htm'
     grid_fields = ['upload_file', 'upload_status','userprofile']
@@ -534,10 +534,10 @@ class ResultDetail(InlineDetailView):
     def get_heading(self):
         return ""
 
-class UploadInputFileDetail(InlineDetailView):
+class FileDetail(InlineDetailView):
     is_new = False
     pk_url_kwarg = 'uploadinputfile_id'
-    form_with_inline_formsets = UploadInputFileDisplayWithInlineErrors
+    form_with_inline_formsets = FileDisplayWithInlineErrors
     format_view_title = True
 
     def get_context_data(self, **kwargs):
@@ -765,7 +765,7 @@ def search(request):
         #Filter metadata ranges
         if meta:
             if selected_type == 'step':
-                qs = qs.filter(parameters__name=meta)
+                qs = qs.filter(values__name=meta)
 
             #this works with sample, feature, result. step needs another
             else:

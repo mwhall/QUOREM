@@ -13,7 +13,7 @@ from .parser import resolve_input_row, resolve_table
 from .models import (
 Investigation, Sample, Feature, Process, Step, Analysis,
 Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
-ErrorMessage, UploadInputFile, UserProfile, UserMail
+UploadMessage, File, UserProfile, UserMail
 )
 
 from q2_extractor.Extractor import Extractor
@@ -29,12 +29,12 @@ def react_to_file(upload_file_id, **kwargs):
     #it throws an ID not found error. Trying again and changing nothing seems to work
     #So, make it try twice, then throw an error if it still doesn't work.
     try:
-        upfile = UploadInputFile.objects.get(id=upload_file_id)
+        upfile = File.objects.get(id=upload_file_id)
     except:
         try:
         #rarely it doesn't work for no apparent reason. Sleep and try again.
             time.sleep(1)
-            upfile = UploadInputFile.objects.get(id=upload_file_id)
+            upfile = File.objects.get(id=upload_file_id)
         except Exception as e:
             print("error with upfile. Cannot find the file. Sys Admin should remove.")
             print(e)
@@ -72,7 +72,7 @@ def react_to_file(upload_file_id, **kwargs):
             mail.save()
             upfile.upload_status = 'E'
             upfile.update()
-            errorMessage = ErrorMessage(uploadinputfile=upfile,
+            errorMessage = UploadMessage(file=upfile,
                                         error_message="Unidentified error with \
                                         filetype. Please contact Sys Admin.")
             errorMessage.save()
@@ -88,7 +88,7 @@ def react_to_file(upload_file_id, **kwargs):
             mail.save()
             upfile.upload_status = 'E'
             upfile.update()
-            errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Upload failure.")
+            errorMessage = UploadMessage(file=upfile, error_message="Upload failure.")
             errorMessage.save()
 
     except Exception as e:
@@ -101,7 +101,7 @@ def react_to_file(upload_file_id, **kwargs):
         print(e)
         upfile.upload_status = 'E'
         upfile.update()
-        errorMessage = ErrorMessage(uploadinputfile=upfile, error_message=e)
+        errorMessage = UploadMessage(file=upfile, error_message=e)
         errorMessage.save()
 
 @shared_task
@@ -187,5 +187,5 @@ def report_success(upfile):
             print(e)
             print(model, " sv didn't work")
             continue
-    errorMessage = ErrorMessage(uploadinputfile=upfile, error_message="Uploaded Successfully")
+    errorMessage = UploadMessage(file=upfile, error_message="Uploaded Successfully")
     errorMessage.save()

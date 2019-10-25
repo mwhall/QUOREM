@@ -26,10 +26,11 @@ User = get_user_model()
 class Object(models.Model):
     base_name = "object"
     plural_name = "objects"
+    id_field = "name"
     has_upstream = False
     search_set = None
 
-    search_vector = SearchVectorField(null=True)
+    search_vector = SearchVectorField(blank=True,null=True)
 
     class Meta:
         abstract = True
@@ -42,11 +43,8 @@ class Object(models.Model):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, *kwargs)
-        self.id_column = base_name + "_id"
-        if self.has_upstream:
-            self.upstream_column = "upstream_" + base_name
-        self.category_column = base_name + "_category"
-        self.search_set = self.__class__.objects.filter(pk=self.pk)
+        if not self._state.adding:
+            self.search_set = self.__class__.objects.filter(pk=self.pk)
 
     @combomethod
     def with_values(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
@@ -167,6 +165,161 @@ class Object(models.Model):
         if not self.has_upstream:
             return Value.objects.none()
         return Value.objects.filter(pk__in=self.all_upstream.values("values__pk"))
+
+    @classmethod
+    def get_queryset(cls, data):
+        #data is a dict with {field_name: [name1,...],}
+        # and uuid for results, id for all
+        kwargs = {}
+        for id_field in ["name", "uuid", "id"]:
+            if cls.base_name + "_" + id_field in data:
+                kwargs[id_field + "__in"] = data[cls.base_name + "_" + id_field]
+        return cls._meta.model.objects.filter(**kwargs)
+
+    # Creates bare minimum objects from the given data set
+    @classmethod
+    def initialize(cls, data):
+        #data is a dict with {"field_name": [field data],}
+        _id_fields = id_fields()
+        req_fields = [ x for x in required_fields() if x.startswith(cls.base_name + "_") ]
+        ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        single_ref_fields = [ x for x in single_reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        many_ref_fields = [ x for x in many_reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        # data validation
+        for field_name in req_fields:
+            if field_name not in data:
+                raise ValueError("minimal_create: Missing required field name %s for object %s" % (field_name, cls.base_name))
+            if (field_name in [x[0] for x in single_ref_fields]):
+                if len(data[field_name]) > 1:
+                    raise ValueError("minimal_create: Can only have one item in list for atomic field %s" % (field_name,))
+        #This is all the objects that already exist
+        cls_queryset = cls.get_queryset(data)
+        if cls.base_name + "_" + cls.id_field in data:
+            # If the id field is found in data, iterate over the ids
+            for _id in data[cls.base_name + "_" + cls.id_field]:
+                # Check if the id exists in the database, according to our previous query
+                obj_queryset = cls_queryset.filter(**{cls.id_field: _id})
+                if not obj_queryset.exists():
+                    #Create the new one
+                    kwargs = {cls.id_field: _id}
+                    for field in req_fields:
+                        django_field = field.replace(cls.base_name + "_", "")
+                        if (django_field not in kwargs) and (django_field in data):
+                            if field in [x[0] for x in ref_fields]:
+                                # Grab it as a query
+                                ref_model = [x[2] for x in ref_fields if x[0]==field][0]
+                                ref_id = data[django_field]
+                                if isinstance(ref_id, int):
+                                    ref_id_field = "id"
+                                else:
+                                    ref_id_field = ref_model.id_field
+                                try:
+                                    obj = ref_model.objects.get(**{ref_id_field: ref_id})
+                                except:
+                                    raise ValueError("minimal_create: Cannot find referenced required %s '%s'" % (ref_model.base_name, ref_id))
+                                kwargs[django_field] = obj
+                            else:
+                                kwargs[django_field] = data[django_field]
+                        elif (django_field not in kwargs) and (django_field not in data):
+                            raise ValueError("minimal_create: Missing required field %s in data" % (field,))
+                    new_obj = cls()
+                    for field in kwargs:
+                        setattr(new_obj, field, kwargs[field])
+                    new_obj.save()
+
+    @classmethod
+    def update(cls, data):
+        _id_fields = id_fields()
+        _all_fields = [ x for x in all_fields() if x.startswith(cls.base_name + "_") ]
+        req_fields = [ x for x in required_fields() if x.startswith(cls.base_name + "_") ]
+        ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        single_ref_fields = [ x for x in single_reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        many_ref_fields = [ x for x in many_reference_fields() if x[0].startswith(cls.base_name + "_") ]
+        # data validation
+        for field_name in [x for x in _all_fields if x in data]:
+            if (field_name in [x[0] for x in single_ref_fields]):
+                if len(data[field_name]) > 1:
+                    raise ValueError("update: Can only have one item in list for atomic field %s" % (field_name,))
+        #This is all the objects that already exist
+        cls_queryset = cls.get_queryset(data)
+        # If the id field is found in data, iterate over the ids
+        id_in_data = [ x for x in _id_fields if x in data]
+        for id_field in id_in_data:
+            for _id in data[id_field]:
+                # Check if the id exists in the database, according to our previous query
+                obj_queryset = cls_queryset.filter(**{id_field.replace(cls.base_name+"_",""): _id})
+                if not obj_queryset.exists():
+                    raise ValueError("update: %s %s not found when attempting to update. Did you use initialize?" % (cls.base_name,_id))
+                else:
+                    obj = obj_queryset.get()
+                    for field in [x for x in _all_fields if (x not in _id_fields) and (x in data)]:
+                        datum = getattr(obj, field.replace(cls.base_name+"_",""))
+                        #Blank, feel free to overwrite
+                        if field not in [x[0] for x in ref_fields]:
+                            # If it isn't a reference, we just set the data
+                            if (datum == "") or (datum == None):
+                                setattr(obj, field.replace(cls.base_name+"_",""), data[field][0])
+                            #elif datum != data[field][0]:
+                            #    #TODO: set this as a warning? Overwrite?
+                            #    pass
+                        else:
+                            # If it is a reference, we need to fetch it, then set it
+                            # We also need to translate reverse fields into their ID fields
+                            ref_model = [x[2] for x in ref_fields if x[0]==field][0]
+                            for ref_id in data[field]:
+                                if isinstance(ref_id, int):
+                                    ref_id_field = "id"
+                                else:
+                                    ref_id_field = ref_model.id_field
+                                try:
+                                    ref_obj = ref_model.objects.get(**{ref_id_field: ref_id})
+                                except:
+                                    #TODO: Set this to a warning?
+                                    raise ValueError("update: Cannot find referenced %s '%s'" % (ref_model.base_name, ref_id))
+                                if field in [x[0] for x in many_ref_fields]:
+                                    getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
+                                    if field == cls.base_name + "_upstream":
+                                        # In order to update the symmetrical 
+                                        # all_upstream/all_downstream fields
+                                        # we add ref_obj to upstream and all_upstream
+                                        # then we add all of ref_obj's upstream to
+                                        # obj, and all of obj's downstream to
+                                        # ref_obj's downstream
+                                        # and then we have to update the cross
+                                        # references of all other steps to one
+                                        # another, saving as we let variables go
+                                        obj.all_upstream.add(ref_obj)
+                                        upstream_qs = ref_obj.all_upstream.all()
+                                        downstream_qs = obj.all_downstream.all()
+                                        obj.all_upstream.add(*upstream_qs)
+                                        ref_obj.all_downstream.add(*downstream_qs)
+                                        ref_obj.save()
+                                        for down_obj in downstream_qs:
+                                            for up_obj in upstream_qs:
+                                                down_obj.all_upstream.add(up_obj)
+                                            down_obj.save()
+                                else:
+                                    if (datum == "") or (datum == None):
+                                        setattr(obj, field.replace(cls.base_name+"_",""), ref_obj)
+                                        #TODO: Set else to a warning? Overwrite?
+                        #elif datum != data[field]:
+                        #    pass
+                            #TODO: Add a warning that it didn't overwrite
+                    obj.save()
+
+    @classmethod
+    def add_values(cls, table, prefetch_links=True):
+        # First pre-fetch all the objects in data in a dict of QuerySets
+        recs = table[[x for x in table.columns if x in id_fields()]].melt().dropna().drop_duplicates().to_records(index=False)
+        id_data = defaultdict(list)
+        for field, datum in recs:
+            id_data[field].append(datum)
+        object_querysets = {}
+        for Obj in object_list:
+            object_querysets[Obj.base_name] = Obj.get_queryset(id_data)
+        print(object_querysets)
+
+
 
 class Investigation(Object):
     base_name = "investigation"
@@ -430,12 +583,12 @@ class Result(Object):
     """
     base_name = "result"
     plural_name = "results"
-
+    id_field = "uuid"
     has_upstream = True
 
     list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'values', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
-    input_file = models.ForeignKey('UploadInputFile', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
+    file = models.ForeignKey('File', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
     source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True, null=True)
     type = models.CharField(max_length=255, verbose_name="Result Type", blank=True, null=True)
     analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
@@ -491,10 +644,14 @@ class Result(Object):
     def related_analyses(self):
         return Analysis.objects.filter(pk=self.analysis.pk)
 
+
 # This allows the users to define a process as they wish
 # Could be split into "wet-lab process" and "computational process"
 # or alternatively, "amplicon", "metagenomics", "metabolomics", "physical chemistry", etc.
 class Category(models.Model):
+    base_name = "category"
+    plural_name = "categories"
+
     #This tracks which model this category associates with
     category_of = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
@@ -509,6 +666,9 @@ class Category(models.Model):
 ### Key-Value storage for objects
 
 class Value(models.Model):
+    base_name = "value"
+    plural_name = "values"
+
     PARAMETER = 'parameter'
     METADATA = 'metadata'
     MEASURE = 'measure'
@@ -517,7 +677,7 @@ class Value(models.Model):
             (METADATA, 'Metadata'),
             (MEASURE, 'Measure'))
     name = models.CharField(max_length=512)
-    value_type = models.CharField(max_length=9, choices=VALUE_TYPES)
+    type = models.CharField(max_length=9, choices=VALUE_TYPES)
     # This generic relation links to a polymorphic Val class
     # Allowing Value to be str, int, float, datetime, etc.
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -599,8 +759,6 @@ class Value(models.Model):
 
     @classmethod
     def disambiguate(cls, name, value_type=None, linked_to=None, only=False, return_queryset=False):
-        linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
-                            "results", "investigations"]
         #Like most functions, try to kick out as soon as we know there's an ambiguity we can resolve
         qs = Value.objects.filter(name=name)
         if value_type is not None:
@@ -613,14 +771,14 @@ class Value(models.Model):
                 for link in linked_to:
                     kwargs[link + "__isnull"] = False
                 if only:
-                    for obj in linkable_objects:
+                    for obj in self.linkable_objects:
                         if obj + "__isnull" not in kwargs:
                             kwargs[obj + "__isnull"] = True
                 qs = qs.filter(**kwargs)
             else:
                  kwargs = {linked_to + "__isnull": False}
                  if only:
-                     for obj in linkable_objects:
+                     for obj in self.linkable_objects:
                          if obj != linked_to:
                              kwargs[obj + "__isnull"] = True
                  qs = qs.filter(**kwargs)
@@ -691,6 +849,60 @@ class ResultVal(models.Model):
 
 
 
+object_list = [Investigation, Sample, Feature, Step, Process, \
+               Analysis, Result]
+
+#CAUTION: List comprehensions ahead!!
+
+def all_fields():
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if (x.name not in ["search_vector", "content_type", \
+                     "all_upstream", "object_id", "category_of"]) and \
+                     x.concrete] for Obj in object_list] for item in sublist]
+
+def id_fields():
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if (x.name in ["id", "name", "uuid"]) and (x.concrete)] \
+                         for Obj in object_list] for item in sublist]
+
+def required_fields():
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if x.name not in ["search_vector", "content_type", \
+                                    "object_id", "category_of"] and x.concrete \
+                     and hasattr(x,"blank") and not x.blank] \
+                         for Obj in object_list] for item in sublist]
+
+def reference_fields():
+    # Returns tuples of the field name, from model, and to model
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
+                                                      x.model, \
+                                                      x.related_model) \
+                 for x in Obj._meta.get_fields() if x.name not in \
+                 ["values", "categories", "all_upstream", "content_type", \
+                 "object_id", "category_of"] and x.concrete and x.is_relation] \
+                 for Obj in object_list] for item in sublist]
+
+def single_reference_fields():
+    # Returns tuples of the field name, from model, and to model
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
+                                                      x.model, \
+                                                      x.related_model) \
+                 for x in Obj._meta.get_fields() if x.name not in \
+                 ["values", "categories", "all_upstream", "content_type", \
+                 "object_id", "category_of"] and x.concrete and x.many_to_one] \
+                 for Obj in object_list] for item in sublist]
+
+
+def many_reference_fields():
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, x.model, x.related_model) \
+                 for x in Obj._meta.get_fields() if x.name not in \
+                 ["values", "categories", "all_upstream"] \
+                 and x.concrete and (x.many_to_many or x.one_to_many)] for Obj in object_list] \
+                 for item in sublist]
+
 class UserProfile(models.Model):
     #userprofile doesnt have a search vector bc it shouldn tbe searched.
     user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
@@ -711,8 +923,9 @@ class UserMail(models.Model):
     #mail is oviously not read when it's first created
     read = models.BooleanField(default = False)
 
-
-class UploadInputFile(models.Model):
+class File(models.Model):
+    base_name = "file"
+    plural_name = "files"
     STATUS_CHOICES = (
         ('P', "Processing"),
         ('S', "Success"),
@@ -740,15 +953,13 @@ class UploadInputFile(models.Model):
         ##    print(i)
     def update(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        #return reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': self.pk})
 
-class ErrorMessage(models.Model):
+class UploadMessage(models.Model):
     """
-    Store error messages for file uploads.
+    Store messages for file uploads.
     """
-    uploadinputfile = models.ForeignKey(UploadInputFile, on_delete=models.CASCADE, verbose_name='Uploaded File')
-    error_message = models.CharField(max_length = 1000, null=True) #???? Maybe store as a textfile????
-
+    file = models.ForeignKey(File, on_delete=models.CASCADE, verbose_name='Uploaded File')
+    error_message = models.CharField(max_length = 1000, null=True)
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.
