@@ -24,6 +24,7 @@ django-wiki = {editable = true,git = "https://github.com/django-wiki/django-wiki
 Django = "==2.2"
 django-autocomplete-light = "==3.3.0"
 combomethod = "==1.0.12"
+arrow = "==0.13.1"
 
 [requires]
 python_version = "3.7"
