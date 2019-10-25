@@ -23,6 +23,7 @@ q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor
 django-wiki = {editable = true,git = "https://github.com/django-wiki/django-wiki.git"}
 Django = "==2.2"
 django-autocomplete-light = "==3.3.0"
+combomethod = "==1.0.12"
 
 [requires]
 python_version = "3.7"
