@@ -46,6 +46,13 @@ class Object(models.Model):
         if not self._state.adding:
             self.search_set = self.__class__.objects.filter(pk=self.pk)
 
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', 
+                         flatatt({'href': reverse(self.base_name + '_detail', 
+                                 kwargs={self.base_name + '_id': self.pk})}), 
+                                 self.base_name.capitalize() + ": " + \
+                                 str(getattr(self, self.id_field))))
+
     @combomethod
     def with_values(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
         linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
@@ -319,8 +326,6 @@ class Object(models.Model):
             object_querysets[Obj.base_name] = Obj.get_queryset(id_data)
         print(object_querysets)
 
-
-
 class Investigation(Object):
     base_name = "investigation"
     plural_name = "investigations"
@@ -331,9 +336,6 @@ class Investigation(Object):
 
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
     categories = models.ManyToManyField('Category', related_name='investigations', blank=True)
-    #Stuff for searching
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('investigation_detail', kwargs={'investigation_id': self.pk})}), self.name))
 
     @classmethod
     def update_search_vector(self):
@@ -364,9 +366,6 @@ class Feature(Object):
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
     categories = models.ManyToManyField('Category', related_name="features", blank=True)
-
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('feature_detail', kwargs={'feature_id': self.pk})}), self.name))
 
     @classmethod
     def update_search_vector(self):
@@ -408,8 +407,6 @@ class Sample(Object):
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
     categories = models.ManyToManyField('Category', related_name='samples', blank=True)
 
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.pk})}), self.name))
 
     @classmethod
     def update_search_vector(self):
@@ -456,9 +453,6 @@ class Process(Object):
     values = models.ManyToManyField('Value', related_name="processes", blank=True)
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('process_detail', kwargs={'process_id': self.pk})}), self.name))
-
     @classmethod
     def update_search_vector(self):
         Process.objects.update(
@@ -490,9 +484,6 @@ class Step(Object):
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
     values = models.ManyToManyField('Value', related_name='steps', blank=True)
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
-
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': self.pk})}), self.name))
 
     @classmethod
     def update_search_vector(self):
@@ -540,9 +531,6 @@ class Analysis(Object):
     # Run-specific parameters can go in here, but I guess Measures can too
     values = models.ManyToManyField('Value', related_name='analyses', blank=True)
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
-
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('analysis_detail', kwargs={'analysis_id': self.pk})}), self.name))
 
     @classmethod
     def update_search_vector(self):
@@ -606,9 +594,6 @@ class Result(Object):
 
     def __str__(self):
         return str(self.uuid)
-
-    def get_detail_link(self, label='uuid'):
-        return mark_safe(format_html('<a{}>{}</a>', flatatt({'href': reverse('result_detail', kwargs={'result_id': self.pk})}), str(getattr(self, label))))
 
     @classmethod
     def update_search_vector(self):
