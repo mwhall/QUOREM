@@ -18,6 +18,8 @@ from celery import current_app
 from combomethod import combomethod
 
 import pandas as pd
+import arrow
+import uuid
 
 from quorem.wiki import refresh_automated_report
 
@@ -54,19 +56,19 @@ class Object(models.Model):
                                  str(getattr(self, self.id_field))))
 
     @combomethod
-    def with_values(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
+    def with_value(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
         linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
                             "results", "investigations"]
         if search_set is None:
             search_set = receiver._meta.model.objects.all()
         search_set = search_set.prefetch_related("values")
-        if self.has_upstream & upstream:
+        if receiver.has_upstream & upstream:
             search_set = search_set.prefetch_related("all_upstream")
             upstream_set = receiver._meta.model.objects.filter(pk__in=search_set.values("all_upstream__pk").distinct())
             search_set = search_set.union(upstream_set).distinct()
         kwargs = {"values__name": name, "pk__in": search_set}
         if value_type is not None:
-            kwargs["values__value_type"] = value_type
+            kwargs["values__type"] = value_type
         #For some reason whittling down the search_set QuerySet doesn't work
         # So we have to go to the whole table
         if linked_to is not None:
@@ -96,7 +98,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_values(name, "metadata", linked_to, 
+        return receiver.with_value(name, "metadata", linked_to, 
                                     search_set, upstream, only)
 
     @combomethod
@@ -104,7 +106,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_values(name, "measure", linked_to, 
+        return receiver.with_value(name, "measure", linked_to, 
                                     search_set, upstream, only)
 
     @combomethod
@@ -112,7 +114,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_values(name, "parameter", linked_to, 
+        return receiver.with_value(name, "parameter", linked_to, 
                                     search_set, upstream, only)
 
     # Default search methods, using only internal methods
@@ -238,7 +240,6 @@ class Object(models.Model):
     def update(cls, data):
         _id_fields = id_fields()
         _all_fields = [ x for x in all_fields() if x.startswith(cls.base_name + "_") ]
-        req_fields = [ x for x in required_fields() if x.startswith(cls.base_name + "_") ]
         ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
         single_ref_fields = [ x for x in single_reference_fields() if x[0].startswith(cls.base_name + "_") ]
         many_ref_fields = [ x for x in many_reference_fields() if x[0].startswith(cls.base_name + "_") ]
@@ -313,18 +314,6 @@ class Object(models.Model):
                         #    pass
                             #TODO: Add a warning that it didn't overwrite
                     obj.save()
-
-    @classmethod
-    def add_values(cls, table, prefetch_links=True):
-        # First pre-fetch all the objects in data in a dict of QuerySets
-        recs = table[[x for x in table.columns if x in id_fields()]].melt().dropna().drop_duplicates().to_records(index=False)
-        id_data = defaultdict(list)
-        for field, datum in recs:
-            id_data[field].append(datum)
-        object_querysets = {}
-        for Obj in object_list:
-            object_querysets[Obj.base_name] = Obj.get_queryset(id_data)
-        print(object_querysets)
 
 class Investigation(Object):
     base_name = "investigation"
@@ -654,6 +643,8 @@ class Value(models.Model):
     base_name = "value"
     plural_name = "values"
 
+    default_date_format = "DD/MM/YYYY"
+
     PARAMETER = 'parameter'
     METADATA = 'metadata'
     MEASURE = 'measure'
@@ -676,17 +667,107 @@ class Value(models.Model):
     def __str__(self):
         return self.name + ": " + str(self.content_object.value)
 
-    def get_links(self):
-        linked_to = [ x for x in self.linkable_objects if getattr(self, x).exists() ]
-        self_link_ids = {}
-        for field in linked_to:
-            self_link_ids[field] = []
-            for obj in getattr(self, field).all():
-                if field == "results":
-                    _id = str(obj.uuid)
+    @classmethod
+    def add_values(cls, table):
+        value_models = defaultdict(dict)
+        _id_fields = id_fields()
+        _all_fields = all_fields()
+        # First pre-fetch all the objects in data in a dict of QuerySets
+        recs = table[[x for x in table.columns if x in _id_fields]].melt().dropna().drop_duplicates().to_records(index=False)
+        id_data = defaultdict(list)
+        for field, datum in recs:
+            id_data[field].append(datum)
+        object_querysets = {}
+        for Obj in object_list:
+            object_querysets[Obj.base_name] = Obj.get_queryset(id_data).prefetch_related("values")
+        # Commit each value, row by row (the only way, really)
+        for index, series in table.iterrows():
+            series = series.dropna()
+            value_name = series["value_name"]
+            value_type = series["value_type"]
+            value = str(series["value"])
+            value_targets = [series[x] for x in series.index if x.startswith("value_target")]
+            link_data = defaultdict(set)
+            for field in series.index:
+                if field in _id_fields:
+                    link_data[field].add(series[field])
+            kwargs = {"values__name": value_name, "values__type": value_type}
+            valargs = {"name": value_name, "type": value_type}
+            for Obj in object_list:
+                if (Obj.base_name in value_targets) or (Obj.plural_name in value_targets):
+                    kwargs["values__" + Obj.plural_name + "__isnull"] = False
+                    valargs[Obj.plural_name + "__isnull"] = False
                 else:
-                    _id = str(obj.name)
-                self_link_ids[field].append(_id)
+                    kwargs["values__" + Obj.plural_name + "__isnull"] = True
+                    valargs[Obj.plural_name + "__isnull"] = True
+            # Filter for Values that match the signature
+            value_qs = Value.objects.all()
+            for target in value_targets:
+                qs = object_querysets[target]
+                id_field = qs.model.id_field
+                base_name = qs.model.base_name
+                kwargs[id_field + "__in"] = list(link_data[base_name + "_" + id_field])
+                qs = qs.filter(**kwargs)
+                # Keep track of the values in all of these
+                valargs["pk__in"] = qs.values("values").distinct()
+                value_qs = value_qs.filter(**valargs)
+                valargs = {}
+                # We need to check if it's linked to the exact right objects
+                # and if not, we can create it
+            found = False
+            queryset_list = [ object_querysets[Obj.base_name].filter(**{Obj.id_field+"__in": link_data[Obj.base_name+"_"+Obj.id_field] }) for Obj in object_list ]
+            for value_obj in value_qs:
+                if value_obj.linked_to(queryset_list):
+                    found = True
+                    #TODO: Check if the value is equal and overwrite and/or raise a warning?
+                    break
+            if found:
+                continue # Go to the next row
+            # We didn't find it, proceed to create
+            if value_name in value_models[value_type]:
+                val_model = value_models[value_type][value_name]
+            else:
+                val_model = cls.infer_type(value_name, value_type, value)
+                value_models[value_type][value_name] = val_model
+            new_val = val_model()
+            new_val.value = val_model.cast_function(value)
+            new_val.save()
+            new_Value = Value()
+            new_Value.name = value_name
+            new_Value.type = value_type
+            new_Value.content_object = new_val
+            new_Value.save()
+            for qs in queryset_list:
+                getattr(new_Value, qs.model.plural_name).add(*qs)
+                
+    def linked_to(self, queryset_list, only=True):
+        #Queryset list is a list of querysets to check if they are linked
+        # Check that every object in the list is linked to the value (and nothing else is)
+        links = self.get_links()
+        for qs in queryset_list:
+            if (qs.model.plural_name not in links) and (qs.exists()):
+                return False
+            elif (qs.model.plural_name not in links):
+                continue
+            if only and len(qs) != len(links[qs.model.plural_name]):
+                return False
+            for _id in qs.values(qs.model.id_field).distinct():
+                if _id[qs.model.id_field] not in links[qs.model.plural_name]:
+                    return False
+                else:
+                    links[qs.model.plural_name].pop(links[qs.model.plural_name].index(_id[qs.model.id_field]))
+        if only:
+            for field in links:
+                if len(links[field]) > 0:
+                    return False
+        return True
+
+    def get_links(self):
+        linked_to = [ (Obj.plural_name, Obj) for Obj in object_list if getattr(self, Obj.plural_name).exists() ]
+        self_link_ids = {}
+        for field, model in linked_to:
+            ids = list(getattr(self, field).values_list(model.id_field, flat=True).distinct())
+            self_link_ids[field] = ids
         return self_link_ids
 
     def related_values(self, name, value_type, linked_to, upstream=False, only=False):
@@ -706,7 +787,7 @@ class Value(models.Model):
                         queryset = queryset | obj.related_objects(link_field, upstream)
             if queryset.exists():
                 model = queryset[0]._meta.model
-                related_with_target = model.with_values(name, value_type,
+                related_with_target = model.with_value(name, value_type,
                                          linked_to, queryset, upstream, only)
                 if related_with_target != False:
                     for obj in related_with_target:
@@ -801,6 +882,42 @@ class Value(models.Model):
             return signature_dict
 
     @classmethod
+    def infer_type(cls, value_name, value_type, value=None):
+        found_types = ContentType.objects.filter(pk__in=Value.objects.filter(name=value_name,
+                                                 type=value_type).only("content_type").values("content_type")).distinct() 
+        if len(found_types) > 1:
+            raise DuplicateTypeError("Two types found for value name %s of \
+                                      type %s" % (self.id_field, self.vtype))
+        elif len(found_types) == 1:
+            return found_types[0].model_class()
+        elif value:
+            strvalue = str(value)
+            try:
+                arrow.get(strvalue, cls.default_date_format)
+                return DatetimeVal
+            except arrow.parser.ParserError:
+                pass
+            try:
+                uuid.UUID(strvalue)
+                return ResultVal
+            except ValueError:
+                pass
+            try:
+                int(strvalue)
+                return IntVal
+            except ValueError:
+                pass
+            try:
+                float(strvalue)
+                return FloatVal
+            except ValueError:
+                pass
+            # Default value
+            return StrVal
+        else:
+            return None
+
+    @classmethod
     def update_search_vector(self):
         Value.objects.update(
             search_vector= (SearchVector('name', weight='A') +
@@ -810,25 +927,35 @@ class Value(models.Model):
 
 
 class StrVal(models.Model):
+    type_name = "str"
+    cast_function = str
     value = models.TextField()
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="str")
+    val_obj = GenericRelation(Value,related_query_name=type_name)
 
 class IntVal(models.Model):
+    type_name = "int"
+    cast_function = int
     value = models.IntegerField()
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="int")
+    val_obj = GenericRelation(Value, related_query_name=type_name)
 
 class FloatVal(models.Model):
+    type_name =  "float"
+    cast_function = float
     value = models.FloatField()
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="float")
+    val_obj = GenericRelation(Value, related_query_name=type_name)
 
 class DatetimeVal(models.Model):
+    type_name = "datetime"
+    cast_function = arrow.get
     value = models.DateTimeField()
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="date")
+    val_obj = GenericRelation(Value, related_query_name=type_name)
 
 #This is if the input parameter is another result, ie. another artifact searched by UUID
 class ResultVal(models.Model):
+    type_name = "result"
+    cast_function = uuid.UUID
     value = models.ForeignKey('Result', on_delete=models.CASCADE)
-    val_obj = GenericRelation(Value, object_id_field="object_id", related_query_name="uuid")
+    val_obj = GenericRelation(Value, related_query_name=type_name)
     def __str__(self):
         return value.name + ": " + value.type
 

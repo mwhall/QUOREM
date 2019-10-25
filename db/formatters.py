@@ -4,12 +4,73 @@
 #  input files for import into the Django models
 #
 ####
+from collections import defaultdict
+
+from .models import object_list, id_fields, required_fields, all_fields
+
 import io
 import zipfile
 import uuid
 
 import pandas as pd
 import numpy as np
+
+class TableParser(object):
+    def __init__(self, table_file):
+        self.table = parse_csv_or_tsv(table_file)
+
+    def initialize(self, object_name):
+        dd = defaultdict(list)
+        data = self.table[[x for x in self.table.columns if x in required_fields() and x.startswith(object_name)]]
+        data = data.melt().dropna().drop_duplicates().to_records(index=False)
+        for field, datum in data:
+            if datum not in dd[field]:
+                dd[field].append(datum)
+        return dd
+
+    def initialize_generator(self):
+        # Grabs the data necessary for Object.initialize(data)
+        # Sorts it into objects so they can be initialized in dependency order
+        for Obj in object_list:
+            data = self.initialize(Obj.base_name)
+            if data:
+                yield (Obj, data)
+
+    def update(self, object_name):
+        table = self.table[[x for x in self.table.columns if x.startswith(object_name+"_")]]
+        if table.empty:
+            return {}
+        table = table.drop_duplicates()
+        for index, series in table.iterrows():
+            series = series.dropna()
+            dd = defaultdict(list)
+            for _id in series.index:
+                dd[_id.split(".")[0]].append(series[_id])
+            if dd:
+                yield dd
+
+    def update_generator(self):
+        for Obj in object_list:
+            for data in self.update(Obj.base_name):
+                yield (Obj, data)
+
+    def value_table(self):
+        table = self.table[[x for x in self.table.columns if (x in id_fields()) or (x.split(".")[0] not in all_fields())]]
+        table = table.melt(var_name="value_name", 
+                           id_vars=[y for y in table.columns if (y in id_fields()) or (y == "value_type") or (y.startswith("value_target"))])
+        table = table.dropna(subset=["value"]).drop_duplicates()
+        return table
+
+    def iterrows(self):
+        #Useful for feeding into Object.update(data)
+        table = self.table[[x for x in all_fields() if x in self.table]].drop_duplicates()
+        data = [ y[1].dropna().to_frame().to_records().tolist() for y in table.iterrows() ]
+        for row in data:
+            dd=defaultdict(list)
+            for field, data in row:
+                dd[field].append(data)
+            yield dd
+
 
 def guess_filetype(unknown_file):
     #File types accepted: Sample Metadata (csv), Replicate Metadata (csv),
@@ -41,11 +102,11 @@ def parse_csv_or_tsv(table_file):
     ctable=None
     ttable=None
     try:
-        ctable = pd.read_table(io.StringIO(table_string), sep=",", index_col=None, header=None )
+        ctable = pd.read_table(io.StringIO(table_string), sep=",", index_col=None, header=0 )
     except:
         pass
     try:
-        ttable = pd.read_table(io.StringIO(table_string), sep="\t", index_col=None, header=None )
+        ttable = pd.read_table(io.StringIO(table_string), sep="\t", index_col=None, header=0 )
     except:
         pass
     if (ctable is None) & (ttable is None):
@@ -60,11 +121,11 @@ def parse_csv_or_tsv(table_file):
     else:
         table = ttable
     #This bit allows us to have duplicate columns, something we need here
-    table.columns = table.loc[0]
-    table = table.loc[1:]
+#    table.columns = table.loc[0]
+#    table = table.loc[1:]
     #And then squash any duplicate columns to the same name
     #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
-    table.columns = [x[0] for x in table.columns.str.split(".")]
+#    table.columns = [x[0] for x in table.columns.str.split(".")]
 
     if "result_id" in table:
         if pd.isna(table["result_id"]).all():
