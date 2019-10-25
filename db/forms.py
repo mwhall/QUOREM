@@ -9,7 +9,7 @@ from .models import (
     Result,
     Sample, Feature,
     Value,
-    UploadInputFile, UserProfile, ErrorMessage
+    File, UserProfile, UploadMessage
 )
 
 from django_jinja_knockout.forms import (
@@ -85,11 +85,11 @@ class UserProfileForm(BootstrapModelForm):
 
 class UploadForm(WidgetInstancesMixin, BootstrapModelForm):
     class Meta:
-        model = UploadInputFile
+        model = File
         fields = ['upload_file']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
-                                             UploadInputFile,
+                                             File,
                                              form=UploadForm,
                                              extra=0,
                                              min_num=1)
@@ -99,7 +99,7 @@ class ArtifactUploadForm(ModelForm):
     analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(), empty_label="Select an Analysis")
     register_provenance = forms.BooleanField(initial=False, required=False, label="Register Provenance")
     class Meta:
-        model = UploadInputFile
+        model = File
         #exclude = ('userprofile', )
         fields = ('analysis', 'register_provenance', 'upload_file',)
     def __init__(self, *args, **kwargs):
@@ -108,7 +108,7 @@ class ArtifactUploadForm(ModelForm):
 
 class SpreadsheetUploadForm(ModelForm):
     class Meta:
-        model = UploadInputFile
+        model = File
         #exclude = ('userprofile', )
         fields = ('upload_file',)
     def __init__(self, *args, **kwargs):
@@ -119,32 +119,32 @@ class SpreadsheetUploadForm(ModelForm):
 
 
 #This form used only for display purposes
-class UploadInputFileDisplayForm(WidgetInstancesMixin,
+class FileDisplayForm(WidgetInstancesMixin,
                                 BootstrapModelForm,
                                 metaclass=DisplayModelMetaclass):
         class Meta:
-            model=UploadInputFile
+            model=File
             fields = '__all__'
 
 class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
                         metaclass=DisplayModelMetaclass):
     class Meta:
-        model = ErrorMessage
+        model = UploadMessage
         fields = '__all__'
 
 
 
-UploadInputFileDisplayErrorFormset = ko_inlineformset_factory(
-                                                UploadInputFile,
-                                                ErrorMessage,
+FileDisplayErrorFormset = ko_inlineformset_factory(
+                                                File,
+                                                UploadMessage,
                                                 form=ErrorDisplayForm,
                                                 extra=0,
                                                 min_num=0,
                                                 can_delete=False)
 
-class UploadInputFileDisplayWithInlineErrors(FormWithInlineFormsets):
-    FormClass = UploadInputFileDisplayForm
-    FormsetClasses =[UploadInputFileDisplayErrorFormset]
+class FileDisplayWithInlineErrors(FormWithInlineFormsets):
+    FormClass = FileDisplayForm
+    FormsetClasses =[FileDisplayErrorFormset]
     def get_formset_inline_title(self, formset):
         return "Error Messages"
 
@@ -251,7 +251,7 @@ class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
 
     class Meta:
         model = Process
-        exclude = ['search_vector', 'parameters']
+        exclude = ['search_vector', 'values']
 
 class StepForm(BootstrapModelForm):
     class Meta:
@@ -261,7 +261,7 @@ class StepForm(BootstrapModelForm):
             return Result.objects.get(uuid=value).get_detail_link(label='type')
     def __init__(self, *args, **kwargs): 
         super(StepForm, self).__init__(*args, **kwargs) 
-        self.fields['parameters'].label = "Default Parameters" 
+        self.fields['values'].label = "Default Parameters" 
 
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
@@ -272,14 +272,14 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.name for x in kwargs['instance'].downstream.all()]
             # This complication makes sure we only have the default parameters
-            initial['default_parameters'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]))
+            initial['default_parameters'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]))
         super(StepDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         self.fields.move_to_end('categories')
 
     class Meta:
         model = Step
-        exclude = ('search_vector', 'parameters')
+        exclude = ('search_vector', 'values')
         def get_process_link(self, value):
             return Process.objects.get(name=value).get_detail_link()
         widgets = {'upstream': DisplayText(get_text_method=get_step_link),

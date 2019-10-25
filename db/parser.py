@@ -365,7 +365,9 @@ class Validator():
         if upstream_to_add:
             obj.upstream.add(*upstream_to_add)
             obj.all_upstream.add(*upstream_to_add)
-            obj.all_upstream.add(*Result.objects.filter(pk__in=obj.upstream.values("all_upstream").distinct()))
+            # Aggregate all of the upstream object's upstreams
+            obj.all_upstream.add(*self.model.objects.filter(pk__in=obj.upstream.values("all_upstream").distinct()))
+            #TODO: Update downstream object's all_upstream fields
         self.saved = True
         return obj
 
