@@ -109,6 +109,7 @@ class SearchTest(SeleniumTest):
         """
 #simply test if the basic forms work
 class BasicFormTests(TestCase):
+    """
     #initialize objects into testdb to allow form tests.
     def setUp(self):
         initialize_wiki()
@@ -131,7 +132,7 @@ class BasicFormTests(TestCase):
                      'description': "A simple test."}
         form = forms.InvestigationForm(data=form_data)
         self.assertTrue(form.is_valid())
-
+    """
 
 
 #Note that functions with prefix "test_" will be run by manage.py test
