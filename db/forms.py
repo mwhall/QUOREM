@@ -303,7 +303,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.uuid for x in kwargs['instance'].downstream.all()]
-            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps"), resultcount=models.Count("results")).filter(stepcount=1, resultcount=1, type="parameter", analyses__isnull=True, samples__isnull=True, processes_isnull=True) ]))
+            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps"), resultcount=models.Count("results")).filter(stepcount=1, resultcount=1, type="parameter", analyses__isnull=True, samples__isnull=True, processes__isnull=True) ]))
         super(ResultDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         #self.fields.move_to_end('downstream')
