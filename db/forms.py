@@ -303,7 +303,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.uuid for x in kwargs['instance'].downstream.all()]
-            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.filter(type="parameter") ]))
+            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps"), resultcount=models.Count("results")).filter(stepcount=1, resultcount=1, type="parameter", analyses__isnull=True, samples__isnull=True, processes_isnull=True) ]))
         super(ResultDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         #self.fields.move_to_end('downstream')
@@ -330,6 +330,7 @@ class AnalysisForm(BootstrapModelForm):
         exclude = ('search_vector','values',)
 
 class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
+    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
     def get_result_link(self, value):
         return Result.objects.get(uuid=value).get_detail_link()
     results = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Results", widget=DisplayText(get_text_method=get_result_link))
@@ -337,11 +338,12 @@ class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Di
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['results'] = [x.uuid for x in kwargs['instance'].results.all()]
+            initial['default_parameters'] = mark_safe("<br/>".join([str(x.steps.get().name) + ", " + str(x) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps"), analysiscount=models.Count("analyses")).filter(stepcount=1, analysiscount=1).filter(samples__isnull=True, processes__isnull=True, results__isnull=True, type='parameter') ]))
         super(AnalysisDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('categories')
     class Meta:
         model = Analysis
-        exclude = ('search_vector',)
+        exclude = ('search_vector', 'values')
         def get_result_link(self, value):
             return Result.objects.get(uuid=value).get_detail_link()
         def get_process_link(self, value):
