@@ -245,10 +245,13 @@ class ProcessForm(BootstrapModelForm):
 
 class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps", widget=DisplayText(get_text_method=get_step_link))
+    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['steps'] = [x for x in kwargs['instance'].steps.all()]
+            # This complication makes sure we only have the default parameters
+            initial['default_parameters'] = mark_safe("<br/>".join([str(x.steps.get().name) + ", " + str(x) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps"), processcount=models.Count("processes")).filter(stepcount=1, processcount=1).filter(samples__isnull=True, analyses__isnull=True, results__isnull=True, type='parameter') ]))
         super(ProcessDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('steps')
         self.fields.move_to_end('categories')
