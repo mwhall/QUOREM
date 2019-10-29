@@ -640,6 +640,12 @@ class Result(Object):
     def __str__(self):
         return str(self.uuid)
 
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>', 
+                         flatatt({'href': reverse(self.base_name + '_detail', 
+                                 kwargs={self.base_name + '_id': self.pk})}), 
+                                 self.type + " from " + self.source_step.name))
+
     @classmethod
     def update_search_vector(self):
         Result.objects.update(

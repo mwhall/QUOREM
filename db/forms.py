@@ -315,6 +315,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         def get_analysis_link(self, value):
             return Analysis.objects.get(name=value).get_detail_link()
         widgets = {'upstream' : DisplayText(get_text_method=get_upstream_link),
+                   'all_upstream': DisplayText(get_text_method=get_upstream_link),
                    'downstream': DisplayText(get_text_method=get_upstream_link),
                    'features': DisplayText(get_text_method=get_feature_link),
                    'source_step': DisplayText(get_text_method=get_step_link),
