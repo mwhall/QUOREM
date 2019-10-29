@@ -506,6 +506,23 @@ class Process(Object):
                              SearchVector('description', weight='C'))
         )
 
+    def get_parameters(self, steps=[]):
+        # Get the parameters for this Analysis and all its steps
+        # including the extra ones
+        parameters = defaultdict(dict)
+        if steps != []:
+            steps = Step.objects.filter(name__in=steps)
+        else:
+            steps = self.steps
+        for step in steps.all():
+            for queryset in [step.values.filter(processes__isnull=True,
+                                                analyses__isnull=True,
+                                                results__isnull=True), 
+                             self.values.filter(steps=step)]:
+                for value in queryset.filter(steps=step, type="parameter"):
+                    parameters[step.name][value.name] = value.content_object.value
+        return parameters
+
     def related_steps(self, upstream=False):
         steps = self.steps.all()
         if upstream:
@@ -536,6 +553,16 @@ class Step(Object):
             search_vector= (SearchVector('name', weight='A') +
                             SearchVector('description', weight='B'))
         )
+
+    def get_parameters(self):
+        # Get the parameters for this Result, with respect to its source step
+        parameters = {}
+        for value in self.values.filter(type="parameter", 
+                                        results__isnull=True,
+                                        analyses__isnull=True,
+                                        processes__isnull=True):
+            parameters[value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         samples = Sample.objects.filter(source_step__pk=self.pk)
@@ -584,6 +611,25 @@ class Analysis(Object):
                             SearchVector('date', weight='B') +
                             SearchVector('location', weight='C'))
         )
+
+    def get_parameters(self, steps=[]):
+        # Get the parameters for this Analysis and all its steps
+        # including the extra ones
+        parameters = defaultdict(dict)
+        if steps != []:
+            steps = [Step.objects.filter(name__in=steps)]
+        else:
+            steps = [self.process.steps, self.extra_steps]
+        for step_queryset in steps:
+            for step in step_queryset.all():
+                for queryset in [step.values.filter(processes__isnull=True, 
+                                                    analyses__isnull=True,
+                                                    results__isnull=True), 
+                                 self.process.values.filter(steps=step), 
+                                 self.values.filter(steps=step)]:
+                    for value in queryset.filter(type="parameter"):
+                        parameters[step.name][value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
@@ -653,6 +699,17 @@ class Result(Object):
                             SearchVector('type', weight='B') +
                             SearchVector('uuid', weight='C'))
         )
+
+    def get_parameters(self):
+        # Get the parameters for this Result, with respect to its source step
+        parameters = {}
+        for queryset in [self.source_step.values.filter(results=self), 
+                         self.analysis.process.values,
+                         self.analysis.values, 
+                         self.values]:
+            for value in queryset.filter(steps=self.source_step, type="parameter"):
+                parameters[value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         samples = self.samples.all()
