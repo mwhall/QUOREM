@@ -119,6 +119,7 @@ def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
     start_time = time.time()
     analysis_name = Analysis.objects.get(pk=analysis_pk).name
     ap = ArtifactParser(infile, provenance=register_provenance)
+    result_uuid = ap.extractor.base_uuid
     for model, data in ap.initialize_generator():
         print("Initializing for %s" % (model.plural_name,))
         if not data:
@@ -137,6 +138,9 @@ def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
         model.update(data)
     print("Adding and linking values")
     Value.add_values(ap.value_table())
+    res = Result.objects.get(uuid=result_uuid)
+    res.file = upfile
+    res.save()
     print("#\n#\n")
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
     print(time.time() - start_time)
