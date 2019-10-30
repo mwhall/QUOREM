@@ -1,0 +1,27 @@
+{% extends 'search/value_tables.htm' %}
+{% block style %}
+<link rel="stylesheet" href="{{ static('css/plot_form_css.css') }}">
+{% endblock style %}
+{% block body %}
+<div class="row">
+  <div class="col-lg-9 border-right">
+    <h3>Value Table Generator</h3>
+    <p>Simplify your data comparisons.</P>
+    <p>QUOR'em understands how your data is connected. Use this engine to create
+       datatables comparing any logically possible combination of data.</p>
+    <div class="aggregate-content">
+      {% if graph %}
+      {{ graph|safe }}
+      {% else %}
+      {% include 'analyze/plot_trend_form.htm' %}
+      {% endif %}
+    </div>
+  </div>
+ </div>
+{% endblock %}
+{% block bottom_scripts %}
+<script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js'>
+</script>
+<script src="{{ static ('js/aggregation_form.js') }}">
+</script>
+{% endblock %}

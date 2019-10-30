@@ -49,9 +49,9 @@ class Object(models.Model):
             self.search_set = self.__class__.objects.filter(pk=self.pk)
 
     def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', 
-                         flatatt({'href': reverse(self.base_name + '_detail', 
-                                 kwargs={self.base_name + '_id': self.pk})}), 
+        return mark_safe(format_html('<a{}>{}</a>',
+                         flatatt({'href': reverse(self.base_name + '_detail',
+                                 kwargs={self.base_name + '_id': self.pk})}),
                                  self.base_name.capitalize() + ": " + \
                                  str(getattr(self, self.id_field))))
 
@@ -98,7 +98,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "metadata", linked_to, 
+        return receiver.with_value(name, "metadata", linked_to,
                                     search_set, upstream, only)
 
     @combomethod
@@ -106,7 +106,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "measure", linked_to, 
+        return receiver.with_value(name, "measure", linked_to,
                                     search_set, upstream, only)
 
     @combomethod
@@ -114,7 +114,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "parameter", linked_to, 
+        return receiver.with_value(name, "parameter", linked_to,
                                     search_set, upstream, only)
 
     # Default search methods, using only internal methods
@@ -168,7 +168,7 @@ class Object(models.Model):
         return name_map[object_name](**kwargs)
 
     def get_values(self, name, value_type):
-        return self.values.filter(name=name, value_type=value_type)
+        return self.values.filter(name=name, type=value_type)
 
     def get_upstream_values(self, name, value_type):
         if not self.has_upstream:
@@ -287,7 +287,7 @@ class Object(models.Model):
                                 if field in [x[0] for x in many_ref_fields]:
                                     getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
                                     if field == cls.base_name + "_upstream":
-                                        # In order to update the symmetrical 
+                                        # In order to update the symmetrical
                                         # all_upstream/all_downstream fields
                                         # we add ref_obj to upstream and all_upstream
                                         # then we add all of ref_obj's upstream to
@@ -378,9 +378,6 @@ class Feature(Object):
         return results
 
 class Sample(Object):
-    """
-    Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
-    """
     base_name = "sample"
     plural_name = "samples"
 
@@ -717,6 +714,7 @@ class Value(models.Model):
             found = False
             queryset_list = [ object_querysets[Obj.base_name].filter(**{Obj.id_field+"__in": link_data[Obj.base_name+"_"+Obj.id_field] }) for Obj in object_list ]
             for value_obj in value_qs:
+                ##This can probably be replaced with fancier querysets above
                 if value_obj.linked_to(queryset_list):
                     found = True
                     #TODO: Check if the value is equal and overwrite and/or raise a warning?
@@ -739,7 +737,7 @@ class Value(models.Model):
             new_Value.save()
             for qs in queryset_list:
                 getattr(new_Value, qs.model.plural_name).add(*qs)
-                
+
     def linked_to(self, queryset_list, only=True):
         #Queryset list is a list of querysets to check if they are linked
         # Check that every object in the list is linked to the value (and nothing else is)
@@ -791,7 +789,7 @@ class Value(models.Model):
                                          linked_to, queryset, upstream, only)
                 if related_with_target != False:
                     for obj in related_with_target:
-                        values = values | obj.get_values(name=name, value_type=value_type)
+                        values = values | obj.get_values(name=name, type=value_type)
         return values
 
     def upstream_values(self, name, value_type, linked_to, only=False, include_self=True):
@@ -817,7 +815,7 @@ class Value(models.Model):
         cols.extend(["source_value_name", "source_value", "related_value_name", "related_value"])
         cols.extend(["related_" + x for x in list(val_links.keys())])
         return pd.DataFrame.from_records(records, columns=cols)
- 
+
     @classmethod
     def relate_value_sets(cls, A, B):
         # Link all Values in A to all Values in B, if possible
@@ -828,7 +826,7 @@ class Value(models.Model):
         #Like most functions, try to kick out as soon as we know there's an ambiguity we can resolve
         qs = Value.objects.filter(name=name)
         if value_type is not None:
-            qs = qs.filter(value_type=value_type)
+            qs = qs.filter(type=value_type)
         qs = qs.prefetch_related("samples","features","analyses",
                                  "investigations","steps","processes","results")
         if linked_to is not None:
@@ -856,7 +854,7 @@ class Value(models.Model):
                          results_count=models.Count("results"),
                          processes_count=models.Count("processes"),
                          steps_count=models.Count("steps"))
-        qs = qs.values("value_type","samples_count","features_count",
+        qs = qs.values("type","samples_count","features_count",
                        "analyses_count","investigations_count","results_count",
                        "processes_count","steps_count")
         qs = qs.distinct()
@@ -878,13 +876,13 @@ class Value(models.Model):
                     if key.endswith("_count") and (signature[key]>0):
                         link_list.append(key.split("_")[0])
                 if link_list:
-                    signature_dict[signature["value_type"]].add(tuple(link_list))
+                    signature_dict[signature["type"]].add(tuple(link_list))
             return signature_dict
 
     @classmethod
     def infer_type(cls, value_name, value_type, value=None):
         found_types = ContentType.objects.filter(pk__in=Value.objects.filter(name=value_name,
-                                                 type=value_type).only("content_type").values("content_type")).distinct() 
+                                                 type=value_type).only("content_type").values("content_type")).distinct()
         if len(found_types) > 1:
             raise DuplicateTypeError("Two types found for value name %s of \
                                       type %s" % (self.id_field, self.vtype))
@@ -1072,6 +1070,7 @@ class UploadMessage(models.Model):
     """
     file = models.ForeignKey(File, on_delete=models.CASCADE, verbose_name='Uploaded File')
     error_message = models.CharField(max_length = 1000, null=True)
+
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.

@@ -37,7 +37,9 @@ from .models import (
         File, load_mixed_objects, UserProfile, UserMail
 )
 
-from .forms import (
+from .forms import *
+"""
+ (
     InvestigationDisplayForm, InvestigationForm,
     ProcessForm, ProcessDisplayForm,
     ResultDisplayForm,
@@ -48,8 +50,9 @@ from .forms import (
     UploadForm, UserWithInlineUploads, FileDisplayForm,
     FileDisplayWithInlineErrors,
     SpreadsheetUploadForm, ArtifactUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm
+    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, ValueTableForm
 )
+"""
 from .utils import barchart_html, trendchart_html
 
 import pandas as pd
@@ -1004,6 +1007,17 @@ def ajax_aggregates_meta_view(request):
 ### Trend Analysis Views                                                    ###
 ###############################################################################
 
+class ValueTableView(FormView):
+    template_name="search/value_tables.htm"
+    form_class = ValueTableForm
+    action = "plot_trend" #change this after
+    success_url = '/values/'
+
+    def get_context_data(self, *args, **kwargs):
+        context = super(ValueTableView, self).get_context_data(**kwargs)
+        context['action'] = self.action
+        return context
+        
 class PlotTrendView(FormView):
     template_name="analyze/plot_trend.htm"
     form_class = TrendPlotForm

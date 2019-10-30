@@ -1,0 +1,25 @@
+{
+  "name": "quorem",
+  "version": "1.0.0",
+  "description": "quorem webapp",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jstest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexmanuele/QUOREM.git"
+  },
+  "author": "Mike Hall, Alex Manuele",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alexmanuele/QUOREM/issues"
+  },
+  "homepage": "https://github.com/alexmanuele/QUOREM#readme",
+  "dependencies": {
+    "chosen-js": "^1.8.7"
+  }
+}
