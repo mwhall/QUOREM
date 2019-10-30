@@ -212,3 +212,28 @@ function populateYOptions(){
 $("#id_x_val_category").change(populateXOptions);
 $("#id_invField").change(populateXOptions);
 $('#id_y_val_category').change(populateYOptions);
+
+
+/*****************************************************************************
+*** Ajax for value tables                                                  ***
+******************************************************************************/
+function populateXValNames(){
+  var url = $('#msform').attr('data-x-url');
+  var object_klass = $('#id_depField').val();
+  $.ajax({
+    url: url,
+    data: {
+      'object_klass': object_klass,
+    },
+    success: function(data){
+      console.log("Success populate x val");
+      $('#id_depValue').html(data);
+      $('#id_depValue').trigger('chosen:updated');
+      $('#id_depValue').chosen();
+
+    }
+  });
+}
+//$("#id_depValue").chosen();
+$("#id_depField").change(populateXValNames);
+// Add fancy selection with 'chosen' lib

@@ -465,7 +465,7 @@ class TrendPlotForm(forms.Form):
 
 class ValueTableForm(forms.Form):
     #need a field for choosing a dependant variable
-    CHOICES = (
+    CHOICES = [
                 ('1', 'Investigation'),
                 ('2', 'Sample'),
                 ('3', 'Feature'),
@@ -473,14 +473,14 @@ class ValueTableForm(forms.Form):
                 ('5', 'Process'),
                 ('6', 'Analysis'),
                 ('7', 'Result'),
-              )
+              ]
 
     depField = forms.ChoiceField(choices=CHOICES)
-    depValue = forms.CharField(widget=forms.Select, label="Select Value")
+    depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"3"}), label="Select Value")
 
     #independant variables
     indField = forms.ChoiceField(choices=CHOICES)
-    indValue = forms.CharField(widget=forms.SelectMultiple, label="Select Value(s)")
+    indValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"3"}), label="Select Value(s)")
 
     #??? how do filters get made???
     class Meta:
@@ -488,5 +488,5 @@ class ValueTableForm(forms.Form):
             ("Select the dependant variable (rows of the table; data tuples)",
              "Select Dependant", {'fields': ('depField', 'depValue')}),
             ("Select the independant variable (rows of the table; data tuples)",
-             "Select Dependant", {'fields': ('depField', 'depValue')}),
+             "Select Independant", {'fields': ('indField', 'indValue')}),
         )

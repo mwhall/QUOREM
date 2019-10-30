@@ -4,6 +4,8 @@
     {% include 'base_head.htm' -%}
     <script src="https://kit.fontawesome.com/cdd00f6227.js"></script>
     {% block head -%}
+
+
     {% endblock head -%}
     <style>
       /*style stuff */
@@ -74,6 +76,7 @@
     </style>
     {% block style %}
     <link rel="stylesheet" href="{{ static('css/plot_form_css.css') }}">
+    <link rel="stylesheet" href="{{ static('css/chosen.css') }}">
     {% endblock %}
   </head>
   <body>
@@ -91,7 +94,7 @@
             {% if graph %}
             {{ graph|safe }}
             {% else %}
-            {% include 'analyze/plot_trend_form.htm' %}
+            {% include 'search/value_table_form.htm' %}
             {% endif %}
           </div>
         </div>
@@ -100,6 +103,11 @@
     </div>
       {% include 'base_bottom_scripts.htm' -%}
       {% block bottom_scripts -%}
+      <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js'>
+      </script>
+        <script src="{{ static ('js/chosen.jquery.js') }}"></script>
+      <script src="{{ static ('js/aggregation_form.js') }}">
+      </script>
       {% endblock bottom_scripts -%}
   </body>
 </html>

@@ -1017,7 +1017,27 @@ class ValueTableView(FormView):
         context = super(ValueTableView, self).get_context_data(**kwargs)
         context['action'] = self.action
         return context
-        
+
+#ajax view for populating Value Names based on Selected Model
+def ajax_value_table_view(request):
+    klass_map = {'1': (Investigation, 'investigations__in'),
+                 '2': (Sample, 'samples__in'),
+                 '3': (Feature, 'features__in'),
+                 '4': (Step, 'steps__in'),
+                 '5': (Process, 'processes__in'),
+                 '6': (Analysis, 'analyses__in'),
+                 '7': (Result, 'results__in'),}
+    #this variable is passed to the reuqest by JS
+    klass_tuple = klass_map[request.GET.get('object_klass')]
+    klass = klass_tuple[0]
+    q = klass_tuple[1]
+    #gives a qs with the distinct names of values ass. w the selected class
+    qs = Value.objects.filter(**{q: klass.objects.all()}).distinct().values_list('name', flat=True)
+
+    return render(request, 'search/ajax_value_names.htm', {'qs': qs})
+
+
+
 class PlotTrendView(FormView):
     template_name="analyze/plot_trend.htm"
     form_class = TrendPlotForm
