@@ -27,8 +27,8 @@
         <div class="d-flex w-100 justify-content-between">
           <h5 class="mb-1">Feature {{ item.obj.name|highlight(q) }}</h5>
         </div>
-      {% if item.obj.observed_samples.count() %}
-      <p class="mb-1">Observed in {{ item.obj.observed_samples.count()|highlight(q) }} Samples</p>
+      {% if item.obj.samples.count() %}
+      <p class="mb-1">Observed in {{ item.obj.samples.count()|highlight(q) }} Samples</p>
       {% endif %}
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>   {% elif item.otype == 'process' %}

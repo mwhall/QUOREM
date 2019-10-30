@@ -184,6 +184,8 @@ class SampleForm(BootstrapModelForm):
         exclude = ['search_vector']
 
 def get_step_link(form, value):
+    if (value is None) or (value is ""):
+        return ""
     if isinstance(value, int):
         name = Step.objects.get(pk=value).name
         return format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': value})}), name)
@@ -200,6 +202,8 @@ class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         def get_investigations(self, value):
             return ",".join([x.get_detail_link() for x in self.instance.investigations.all()])
         def get_analysis_link(self, value):
+            if (value is None) or (value is ""):
+                return ""
             return Analysis.objects.get(name=value).get_detail_link()
 
         model = Sample
@@ -211,8 +215,8 @@ class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
-            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="measure") ]))
-            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="metadata") ]))
+            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="measure") ]))
+            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="metadata") ]))
         super(SampleDisplayForm, self).__init__(*args, **kwargs)
 
 
@@ -230,8 +234,8 @@ class FeatureDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Dis
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
-            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="measure") ]))
-            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(value_type="metadata") ]))
+            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="measure") ]))
+            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="metadata") ]))
         super(FeatureDisplayForm, self).__init__(*args, **kwargs)
 
 class ProcessForm(BootstrapModelForm):
@@ -258,7 +262,7 @@ class StepForm(BootstrapModelForm):
         model = Step
         exclude = ('search_vector',)
     def get_upstream_link(self, value):
-            return Result.objects.get(uuid=value).get_detail_link(label='type')
+            return Result.objects.get(uuid=value).get_detail_link()
     def __init__(self, *args, **kwargs):
         super(StepForm, self).__init__(*args, **kwargs)
         self.fields['values'].label = "Default Parameters"
@@ -290,13 +294,13 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
 class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     parameters = forms.CharField(max_length=4096, widget=DisplayText())
     def get_upstream_link(self, value):
-       return Result.objects.get(uuid=value).get_detail_link(label='type')
+       return Result.objects.get(uuid=value).get_detail_link()
     downstream = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_upstream_link))
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.uuid for x in kwargs['instance'].downstream.all()]
-            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.filter(value_type="parameter") ]))
+            initial['parameters'] = mark_safe("</br>".join([x.name + ": " + str(x.content_object.value) for x in kwargs['instance'].values.filter(type="parameter") ]))
         super(ResultDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         #self.fields.move_to_end('downstream')
@@ -307,10 +311,11 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
         def get_feature_link(self, value):
             return Feature.objects.get(name=value).get_detail_link()
         def get_upstream_link(self, value):
-            return Result.objects.get(uuid=value).get_detail_link(label='type')
+            return Result.objects.get(uuid=value).get_detail_link()
         def get_analysis_link(self, value):
             return Analysis.objects.get(name=value).get_detail_link()
         widgets = {'upstream' : DisplayText(get_text_method=get_upstream_link),
+                   'all_upstream': DisplayText(get_text_method=get_upstream_link),
                    'downstream': DisplayText(get_text_method=get_upstream_link),
                    'features': DisplayText(get_text_method=get_feature_link),
                    'source_step': DisplayText(get_text_method=get_step_link),
@@ -323,7 +328,7 @@ class AnalysisForm(BootstrapModelForm):
 
 class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     def get_result_link(self, value):
-        return Result.objects.get(uuid=value).get_detail_link(label='type')
+        return Result.objects.get(uuid=value).get_detail_link()
     results = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Results", widget=DisplayText(get_text_method=get_result_link))
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
@@ -335,7 +340,7 @@ class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Di
         model = Analysis
         exclude = ('search_vector',)
         def get_result_link(self, value):
-            return Result.objects.get(uuid=value).get_detail_link(label='type')
+            return Result.objects.get(uuid=value).get_detail_link()
         def get_process_link(self, value):
             return Process.objects.get(name=value).get_detail_link()
         widgets = {'process': DisplayText(get_text_method=get_process_link),
@@ -482,6 +487,6 @@ class ValueTableForm(forms.Form):
         fieldsets = (
             ("Select the dependant variable (rows of the table; data tuples)",
              "Select Dependant", {'fields': ('depField', 'depValue')}),
-            ("Select the independant variable (rows of the table; data tuples)", 
+            ("Select the independant variable (rows of the table; data tuples)",
              "Select Dependant", {'fields': ('depField', 'depValue')}),
         )

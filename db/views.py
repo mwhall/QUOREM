@@ -375,36 +375,36 @@ class ResultList(ListSortingView):
                 })])
         super(ResultList, self).__init__(*args, **kwargs)
 
-    grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'input_file']
+    grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'file']
 
     def get_heading(self):
         return "Result List"
 
     def get_file_links(self, obj):
         links = []
-        if obj.input_file is not None:
+        if obj.file is not None:
             links = [format_html(
                 '<a href="{}">{}</a>',
-                reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk}),
-                obj.input_file.upload_file
+                reverse('file_detail', kwargs={'file_id': obj.file.pk}),
+                obj.file.upload_file
             )]
         #can anonymous users download files???? For now, yes...
         #though the website 404s if not logged in.
         #Only succrss files can be downloaded.
-            if obj.input_file.upload_status == 'S':
+            if obj.file.upload_status == 'S':
                 links.append(format_html(
                     ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
-                    #reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.input_file.pk})
-                    "/" + obj.input_file.upload_file.url
+                    #reverse('file_detail', kwargs={'file_id': obj.file.pk})
+                    "/" + obj.file.upload_file.url
                 ))
                 links.append(format_html(
                 ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
-                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.input_file.upload_file.url
+                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.file.upload_file.url
                 ))
         return links
 
     def get_display_value(self, obj, field):
-        if field == 'input_file':
+        if field == 'file':
             links = self.get_file_links(obj)
             return mark_safe(''.join(links))
             #return self.get_file_name(obj)
@@ -443,7 +443,7 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadinputfile_detail', kwargs={'uploadinputfile_id': obj.pk,}),
+            reverse('file_detail', kwargs={'file_id': obj.pk,}),
             obj.upload_file
         )]
         # is_authenticated is not callable in Django 2.0.
@@ -539,7 +539,7 @@ class ResultDetail(InlineDetailView):
 
 class FileDetail(InlineDetailView):
     is_new = False
-    pk_url_kwarg = 'uploadinputfile_id'
+    pk_url_kwarg = 'file_id'
     form_with_inline_formsets = FileDisplayWithInlineErrors
     format_view_title = True
 
@@ -1127,7 +1127,7 @@ class spreadsheet_upload(CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk,
+        return reverse('file_detail_new', kwargs={'file_id': self.object.pk,
                                                                     'new':"new"})
 
 class artifact_upload(CreateView):
@@ -1151,7 +1151,7 @@ class artifact_upload(CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('uploadinputfile_detail_new', kwargs={'uploadinputfile_id': self.object.pk,
+        return reverse('file_detail_new', kwargs={'file_id': self.object.pk,
                                                                     'new':"new"})
 ################################################################################
 ## onto testing                                                              ###

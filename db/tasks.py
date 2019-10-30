@@ -8,12 +8,12 @@ from django.template import loader
 from celery import shared_task
 from django.db import models, transaction
 from django.apps import apps
-from .formatters import guess_filetype, parse_csv_or_tsv
+from .formatters import guess_filetype, parse_csv_or_tsv, TableParser, ArtifactParser
 from .parser import resolve_input_row, resolve_table
 from .models import (
 Investigation, Sample, Feature, Process, Step, Analysis,
 Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
-UploadMessage, File, UserProfile, UserMail
+UploadMessage, File, UserProfile, UserMail, object_list
 )
 
 from q2_extractor.Extractor import Extractor
@@ -62,7 +62,7 @@ def react_to_file(upload_file_id, **kwargs):
         elif from_form == "S":
             mail.title="The spreadsheet you uploaded "
             print("Processing table ...")
-            status = process_table_cache(infile)
+            status = process_table(infile)
             print(status)
         else:
             mail.title="A rare error occurred with your upload."
@@ -106,64 +106,40 @@ def react_to_file(upload_file_id, **kwargs):
 
 @shared_task
 def process_table(infile):
-    #TODO instead of having it stop, let it process all rows
-    #and return all errors from all bad rows
-    for index, row in parse_csv_or_tsv(infile).iterrows():
-        try:
-            resolve_input_row(row)
-        except Exception as e:
-            print(e)
-            raise e
-    return "Success"
-
-@shared_task
-def process_table_cache(infile):
-    resolve_table(parse_csv_or_tsv(infile))
+    tp = TableParser(infile)
+    for model, data in tp.initialize_generator():
+        model.initialize(data)
+    for model, data in tp.update_generator():
+        model.update(data)
+    Value.add_values(tp.value_table())
     return "Success"
 
 @shared_task
 def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
     start_time = time.time()
     analysis_name = Analysis.objects.get(pk=analysis_pk).name
-    q2e = Extractor(infile)
-    uuid = q2e.base_uuid
-    if register_provenance:
-        result_table = q2e.get_result().reset_index()
-    else:
-        result_table = q2e.get_result(upstream=False).reset_index()
-    #And then squash any duplicate columns to the same name
-    #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
-    result_table.columns = [x[0] for x in result_table.columns.str.split(".")]
-    result_table["analysis_id"] = analysis_name
-    if register_provenance:
-        prov_str = "with"
-    else:
-        prov_str = "without"
-    print("Resolving artifact %s provenance" % (prov_str,))
-    resolve_table(result_table)
-    #for index, row in result_table.iterrows():
-    #    try:
-    #        row["analysis_id"] = analysis_name
-    #        resolve_input_row(row.dropna())
-    #    except Exception as e:
-    #        raise e
-    print("Getting values")
-    value_table = q2e.get_values()
-    print("Got values")
-    #And then squash any duplicate columns to the same name
-    #NOTE: This means periods are FORBIDDEN?! I dunno how to feel about this atm. Better delimiter for q2_extractor?
-    value_table.columns = [x[0] for x in value_table.columns.str.split(".")]
-    value_table["analysis_id"] = analysis_name
-    #for index, row in value_table.iterrows():
-    #    try:
-    #        row["analysis_id"] = analysis_name
-    #        resolve_input_row(row.dropna())
-    #    except Exception as e:
-    #        raise e
-    print("Resolving values")
-    resolve_table(value_table)
-    res = Result.objects.get(uuid=uuid)
-    res.input_file = upfile
+    ap = ArtifactParser(infile, provenance=register_provenance)
+    result_uuid = ap.extractor.base_uuid
+    for model, data in ap.initialize_generator():
+        print("Initializing for %s" % (model.plural_name,))
+        if not data:
+            continue
+        #Injnect the analysis name as an atomic list
+        if model.base_name == "result":
+            data["result_analysis"] = [analysis_name]
+        model.initialize(data)
+    print("Updating")
+    for model, data in ap.update_generator():
+        if not data:
+            continue
+        # Inject the analysis name as an atomic list
+        if model.base_name == "result":
+            data["result_analysis"] = [analysis_name]
+        model.update(data)
+    print("Adding and linking values")
+    Value.add_values(ap.value_table())
+    res = Result.objects.get(uuid=result_uuid)
+    res.file = upfile
     res.save()
     print("#\n#\n")
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
