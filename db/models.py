@@ -18,6 +18,7 @@ from celery import current_app
 from combomethod import combomethod
 
 import pandas as pd
+import numpy as np
 import arrow
 import uuid
 
@@ -183,8 +184,10 @@ class Object(models.Model):
     def get_queryset(cls, data):
         #data is a dict with {field_name: [name1,...],}
         # and uuid for results, id for all
+        if not data:
+            return cls._meta.model.objects.none()
         kwargs = {}
-        for id_field in ["name", "uuid", "id"]:
+        for id_field in [cls.id_field, "id"]:
             if cls.base_name + "_" + id_field in data:
                 kwargs[id_field + "__in"] = data[cls.base_name + "_" + id_field]
         return cls._meta.model.objects.filter(**kwargs)
@@ -912,26 +915,40 @@ class Value(models.Model):
         # Search strictly upstream objects of the links of this one
         pass
 
-    def export_values(self, values):
-        if not values.exists():
-            return pd.DataFrame.from_records([])
-        records = []
-        self_links = self.get_links()
-        self_val = self.content_object.value
-        values = values.prefetch_related("content_object")
-        values = values.prefetch_related(*self.linkable_objects)
-        for val in values:
-            rec = list(self_links.values())
-            rec.extend([self.name, self_val, val.name, val.content_object.value])
-            val_links = val.get_links()
-            rec.extend(list(val_links.values()))
-            records.append(rec)
-        cols = []
-        cols.extend(["source_" + x for x in list(self_links.keys())])
-        cols.extend(["source_value_name", "source_value", "related_value_name", "related_value"])
-        cols.extend(["related_" + x for x in list(val_links.keys())])
-        return pd.DataFrame.from_records(records, columns=cols)
- 
+    @classmethod
+    def queryset_to_table(cls, value_queryset, indexes=None, additional_values=[]):
+        values = ["pk", "name"]
+        values.extend([Obj.plural_name + "__" + Obj.id_field for Obj in object_list])
+        values.extend([Val.type_name + "__value" for Val in value_list])
+        values.extend(additional_values)
+        value_queryset = value_queryset.prefetch_related(*[Obj.plural_name for Obj in object_list])
+        value_queryset = value_queryset.values(*values)
+        table = pd.DataFrame.from_records(value_queryset)
+        values.pop(values.index("pk"))
+        values.pop(values.index("name"))
+        values = [value for value in values if value in table.columns]
+        if len(values) == 0:
+            return pd.DataFrame()
+        if isinstance(indexes, str):
+            if indexes in values:
+                values.pop(values.index(indexes))
+        elif hasattr(indexes, '__iter__'):
+            for ind in indexes:
+                if ind in values:
+                    values.pop(values.index(ind))
+        try:
+            table = table.pivot(index=indexes, columns="name", values=values)
+        except:
+            def agg_fun(x):
+                x=x.dropna()
+                if len(x)>=1:
+                    return set(x)
+                else:
+                    return np.nan()
+            table = table.pivot_table(index=indexes, columns=["name"], values=values,
+                     aggfunc=agg_fun)
+        return table.dropna(axis=1, how='all')
+
     @classmethod
     def relate_value_sets(cls, A, B):
         # Link all Values in A to all Values in B, if possible
@@ -1078,7 +1095,7 @@ class ResultVal(models.Model):
 
 object_list = [Investigation, Sample, Feature, Step, Process, \
                Analysis, Result]
-
+value_list = [StrVal, IntVal, FloatVal, DatetimeVal, ResultVal]
 #CAUTION: List comprehensions ahead!!
 
 def all_fields():
