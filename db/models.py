@@ -566,7 +566,7 @@ class Analysis(Object):
     name = models.CharField(max_length=255)
     date = models.DateTimeField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    process = models.ForeignKey('Process', on_delete=models.CASCADE, related_name='analyses')
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
     extra_steps = models.ManyToManyField('Step', blank=True)
