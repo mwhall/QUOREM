@@ -18,6 +18,7 @@ from celery import current_app
 from combomethod import combomethod
 
 import pandas as pd
+import numpy as np
 import arrow
 import uuid
 
@@ -183,8 +184,10 @@ class Object(models.Model):
     def get_queryset(cls, data):
         #data is a dict with {field_name: [name1,...],}
         # and uuid for results, id for all
+        if not data:
+            return cls._meta.model.objects.none()
         kwargs = {}
-        for id_field in ["name", "uuid", "id"]:
+        for id_field in [cls.id_field, "id"]:
             if cls.base_name + "_" + id_field in data:
                 kwargs[id_field + "__in"] = data[cls.base_name + "_" + id_field]
         return cls._meta.model.objects.filter(**kwargs)
@@ -503,6 +506,23 @@ class Process(Object):
                              SearchVector('description', weight='C'))
         )
 
+    def get_parameters(self, steps=[]):
+        # Get the parameters for this Analysis and all its steps
+        # including the extra ones
+        parameters = defaultdict(dict)
+        if steps != []:
+            steps = Step.objects.filter(name__in=steps)
+        else:
+            steps = self.steps
+        for step in steps.all():
+            for queryset in [step.values.filter(processes__isnull=True,
+                                                analyses__isnull=True,
+                                                results__isnull=True),
+                             self.values.filter(steps=step)]:
+                for value in queryset.filter(steps=step, type="parameter"):
+                    parameters[step.name][value.name] = value.content_object.value
+        return parameters
+
     def related_steps(self, upstream=False):
         steps = self.steps.all()
         if upstream:
@@ -533,6 +553,16 @@ class Step(Object):
             search_vector= (SearchVector('name', weight='A') +
                             SearchVector('description', weight='B'))
         )
+
+    def get_parameters(self):
+        # Get the parameters for this Result, with respect to its source step
+        parameters = {}
+        for value in self.values.filter(type="parameter",
+                                        results__isnull=True,
+                                        analyses__isnull=True,
+                                        processes__isnull=True):
+            parameters[value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         samples = Sample.objects.filter(source_step__pk=self.pk)
@@ -581,6 +611,25 @@ class Analysis(Object):
                             SearchVector('date', weight='B') +
                             SearchVector('location', weight='C'))
         )
+
+    def get_parameters(self, steps=[]):
+        # Get the parameters for this Analysis and all its steps
+        # including the extra ones
+        parameters = defaultdict(dict)
+        if steps != []:
+            steps = [Step.objects.filter(name__in=steps)]
+        else:
+            steps = [self.process.steps, self.extra_steps]
+        for step_queryset in steps:
+            for step in step_queryset.all():
+                for queryset in [step.values.filter(processes__isnull=True,
+                                                    analyses__isnull=True,
+                                                    results__isnull=True),
+                                 self.process.values.filter(steps=step),
+                                 self.values.filter(steps=step)]:
+                    for value in queryset.filter(type="parameter"):
+                        parameters[step.name][value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
@@ -650,6 +699,17 @@ class Result(Object):
                             SearchVector('type', weight='B') +
                             SearchVector('uuid', weight='C'))
         )
+
+    def get_parameters(self):
+        # Get the parameters for this Result, with respect to its source step
+        parameters = {}
+        for queryset in [self.source_step.values.filter(results=self),
+                         self.analysis.process.values,
+                         self.analysis.values,
+                         self.values]:
+            for value in queryset.filter(steps=self.source_step, type="parameter"):
+                parameters[value.name] = value.content_object.value
+        return parameters
 
     def related_samples(self, upstream=False):
         samples = self.samples.all()
@@ -853,25 +913,39 @@ class Value(models.Model):
         # Search strictly upstream objects of the links of this one
         pass
 
-    def export_values(self, values):
-        if not values.exists():
-            return pd.DataFrame.from_records([])
-        records = []
-        self_links = self.get_links()
-        self_val = self.content_object.value
-        values = values.prefetch_related("content_object")
-        values = values.prefetch_related(*self.linkable_objects)
-        for val in values:
-            rec = list(self_links.values())
-            rec.extend([self.name, self_val, val.name, val.content_object.value])
-            val_links = val.get_links()
-            rec.extend(list(val_links.values()))
-            records.append(rec)
-        cols = []
-        cols.extend(["source_" + x for x in list(self_links.keys())])
-        cols.extend(["source_value_name", "source_value", "related_value_name", "related_value"])
-        cols.extend(["related_" + x for x in list(val_links.keys())])
-        return pd.DataFrame.from_records(records, columns=cols)
+    @classmethod
+    def queryset_to_table(cls, value_queryset, indexes=None, additional_values=[]):
+        values = ["pk", "name"]
+        values.extend([Obj.plural_name + "__" + Obj.id_field for Obj in object_list])
+        values.extend([Val.type_name + "__value" for Val in value_list])
+        values.extend(additional_values)
+        value_queryset = value_queryset.prefetch_related(*[Obj.plural_name for Obj in object_list])
+        value_queryset = value_queryset.values(*values)
+        table = pd.DataFrame.from_records(value_queryset)
+        values.pop(values.index("pk"))
+        values.pop(values.index("name"))
+        values = [value for value in values if value in table.columns]
+        if len(values) == 0:
+            return pd.DataFrame()
+        if isinstance(indexes, str):
+            if indexes in values:
+                values.pop(values.index(indexes))
+        elif hasattr(indexes, '__iter__'):
+            for ind in indexes:
+                if ind in values:
+                    values.pop(values.index(ind))
+        try:
+            table = table.pivot(index=indexes, columns="name", values=values)
+        except:
+            def agg_fun(x):
+                x=x.dropna()
+                if len(x)>=1:
+                    return set(x)
+                else:
+                    return np.nan()
+            table = table.pivot_table(index=indexes, columns=["name"], values=values,
+                     aggfunc=agg_fun)
+        return table.dropna(axis=1, how='all')
 
     @classmethod
     def relate_value_sets(cls, A, B):
@@ -1019,7 +1093,7 @@ class ResultVal(models.Model):
 
 object_list = [Investigation, Sample, Feature, Step, Process, \
                Analysis, Result]
-
+value_list = [StrVal, IntVal, FloatVal, DatetimeVal, ResultVal]
 #CAUTION: List comprehensions ahead!!
 
 def all_fields():
