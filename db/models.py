@@ -935,8 +935,24 @@ class Value(models.Model):
                 if ind in values:
                     values.pop(values.index(ind))
         try:
+            """
+            note: I put these lines in to help with table formatting
+            - Alex
+
+            #############
+            if not indexes:
+                t = table.pivot(index=indexes,columns="name", values=values)
+                t = t.dropna(axis=1, how='all')
+                indexes = list(set([name for name in t.columns.get_level_values(0) if name[-6:]=='__name']))
+                print(indexes)
+            ##############
+            """
             table = table.pivot(index=indexes, columns="name", values=values)
+
+
+            print('try worked')
         except:
+            print('except worked')
             def agg_fun(x):
                 x=x.dropna()
                 if len(x)>=1:

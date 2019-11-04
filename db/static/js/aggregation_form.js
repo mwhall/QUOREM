@@ -234,6 +234,55 @@ function populateXValNames(){
     }
   });
 }
+
+function populateYValNames(){
+  var url = $('msform').attr('data-x-url'); //change to data y!
+  var object_klass = $('#id_indField').val();
+  $.ajax({
+    url: url,
+    data: {
+      'object_klass': object_klass,
+    },
+    success: function(data){
+      console.log("Success populate y val");
+      $('#id_indValue').html(data);
+      $('#id_indValue').trigger('chosen:updated');
+      $('#id_indValue').chosen();
+    }
+  });
+}
 //$("#id_depValue").chosen();
 $("#id_depField").change(populateXValNames);
 // Add fancy selection with 'chosen' lib
+
+/******************************************************************************
+*** Javascript to add more rows to the form                                 ***
+*******************************************************************************/
+var $n = 1
+$(document).ready(function(){
+  //rename fields to allow dynamic form processing
+  $('#id_indField').attr("id", "id_indField_0");
+  $('#id_indValue').attr("id", "id_indValue_0");
+  //django uses name attribute to get request data
+  $('#id_indField').attr("name", "indField_0");
+  $('#id_indValue').attr("name", "indValue_0");
+  $(".add-fields").click(function(){
+    var $clone = $( "div.form-fields" ).first().clone();
+    var $children = $clone.children();
+    var $fieldId = 'id_indField_' + $n;
+    var $fieldName = 'indField_' + $n;
+    var $valId = 'id_indValue_' + $n;
+    var $valName = 'indValue_' + $n;
+    $children[0].setAttribute('id', $fieldId);
+    $children[0].setAttribute('name', $fieldName);
+    $children[1].setAttribute('id', $valId);
+    $children[1].setAttribute('name', $valName);
+    $n = $n + 1;
+    $clone.append(" <button type='button' class='btn remove-row'>-</button>");
+    $clone.insertBefore(".add-fields");
+  });
+  $(document).on("click", ".remove-row", function(){
+    $(this).parent().remove();
+    $n = $n-1;
+  });
+});

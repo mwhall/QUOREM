@@ -481,11 +481,11 @@ class ValueTableForm(forms.Form):
               ]
 
     depField = forms.ChoiceField(choices=CHOICES)
-    depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"3"}), label="Select Value")
+    depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
 
     #independant variables
-    indField = forms.ChoiceField(choices=CHOICES)
-    indValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"3"}), label="Select Value(s)")
+    indField = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Related Model(s)")
+    indValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
 
     #??? how do filters get made???
     class Meta:
