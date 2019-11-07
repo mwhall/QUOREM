@@ -266,9 +266,9 @@ class StepForm(BootstrapModelForm):
         exclude = ('search_vector',)
     def get_upstream_link(self, value):
             return Result.objects.get(uuid=value).get_detail_link()
-    def __init__(self, *args, **kwargs): 
-        super(StepForm, self).__init__(*args, **kwargs) 
-        self.fields['values'].label = "Default Parameters" 
+    def __init__(self, *args, **kwargs):
+        super(StepForm, self).__init__(*args, **kwargs)
+        self.fields['values'].label = "Default Parameters"
 
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
@@ -323,7 +323,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
                    'features': DisplayText(get_text_method=get_feature_link),
                    'source_step': DisplayText(get_text_method=get_step_link),
                    'analysis': DisplayText(get_text_method=get_analysis_link)}
-    
+
 class AnalysisForm(BootstrapModelForm):
     class Meta:
         model = Analysis
@@ -467,3 +467,53 @@ class TrendPlotForm(forms.Form):
             ("Choose Independant Variable", "Select Y", {'fields': ('y_val_category', 'y_val',)}),
             ("Choose output format", "Select Plot", {'fields':('operation_choice',)}),
         )
+
+class ValueTableForm(forms.Form):
+    #need a field for choosing a dependant variable
+    CHOICES = [
+                ('1', 'Investigation'),
+                ('2', 'Sample'),
+                ('3', 'Feature'),
+                ('4', 'Step'),
+                ('5', 'Process'),
+                ('6', 'Analysis'),
+                ('7', 'Result'),
+              ]
+
+    depField = forms.ChoiceField(choices=CHOICES)
+    depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
+
+    #independant variables
+    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
+    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
+
+    #??? how do filters get made???
+    class Meta:
+        fieldsets = (
+            ("Select the dependant variable (rows of the table; data tuples)",
+             "Select Dependant", {'fields': ('depField', 'depValue')}),
+            ("Select the independant variable (rows of the table; data tuples)",
+             "Select Independant", {'fields': ('indField_0', 'indValue_0')}),
+        )
+
+    """
+    Not sure if i need this at all? Maybe can get JS to call a view instead
+    """
+    """
+    def clean(self):
+        print('clean')
+        print(self)
+        indVals = set()
+        i = 0
+        field_name = 'indField_%s' % (i,)
+        val_name = 'indValue_%s' % (i,)
+        print(self.cleaned_data)
+        while self.cleaned_data.get(field_name):
+            field = self.cleaned_data[field_name]
+            print(field)
+            values = self.cleaned_data[val_name]
+            print("***\n", values)
+            i += 1
+            field_name = 'indField_%s' % (i,)
+            val_name = 'indValue_%s' % (i,)
+    """

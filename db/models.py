@@ -54,9 +54,9 @@ class Object(models.Model):
             self.search_set = self.__class__.objects.filter(pk=self.pk)
 
     def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', 
-                         flatatt({'href': reverse(self.base_name + '_detail', 
-                                 kwargs={self.base_name + '_id': self.pk})}), 
+        return mark_safe(format_html('<a{}>{}</a>',
+                         flatatt({'href': reverse(self.base_name + '_detail',
+                                 kwargs={self.base_name + '_id': self.pk})}),
                                  self.base_name.capitalize() + ": " + \
                                  str(getattr(self, self.id_field))))
 
@@ -103,7 +103,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "metadata", linked_to, 
+        return receiver.with_value(name, "metadata", linked_to,
                                     search_set, upstream, only)
 
     @combomethod
@@ -111,7 +111,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "measure", linked_to, 
+        return receiver.with_value(name, "measure", linked_to,
                                     search_set, upstream, only)
 
     @combomethod
@@ -119,7 +119,7 @@ class Object(models.Model):
         if (search_set is None) and (receiver.search_set is not None):
             # Go to instance default
             search_set = receiver.search_set
-        return receiver.with_value(name, "parameter", linked_to, 
+        return receiver.with_value(name, "parameter", linked_to,
                                     search_set, upstream, only)
 
     # Default search methods, using only internal methods
@@ -356,7 +356,7 @@ class Object(models.Model):
                                         if field in [x[0] for x in many_ref_fields]:
                                             getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
                                             if field == cls.base_name + "_upstream":
-                                                # In order to update the symmetrical 
+                                                # In order to update the symmetrical
                                                 # all_upstream/all_downstream fields
                                                 # we add ref_obj to upstream and all_upstream
                                                 # then we add all of ref_obj's upstream to
@@ -447,9 +447,6 @@ class Feature(Object):
         return results
 
 class Sample(Object):
-    """
-    Uniquely identify a single sample (i.e., a physical sample taken at some single time and place)
-    """
     base_name = "sample"
     plural_name = "samples"
 
@@ -530,7 +527,7 @@ class Process(Object):
         for step in steps.all():
             for queryset in [step.values.filter(processes__isnull=True,
                                                 analyses__isnull=True,
-                                                results__isnull=True), 
+                                                results__isnull=True),
                              self.values.filter(steps=step)]:
                 for value in queryset.filter(steps=step, type="parameter"):
                     parameters[step.name][value.name] = value.content_object.value
@@ -570,7 +567,7 @@ class Step(Object):
     def get_parameters(self):
         # Get the parameters for this Result, with respect to its source step
         parameters = {}
-        for value in self.values.filter(type="parameter", 
+        for value in self.values.filter(type="parameter",
                                         results__isnull=True,
                                         analyses__isnull=True,
                                         processes__isnull=True):
@@ -609,7 +606,7 @@ class Analysis(Object):
     name = models.CharField(max_length=255)
     date = models.DateTimeField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
-    process = models.ForeignKey('Process', on_delete=models.CASCADE)
+    process = models.ForeignKey('Process', on_delete=models.CASCADE, related_name='analyses')
     # Just in case this analysis had any extra steps, they can be defined and tagged here
     # outside of a Process
     extra_steps = models.ManyToManyField('Step', blank=True)
@@ -635,10 +632,10 @@ class Analysis(Object):
             steps = [self.process.steps, self.extra_steps]
         for step_queryset in steps:
             for step in step_queryset.all():
-                for queryset in [step.values.filter(processes__isnull=True, 
+                for queryset in [step.values.filter(processes__isnull=True,
                                                     analyses__isnull=True,
-                                                    results__isnull=True), 
-                                 self.process.values.filter(steps=step), 
+                                                    results__isnull=True),
+                                 self.process.values.filter(steps=step),
                                  self.values.filter(steps=step)]:
                     for value in queryset.filter(type="parameter"):
                         parameters[step.name][value.name] = value.content_object.value
@@ -700,9 +697,9 @@ class Result(Object):
         return str(self.uuid)
 
     def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>', 
-                         flatatt({'href': reverse(self.base_name + '_detail', 
-                                 kwargs={self.base_name + '_id': self.pk})}), 
+        return mark_safe(format_html('<a{}>{}</a>',
+                         flatatt({'href': reverse(self.base_name + '_detail',
+                                 kwargs={self.base_name + '_id': self.pk})}),
                                  self.type + " from " + self.source_step.name))
 
     @classmethod
@@ -716,9 +713,9 @@ class Result(Object):
     def get_parameters(self):
         # Get the parameters for this Result, with respect to its source step
         parameters = {}
-        for queryset in [self.source_step.values.filter(results=self), 
+        for queryset in [self.source_step.values.filter(results=self),
                          self.analysis.process.values,
-                         self.analysis.values, 
+                         self.analysis.values,
                          self.values]:
             for value in queryset.filter(steps=self.source_step, type="parameter"):
                 parameters[value.name] = value.content_object.value
@@ -818,7 +815,7 @@ class Value(models.Model):
         for qs in linked_to:
             if qs.exists():
                 getattr(new_Value, qs.model.plural_name).add(*qs)
- 
+
     @classmethod
     def _table_value_targets(cls, table, unique=False):
             value_target_combinations = list(table[[x for x in table.columns if x.startswith("value_target")]].drop_duplicates().agg(lambda x: list(x.dropna()), axis=1))
@@ -835,7 +832,7 @@ class Value(models.Model):
     def add_parameters(cls, table, database_table, log=None):
         print("Adding parameters")
         # PARAMETERS
-        # Heuristics: 
+        # Heuristics:
         # - All Parameters must be linked to a Step, as all parameters are relative to a Step
         # - If it is an Analysis or Process being linked, we speed it up by specifying steps=[source_step]
         # - Sort measures by Step
@@ -843,8 +840,8 @@ class Value(models.Model):
 
         #Now that we've aggregated all the parameter data, we want to go top-down so we don't miss any Values in the lower objects
         unique_targets = cls._table_value_targets(table, unique=True)
-        # Use this dict to track all of the levels of input parameters 
-        parameter_data = {"process": {"analysis": {"result": {"parameters" : defaultdict(lambda: defaultdict(dict))}, 
+        # Use this dict to track all of the levels of input parameters
+        parameter_data = {"process": {"analysis": {"result": {"parameters" : defaultdict(lambda: defaultdict(dict))},
                                                      "parameters": defaultdict(lambda: defaultdict(dict))},
                                         "parameters": defaultdict(lambda: defaultdict(dict))},
                           "parameters": defaultdict(dict)}
@@ -928,7 +925,7 @@ class Value(models.Model):
                 cls.create_value(value_name, "measure", value, linked_to)
 
 
-    @classmethod   
+    @classmethod
     def add_metadata(cls, input_table, database_table, log=None):
         print("Adding metadata")
         # METADATA
@@ -1067,7 +1064,7 @@ class Value(models.Model):
 #            table = table.pivot(index=indexes, columns="name", values=values)
         # This is what happens when there are multiple values for a given key
         # and it must aggregate them
-        # This is slower, but reserving the x.dropna() for when we know 
+        # This is slower, but reserving the x.dropna() for when we know
         # there's more than one value in there speeds it up
         def agg_fun(x):
             if len(x) == 1:
@@ -1196,7 +1193,7 @@ class Value(models.Model):
     @classmethod
     def infer_type(cls, value_name, value_type, value=None):
         found_types = ContentType.objects.filter(pk__in=Value.objects.filter(name=value_name,
-                                                 type=value_type).only("content_type").values("content_type")).distinct() 
+                                                 type=value_type).only("content_type").values("content_type")).distinct()
         if len(found_types) > 1:
             raise DuplicateTypeError("Two types found for value name %s of \
                                       type %s" % (self.id_field, self.vtype))
@@ -1399,7 +1396,7 @@ class LogFile(models.Model):
     def get_logger(self):
         # Return the Logger instance for this logfile, which will push updates
         # to the appropriate File
-        #NOTE: Loggers are not garbage collected, so there's always a chance 
+        #NOTE: Loggers are not garbage collected, so there's always a chance
         # that we'll stumble back on an old logger if we aren't careful with
         # the uniqueness of the names
         if not self.pk:
@@ -1477,6 +1474,7 @@ class UploadMessage(models.Model):
     """
     file = models.ForeignKey(File, on_delete=models.CASCADE, verbose_name='Uploaded File')
     error_message = models.CharField(max_length = 1000, null=True)
+
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.

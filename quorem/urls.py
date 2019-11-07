@@ -20,27 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
 from db.views_ajax import InvestigationGridView, SampleFkWidgetGrid, StepFkWidgetGrid
-from db.views import (
-    InvestigationCreate, InvestigationDetail, InvestigationList,
-    InvestigationUpdate,
-    ProcessCreate, ProcessDetail, ProcessList, ProcessUpdate,
-    ResultList, ResultDetail,
-    StepList, StepCreate, StepDetail, StepUpdate,
-    FeatureList, FeatureDetail, FeatureCreate,
-    SampleDetail, SampleList, SampleUpdate, SampleCreate,
-    AnalysisDetail, AnalysisList, AnalysisCreate,
-    UploadList, FileDetail,
-    #SearchResultList
-    search,
-    #analysis page
-    analyze, spreadsheet_upload, artifact_upload,
-    plot_view, ajax_aggregates_meta_view,
-    ajax_plot_trendx_view, ajax_plot_trendy_view,
-    PlotAggregateView, PlotTrendView,
-    onto_view, onto_json,
-    MailBoxView, MailOpen
-
-)
+from db.views import *
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
 urlpatterns = [
@@ -185,6 +165,11 @@ urlpatterns = [
     path('ajax/load-onto/', onto_json, name='onto_json'),
     path('mail/', MailBoxView.as_view(), name='mail'),
     re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
+
+    #value table views
+    path('values/', ValueTableView.as_view(), name='value_table'),
+    path('ajax/value-names/', ajax_value_table_view, name='ajax_value_names'),
+    path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {
