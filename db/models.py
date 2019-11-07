@@ -1,12 +1,16 @@
 from collections import defaultdict
+import logging
+import itertools
 
 from django.db import models
+from django.core import files
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
 
 #for searching
 from django.contrib.postgres.search import SearchVectorField
@@ -181,20 +185,26 @@ class Object(models.Model):
         return [cls.base_name + "_" + cls.id_field, cls.base_name + "_id"]
 
     @classmethod
+    def get_value_fields(cls):
+        return [cls.plural_name + "__" + cls.id_field, cls.plural_name + "__id"]
+
+    @classmethod
     def get_queryset(cls, data):
         #data is a dict with {field_name: [name1,...],}
         # and uuid for results, id for all
-        if not data:
+        if (not data):
             return cls._meta.model.objects.none()
         kwargs = {}
         for id_field in [cls.id_field, "id"]:
             if cls.base_name + "_" + id_field in data:
                 kwargs[id_field + "__in"] = data[cls.base_name + "_" + id_field]
+        if not kwargs:
+            return cls._meta.model.objects.none()
         return cls._meta.model.objects.filter(**kwargs)
 
     # Creates bare minimum objects from the given data set
     @classmethod
-    def initialize(cls, data):
+    def initialize(cls, data, log=None):
         #data is a dict with {"field_name": [field data],}
         _id_fields = id_fields()
         req_fields = [ x for x in required_fields() if x.startswith(cls.base_name + "_") ]
@@ -285,7 +295,7 @@ class Object(models.Model):
                 new_obj.save()
 
     @classmethod
-    def update(cls, data):
+    def update(cls, data, log=None):
         _id_fields = id_fields()
         _all_fields = [ x for x in all_fields() if x.startswith(cls.base_name + "_") ]
         ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
@@ -787,73 +797,190 @@ class Value(models.Model):
         return self.name + ": " + str(self.content_object.value)
 
     @classmethod
-    def add_values(cls, table):
-        value_models = defaultdict(dict)
-        _id_fields = id_fields()
-        _all_fields = all_fields()
-        # First pre-fetch all the objects in data in a dict of QuerySets
-        recs = table[[x for x in table.columns if x in _id_fields]].melt().dropna().drop_duplicates().to_records(index=False)
-        id_data = defaultdict(list)
-        for field, datum in recs:
-            id_data[field].append(datum)
-        object_querysets = {}
-        all_values = set()
-        for Obj in object_list:
-            object_querysets[Obj.base_name] = Obj.get_queryset(id_data).prefetch_related("values")
-            all_values.update(list(object_querysets[Obj.base_name].values_list("values__pk", flat=True)))
-        # Commit each value, row by row (the only way, really)
-        all_values = Value.objects.filter(pk__in=list(all_values))
-        all_values = all_values.prefetch_related(*[ Obj.plural_name for Obj in object_list ])
-        for index, series in table.iterrows():
-            value_name = series["value_name"]
-            value_type = series["value_type"]
-            value = str(series["value"])
-            value_targets = [series[x] for x in series.index if x.startswith("value_target") and not pd.isna(series[x])]
-            link_data = defaultdict(set)
-            for field in series.index:
-                if field in _id_fields:
-                    link_data[field].add(series[field])
-            kwargs = {"values__name": value_name, "values__type": value_type}
-            valargs = {"name": value_name, "type": value_type}
-            for Obj in object_list:
-                if (Obj.base_name in value_targets) or (Obj.plural_name in value_targets):
-                    kwargs["values__" + Obj.plural_name + "__isnull"] = False
-                    valargs[Obj.plural_name + "__isnull"] = False
-                else:
-                    kwargs["values__" + Obj.plural_name + "__isnull"] = True
-                    valargs[Obj.plural_name + "__isnull"] = True
-            # Filter for Values that match the signature
-            value_qs = all_values.filter(**valargs)
-            found = False
-            queryset_list = [ object_querysets[Obj.base_name].filter(**{Obj.id_field+"__in": link_data[Obj.base_name+"_"+Obj.id_field] }) for Obj in object_list if Obj.base_name in value_targets ]
-            for value_obj in value_qs:
-                ##This can probably be replaced with fancier querysets above
-                if value_obj.linked_to(queryset_list):
-                    found = True
-                    #TODO: Check if the value is equal and overwrite and/or raise a warning?
-                    break
-            if found:
-                continue # Go to the next row
-            # We didn't find it, proceed to create
-            if value_name in value_models[value_type]:
-                val_model = value_models[value_type][value_name]
-            else:
-                val_model = cls.infer_type(value_name, value_type, value)
-                value_models[value_type][value_name] = val_model
-            new_val = val_model()
-            try:
-                new_val.value = val_model.cast_function(value)
-            except Result.DoesNotExist:
-                print("Warning, could not find Result %s, abandoning adding %s %s" % (str(value), value_type, value_name))
-                continue
-            new_val.save()
-            new_Value = Value()
-            new_Value.name = value_name
-            new_Value.type = value_type
-            new_Value.content_object = new_val
-            new_Value.save()
-            for qs in queryset_list:
+    def create_value(cls, value_name, value_type, value, linked_to=[], value_model=None):
+        if value_model == None:
+            value_model = cls.infer_type(value_name, value_type, value)
+        new_val = value_model()
+        try:
+            new_val.value = value_model.cast_function(value)
+        except Result.DoesNotExist:
+            print("Warning, could not find Result %s, abandoning adding %s %s" % (str(value), value_type, value_name))
+            return
+        new_val.save()
+        new_Value = Value()
+        new_Value.name = value_name
+        new_Value.type = value_type
+        new_Value.content_object = new_val
+        new_Value.save()
+        for qs in linked_to:
+            if qs.exists():
                 getattr(new_Value, qs.model.plural_name).add(*qs)
+
+    @classmethod
+    def _table_value_targets(cls, table, unique=False):
+            value_target_combinations = list(table[[x for x in table.columns if x.startswith("value_target")]].drop_duplicates().agg(lambda x: list(x.dropna()), axis=1))
+            if unique:
+                unique_targets = set()
+                ut_add = unique_targets.add
+                for element in itertools.filterfalse(unique_targets.__contains__, [y for x in value_target_combinations for y in x]):
+                    ut_add(element)
+                unique_targets = list(unique_targets)
+                return unique_targets
+            return value_target_combinations
+
+    @classmethod
+    def add_parameters(cls, table, database_table, log=None):
+        print("Adding parameters")
+        # PARAMETERS
+        # Heuristics:
+        # - All Parameters must be linked to a Step, as all parameters are relative to a Step
+        # - If it is an Analysis or Process being linked, we speed it up by specifying steps=[source_step]
+        # - Sort measures by Step
+        # - Start with things linked only to the Step, then Step+Process, Step+Analysis, Step+Result, inserting new Values only when needed
+
+        #Now that we've aggregated all the parameter data, we want to go top-down so we don't miss any Values in the lower objects
+        unique_targets = cls._table_value_targets(table, unique=True)
+        # Use this dict to track all of the levels of input parameters
+        parameter_data = {"process": {"analysis": {"result": {"parameters" : defaultdict(lambda: defaultdict(dict))},
+                                                     "parameters": defaultdict(lambda: defaultdict(dict))},
+                                        "parameters": defaultdict(lambda: defaultdict(dict))},
+                          "parameters": defaultdict(dict)}
+        # Organize the data by step (all parameters attached to a step)
+        print("Organizing data")
+        for step in table["step_name"].unique():
+             subtable = table[table["step_name"]==step]
+             subtable = subtable[[x for x in table.columns if \
+                                  (x in ["value", "value_name"]) or \
+                                   x.startswith("value_target") or \
+                                  (x.split("_")[0] in unique_targets) and\
+                                   (x in id_fields())]].drop_duplicates()
+             row_targets = cls._table_value_targets(subtable, unique=True)
+             for ind, series in subtable.iterrows():
+                 if len(row_targets) == 1:
+                 # Only targeting a Step
+                     parameter_data["parameters"][series["step_name"]][series["value_name"]] = series["value"]
+                 elif "process" in row_targets:
+                     parameter_data["process"]["parameters"][series["process_name"]][series["step_name"]][series["value_name"]] = series["value"]
+                 elif "analysis" in row_targets:
+                     parameter_data["process"]["analysis"]["parameters"][series["analysis_name"]][series["step_name"]][series["value_name"]] = series["value"]
+                 elif "result" in row_targets:
+                     parameter_data["process"]["analysis"]["result"]["parameters"][series["result_uuid"]][series["step_name"]][series["value_name"]] = series["value"]
+        # Loop through these models, fetch the relevant objects in bulk, then fetch individually and query the parameters
+        parameter_list = [ (Step, parameter_data["parameters"]),
+                           (Process, parameter_data["process"]["parameters"]),
+                           (Analysis, parameter_data["process"]["analysis"]["parameters"]),
+                           (Result, parameter_data["process"]["analysis"]["result"]["parameters"])]
+        print("Validating data")
+        for model, obj_list in parameter_list:
+            instances = model.objects.filter(**{model.id_field + "__in": [x for x in obj_list.keys() if x!="parameters"]}).prefetch_related("values")
+            for Obj in obj_list:
+                obj = instances.filter(**{model.id_field:Obj})
+                db_params = obj.get().get_parameters()
+                queryset_list = [obj]
+                if model.base_name == "step":
+                    in_params = obj_list[Obj]
+                    diff_params = {x: y for x, y in in_params.items() if (x not in db_params) or ((x in db_params) and (str(db_params[x])!=str(in_params[x])))}
+                    for value_name, value in diff_params.items():
+                        cls.create_value(value_name, "parameter", value, linked_to=queryset_list)
+                else:
+                    for step in obj_list[Obj]:
+                        step_obj = Step.objects.filter(name=step)
+                        in_params = obj_list[Obj][step]
+                        queryset_list = [obj, step_obj]
+                        if model.base_name == "result":
+                            step_params = db_params
+                        else:
+                            step_params = db_params[step]
+                        diff_params = {x: y for x, y in in_params.items() if (x not in step_params) or ((x in step_params) and (str(step_params[x])!=str(in_params[x])))}
+                        for value_name, value in diff_params.items():
+                            cls.create_value(value_name, "parameter", value, linked_to=queryset_list)
+
+    @classmethod
+    def add_measures(cls, input_table, database_table, log=None):
+        print("Adding measures")
+        # MEASURES
+        # Heuristics:
+        # - All Measures must be linked to a Result, as a measure without a Result is metadata that has no provenance
+        # Build up kwargs for all items in the table
+        _id_fields = id_fields()
+        for idx, series in input_table.iterrows():
+            series = series.dropna()
+            value_name = series["value_name"]
+            if sum([x in series for x in Result.get_id_fields()]) == 0:
+                if log is not None:
+                    log.error("Line %d: Measure %s requires a Result", idx, value_name)
+                continue
+            value = series["value"]
+            targets = [series[x] for x in series.dropna().index if x.startswith("value_target")]
+            target_ids = series[[x for x in series.index if (x.split("_")[0] in targets) and (x in _id_fields)]]
+            links = defaultdict(list)
+            for field, target_id in target_ids.items():
+                links[field].append(target_id)
+            linked_to = [Obj.get_queryset(links) for Obj in object_list]
+            if cls._in_table(database_table, value_name, "measure", linked_to=linked_to):
+                if not cls._in_table(database_table, value_name, "measure", value, linked_to):
+                    log.error("Line %d: Value mismatch, did not overwrite Value\
+                               Name %s Type %s value %s, linked to %s" % (idx, value_name, "measure", str(value), str(linked_to)))
+            else:
+                cls.create_value(value_name, "measure", value, linked_to)
+
+
+    @classmethod
+    def add_metadata(cls, input_table, database_table, log=None):
+        print("Adding metadata")
+        # METADATA
+        # Heuristics:
+        # - Metadata can be attached to basically anything for any reason
+        # - Grab all Objects referenced, then from theoretically smallest to largest table, search in those Objects for those Metadata linked to it
+        # - If not found, make it and remove it from the proposed list
+        _id_fields = id_fields()
+        for idx, series in input_table.iterrows():
+            series = series.dropna()
+            value_name = series["value_name"]
+            value = series["value"]
+            targets = [series[x] for x in series.index if x.startswith("value_target")]
+            target_ids = series[[x for x in series.index if (x.split("_")[0] in targets) and (x in _id_fields)]]
+            links = defaultdict(list)
+            for field, target_id in target_ids.items():
+                links[field].append(target_id)
+            linked_to = [Obj.get_queryset(links) for Obj in object_list]
+            if cls._in_table(database_table, value_name, "metadata", linked_to=linked_to):
+                if not cls._in_table(database_table, value_name, "metadata", value, linked_to):
+                    log.error("Line %d: Value mismatch, did not overwrite Value\
+                               Name %s Type %s value %s, linked to %s" % (idx, value_name, "metadata", str(value), str(linked_to)))
+            else:
+                cls.create_value(value_name, "metadata", value, linked_to)
+
+    @classmethod
+    def _table_queryset(cls, table):
+        queryset_list = []
+        for Obj in object_list:
+            fields = {}
+            for field in Obj.get_value_fields() + Obj.get_id_fields():
+                if field in table.columns.str.split(".").str.get(0):
+                    unique_ids = table[table.columns[table.columns.str.startswith(field)]].melt().dropna()["value"].unique()
+                    fields[field] = unique_ids.tolist()
+            qs = Obj.get_queryset(fields)
+            if qs.exists():
+                queryset_list.append(qs)
+        return queryset_list
+
+    @classmethod
+    def add_values(cls, table, log=None):
+        print("Grabbing queryset from table")
+        table_objects = cls._table_queryset(table)
+        print("Grabbing all values from querysets")
+        all_vals = Value.objects.none()
+        for val_qs in [Value.objects.filter(**{obj_qs.model.plural_name+"__in": obj_qs}) for obj_qs in table_objects]:
+            all_vals = all_vals | val_qs
+        print("Aggregating all info")
+        database_value_table = Value.queryset_to_table(all_vals, indexes="pk")
+        print("Params")
+        cls.add_parameters(table[table["value_type"]=="parameter"], database_value_table, log)
+        print("Measures")
+        cls.add_measures(table[table["value_type"]=="measure"], database_value_table, log)
+        print("Metadata")
+        cls.add_metadata(table[table["value_type"]=="metadata"], database_value_table, log)
 
     def linked_to(self, queryset_list, only=True):
         #Queryset list is a list of querysets to check if they are linked
@@ -934,18 +1061,71 @@ class Value(models.Model):
             for ind in indexes:
                 if ind in values:
                     values.pop(values.index(ind))
-        try:
-            table = table.pivot(index=indexes, columns="name", values=values)
-        except:
-            def agg_fun(x):
+#            table = table.pivot(index=indexes, columns="name", values=values)
+        # This is what happens when there are multiple values for a given key
+        # and it must aggregate them
+        # This is slower, but reserving the x.dropna() for when we know
+        # there's more than one value in there speeds it up
+        def agg_fun(x):
+            if len(x) == 1:
+                return set([str(x.values[0])]) if pd.notnull(x.values[0]) else np.nan
+            elif len(x) > 1:
                 x=x.dropna()
-                if len(x)>=1:
-                    return set(x)
+                if len(x) >=1:
+                    return set([str(y) for y in x.dropna().values])
                 else:
-                    return np.nan()
-            table = table.pivot_table(index=indexes, columns=["name"], values=values,
-                     aggfunc=agg_fun)
+                    return np.nan
+            else:
+                return np.nan
+        table = table.pivot_table(index=indexes, columns=["name"], values=values,
+                                  aggfunc=agg_fun)
         return table.dropna(axis=1, how='all')
+
+    @classmethod
+    def _in_table(cls, table, value_name, value_type, value=None, linked_to=None):
+        #Convert the queryset list into something easier to compare in a Pandas table
+        linked_two = []
+        for qs in linked_to:
+            model = qs.model
+            for obj in qs:
+                linked_two.append((model, str(getattr(obj, model.id_field))))
+        linked_to = linked_two
+        # linked_to = [(Model, id), ...]
+        # If value is not None, we will check to make sure that value is identical
+        if value_name not in table.columns.get_level_values("name"):
+            return False
+        vname_table = table.xs(value_name, level="name", axis=1).dropna(axis=0, how='all')
+        fields = defaultdict(set)
+        for model, obj_id in linked_to:
+            field = model.plural_name + "__" + model.id_field
+            fields[field].add(obj_id)
+        for field in fields:
+            vname_table = vname_table.where(vname_table[field] == fields[field]).dropna(axis=0, how='all')
+            if vname_table.empty:
+                return False
+        for Obj in object_list:
+            field = Obj.plural_name + "__" + Obj.id_field
+            if (field in vname_table) and (field not in fields):
+                vname_table = vname_table.where(pd.isna(vname_table[field])).dropna(axis=0, how='all')
+                if vname_table.empty:
+                    return False
+        if value is None:
+            return True
+        else:
+            value_fields = vname_table.columns[vname_table.columns.str.contains("__value")]
+            if len(value_fields) > 1:
+                raise ValueError("Two value types found in database for %s %s" % (value_type, value_name))
+            elif len(value_fields) == 0:
+                raise ValueError("No value column for %s %s" % (value_type, value_name))
+            else:
+                value_field = value_fields[0]
+            vname_table = vname_table.where(vname_table[value_field].apply(lambda x: (value in x) or (str(value) in x)))
+            vname_table = vname_table.dropna(axis=1, how='all').dropna(axis=0, how='all')
+            if vname_table.empty:
+                return False
+            if vname_table.shape[0] > 1:
+                raise ValueError("Found two Values with the same signature: Type: %s, Name: %s, Value: %s, Links: %s" % (value_type, value_name, value, str(linked_to)))
+            return True
 
     @classmethod
     def relate_value_sets(cls, A, B):
@@ -1018,8 +1198,10 @@ class Value(models.Model):
             raise DuplicateTypeError("Two types found for value name %s of \
                                       type %s" % (self.id_field, self.vtype))
         elif len(found_types) == 1:
+            if found_types[0].model_class() == None:
+                raise ValueError("Retrieved a null model class for value name %s type %s" % (value_name, value_type))
             return found_types[0].model_class()
-        elif value:
+        elif value != None:
             strvalue = str(value)
             try:
                 arrow.get(strvalue, cls.default_date_format)
@@ -1173,6 +1355,84 @@ class UserMail(models.Model):
     #mail is oviously not read when it's first created
     read = models.BooleanField(default = False)
 
+class LogFile(models.Model):
+    base_name = "log"
+    plural_name = "logs"
+
+    # Define log types here
+    TYPE_CHOICES = (
+            ('U', 'Upload Log'),
+            ('F', "Upload File Log"),
+            ('A', "User Action Log")
+    )
+
+    DEFAULT_LOG_FILENAMES = {'U': "all_uploads.log",
+                             'F': "upload_%d.log",
+                             'A': "user_actions.log"}
+
+    log = models.FileField(upload_to='logs', blank=True, null=True)
+    # Text description of the log type
+    type = models.CharField(max_length=1, choices=TYPE_CHOICES)
+    # When the log was written
+    date_created = models.DateTimeField(auto_now_add=True)
+    # Last update to it
+    last_updated = models.DateTimeField(auto_now=True)
+
+    def get_log_path(self):
+        if not self.pk:
+            raise ValueError("LogFile instance must be saved before a log path can be retrieved")
+        if self.type=='F':
+            if not self.file:
+                raise ValueError("Uninitialized Upload File Log. Must be set to\
+                        a File object's logfile field and saved before a logger\
+                        can be retrieved")
+            # Should have a File pointed at it, so
+            fileobj = self.file
+            pk = fileobj.pk
+            return settings.LOG_ROOT + "/uploads/" + self.DEFAULT_LOG_FILENAMES['F'] % (pk,)
+        else:
+            return settings.LOG_ROOT + "/" + self.DEFAULT_LOG_FILENAMES[self.type]
+
+    def get_logger(self):
+        # Return the Logger instance for this logfile, which will push updates
+        # to the appropriate File
+        #NOTE: Loggers are not garbage collected, so there's always a chance
+        # that we'll stumble back on an old logger if we aren't careful with
+        # the uniqueness of the names
+        if not self.pk:
+            raise ValueError("LogFile instance must be saved before a logger can be retrieved")
+
+        # If this object doesn't have a log file created for it yet, do it now
+        # This should be fine here since it is only needed once a logger is called
+        # and begins pushing to it
+        if not self.log:
+            print("No log, making log file")
+            path = self.get_log_path()
+            print(path)
+            logfile = files.File(open(path, 'w+b'))
+            print("Opened logfile at that path and made it into a files.File")
+            self.log.save(path, logfile)
+
+        if self.type == 'F':
+            # Should have a File pointed at it, or get_log_path would've errored and we'd have no self.log
+            fileobj = self.file
+            pk = fileobj.pk
+            lgr = logging.getLogger("quorem.uploads.%d" % (pk,))
+            if not lgr.hasHandlers():
+                lgr.addHandler(logging.StreamHandler(stream=self.log))
+            #TODO: Add a formatter, set levels properly
+            #TODO: Define quorem.uploads and its configuration
+        elif self.type == 'U':
+            lgr = logging.getLogger("quorem.uploads")
+            if not lgr.hasHandlers():
+                lgr.addHandler(logging.StreamHandler(stream=self.log))
+        return lgr
+
+    def tail(self, n=10):
+        # Get the last n lines of this log
+        # This function needs to open up and scrape self.log
+        pass
+
 class File(models.Model):
     base_name = "file"
     plural_name = "files"
@@ -1186,6 +1446,7 @@ class File(models.Model):
         ('A', 'Artifact'))
     userprofile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name='Uploader')
     upload_file = models.FileField(upload_to="upload/")
+    logfile = models.OneToOneField(LogFile, on_delete=models.CASCADE, related_name="file")
     upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
     upload_type = models.CharField(max_length=1, choices=TYPE_CHOICES)
     #Should upload files be indexed by the search??
@@ -1196,6 +1457,9 @@ class File(models.Model):
 
     def save(self, *args, **kwargs):
         self.upload_status = 'P'
+        lf = LogFile(type='F')
+        lf.save()
+        self.logfile = lf
         super().save(*args, **kwargs)
         #Call to celery, without importing from tasks.py (avoids circular import)
     #    current_app.send_task('db.tasks.react_to_file', (self.pk,))

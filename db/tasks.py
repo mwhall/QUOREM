@@ -45,24 +45,19 @@ def react_to_file(upload_file_id, **kwargs):
         from_form = upfile.upload_type
         # S for Spreadsheet
         # A for Artifact
-        file_from_upload = upfile.upload_file._get_file()
-        infile = file_from_upload.open()
-#        filetype = guess_filetype(infile)
-#        infile.seek(0)
-#        print(filetype)
         status = ""
         if from_form == "A":
             mail.title="The qiime artifact you uploaded "
             print("Processing qiime file...")
             try:
-                status = process_qiime_artifact(infile, upfile, analysis_pk=kwargs["analysis_pk"], register_provenance=kwargs["register_provenance"])
+                status = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"], register_provenance=kwargs["register_provenance"])
             except Exception as e:
                 print(e)
 
         elif from_form == "S":
             mail.title="The spreadsheet you uploaded "
             print("Processing table ...")
-            status = process_table(infile)
+            status = process_table(upfile)
             print(status)
         else:
             mail.title="A rare error occurred with your upload."
@@ -105,17 +100,28 @@ def react_to_file(upload_file_id, **kwargs):
         errorMessage.save()
 
 @shared_task
-def process_table(infile):
+def process_table(upfile):
+    infile = upfile.upload_file._get_file().open()
+    print("Getting logger")
+    lgr = upfile.logfile.get_logger()
+    print("Getting parser")
     tp = TableParser(infile)
+    print("Initializing")
     for model, data in tp.initialize_generator():
-        model.initialize(data)
+        print("For %s" % (model.base_name,))
+        model.initialize(data, log=lgr)
+    print("Updating")
     for model, data in tp.update_generator():
-        model.update(data)
-    Value.add_values(tp.value_table())
+        model.update(data, log=lgr)
+    print("Adding values")
+    Value.add_values(tp.value_table(), log=lgr)
     return "Success"
 
 @shared_task
-def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
+def process_qiime_artifact(upfile, analysis_pk, register_provenance):
+    infile = upfile.upload_file._get_file().open()
+    print("Getting logger")
+    lgr = upfile.logfile.get_logger()
     start_time = time.time()
     analysis_name = Analysis.objects.get(pk=analysis_pk).name
     ap = ArtifactParser(infile, provenance=register_provenance)
@@ -127,7 +133,7 @@ def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
         #Injnect the analysis name as an atomic list
         if model.base_name == "result":
             data["result_analysis"] = [analysis_name]
-        model.initialize(data)
+        model.initialize(data, log=lgr)
     print("Updating")
     for model, data in ap.update_generator():
         if not data:
@@ -135,9 +141,9 @@ def process_qiime_artifact(infile, upfile, analysis_pk, register_provenance):
         # Inject the analysis name as an atomic list
         if model.base_name == "result":
             data["result_analysis"] = [analysis_name]
-        model.update(data)
+        model.update(data, log=lgr)
     print("Adding and linking values")
-    Value.add_values(ap.value_table())
+    Value.add_values(ap.value_table(), log=lgr)
     res = Result.objects.get(uuid=result_uuid)
     res.file = upfile
     res.save()
