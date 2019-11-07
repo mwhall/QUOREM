@@ -218,10 +218,11 @@ STATICFILES_DIRS = []
 #To allow download of files, we need to configure MEDIA_ROOT and MEDIA_URL
 #For now point them to upload. When we deploy we'll need to configure things
 #s.t. the appropriate webserver serves files.
-#MEDIA_ROOT = os.path.join(BASE_DIR, "upload")
+MEDIA_ROOT = os.path.join(BASE_DIR)
 #media url needs to end in a slash.
 MEDIA_URL = "media/"
 
+LOG_ROOT = os.path.join(BASE_DIR, "logs")
 
 AUTH_USER_MODEL = 'accounts.User'
 
