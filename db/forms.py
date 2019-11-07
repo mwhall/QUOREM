@@ -484,8 +484,8 @@ class ValueTableForm(forms.Form):
     depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
 
     #independant variables
-    indField = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Related Model(s)")
-    indValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
+    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
+    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
 
     #??? how do filters get made???
     class Meta:
@@ -493,5 +493,27 @@ class ValueTableForm(forms.Form):
             ("Select the dependant variable (rows of the table; data tuples)",
              "Select Dependant", {'fields': ('depField', 'depValue')}),
             ("Select the independant variable (rows of the table; data tuples)",
-             "Select Independant", {'fields': ('indField', 'indValue')}),
+             "Select Independant", {'fields': ('indField_0', 'indValue_0')}),
         )
+
+    """
+    Not sure if i need this at all? Maybe can get JS to call a view instead
+    """
+    """
+    def clean(self):
+        print('clean')
+        print(self)
+        indVals = set()
+        i = 0
+        field_name = 'indField_%s' % (i,)
+        val_name = 'indValue_%s' % (i,)
+        print(self.cleaned_data)
+        while self.cleaned_data.get(field_name):
+            field = self.cleaned_data[field_name]
+            print(field)
+            values = self.cleaned_data[val_name]
+            print("***\n", values)
+            i += 1
+            field_name = 'indField_%s' % (i,)
+            val_name = 'indValue_%s' % (i,)
+    """

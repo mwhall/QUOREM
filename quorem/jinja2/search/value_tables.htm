@@ -91,8 +91,8 @@
           <p>QUOR'em understands how your data is connected. Use this engine to create
              datatables comparing any logically possible combination of data.</p>
           <div class="aggregate-content">
-            {% if graph %}
-            {{ graph|safe }}
+            {% if table %}
+            {{ table|safe }}
             {% else %}
             {% include 'search/value_table_form.htm' %}
             {% endif %}

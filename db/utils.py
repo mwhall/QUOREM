@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 from plotly.io._html import to_html
 from django.db.models import Count, Avg, Q
+from db.models import *
 from . import models
 import pandas as pd
 
@@ -217,3 +218,41 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                                            'x_val': x_val,
                                            'y_cat': y_cat,
                                            'y_val': y_val}
+
+def value_table_html(x_selected, y_selected):
+
+    #choice field values are passed around as ints, so use this map to 'decode' them
+    selection_map = {'1': (Investigation, 'investigations__in'),
+                     '2': (Sample, 'samples__in'),
+                     '3': (Feature, 'features__in'),
+                     '4': (Step, 'steps__in'),
+                     '5': (Process, 'processes__in'),
+                     '6': (Analysis, 'analyses__in'),
+                     '7': (Result, 'results__in'),}
+
+    print(x_selected)
+    dep_q = {}
+    ind_q = {}
+
+    for key in x_selected:
+        mapped = selection_map[key]
+        dep_q[mapped[1]] = mapped[0].objects.all()
+        dep_q['name__in'] = x_selected[key]
+
+    for key in y_selected:
+        mapped = selection_map[key]
+        ind_q[mapped[1]] = mapped[0].objects.all()
+        if 'name__in' in ind_q:
+            ind_q['name__in'] += y_selected[key]
+        else:
+            ind_q['name__in'] = y_selected[key]
+
+
+    vqs = Value.objects.filter(**dep_q).filter(**ind_q)
+    print("***************VQS*****************\n")
+    print("~~ dep: ", dep_q, "\n")
+    print("~~ ind: ", ind_q, "\n")
+    print(vqs)
+    print("************************************")
+    df = Value.queryset_to_table(vqs)
+    return df.to_html()

@@ -217,6 +217,7 @@ $('#id_y_val_category').change(populateYOptions);
 /*****************************************************************************
 *** Ajax for value tables                                                  ***
 ******************************************************************************/
+/*** Given a selection of model class, get the possible val filters ***/
 function populateXValNames(){
   var url = $('#msform').attr('data-x-url');
   var object_klass = $('#id_depField').val();
@@ -235,9 +236,47 @@ function populateXValNames(){
   });
 }
 
-function populateYValNames(){
-  var url = $('msform').attr('data-x-url'); //change to data y!
-  var object_klass = $('#id_indField').val();
+/*** Given X vals selected, show possible model choices ***/
+function populateYFieldNames(){
+  var url = $('#msform').attr('data-y-name-url');
+  var object_klass = $('#id_depField').val();
+  var vals = $('#id_depValue').val();
+  $.ajax({
+    url: url,
+    data: {
+      'object_klass': object_klass,
+      'vals': vals,
+    },
+    success: function(data){
+      console.log('success populate y names');
+      console.log(data);
+      $('#id_indField_0').html(data);
+    }
+  });
+}
+
+/* populate newly created fields with options
+ * can't select previously selected models    */
+function populateAdditionalFieldNames(e, n){
+  console.log('sanity');
+  console.log(e);
+  var previousSelect = '#id_indField_' + n;
+  var options = document.querySelector(previousSelect).options
+  var selected = $( previousSelect ).val();
+  var optcop = $( options ).clone();
+  for (var i = 0; i < optcop.length; i++){
+    if ($(optcop[i]).val() != selected){
+      e.options.add(optcop[i],);
+    }
+  }
+}
+
+
+
+function populateYValNames(e){
+  var valId = '#id_indValue_' + this.id.split('_')[2];
+  var url = $('#msform').attr('data-y-url'); //change to data y!
+  var object_klass = $('#id_indField_0').val();
   $.ajax({
     url: url,
     data: {
@@ -245,41 +284,68 @@ function populateYValNames(){
     },
     success: function(data){
       console.log("Success populate y val");
-      $('#id_indValue').html(data);
-      $('#id_indValue').trigger('chosen:updated');
-      $('#id_indValue').chosen();
+      $( valId ).html(data);
+      $( valId ).trigger('chosen:updated');
+      $( valId ).chosen();
     }
   });
 }
-//$("#id_depValue").chosen();
+
+
+
 $("#id_depField").change(populateXValNames);
-// Add fancy selection with 'chosen' lib
+$('#id_depValue').change(populateYFieldNames);
+
 
 /******************************************************************************
 *** Javascript to add more rows to the form                                 ***
 *******************************************************************************/
 var $n = 1
 $(document).ready(function(){
-  //rename fields to allow dynamic form processing
-  $('#id_indField').attr("id", "id_indField_0");
-  $('#id_indValue').attr("id", "id_indValue_0");
   //django uses name attribute to get request data
   $('#id_indField').attr("name", "indField_0");
   $('#id_indValue').attr("name", "indValue_0");
+  //rename fields to allow dynamic form processing
+  $('#id_indField').attr("id", "id_indField_0");
+  $('#id_indValue').attr("id", "id_indValue_0");
+
+  $('#id_indField_0').change(populateYValNames);
+
   $(".add-fields").click(function(){
-    var $clone = $( "div.form-fields" ).first().clone();
-    var $children = $clone.children();
-    var $fieldId = 'id_indField_' + $n;
-    var $fieldName = 'indField_' + $n;
-    var $valId = 'id_indValue_' + $n;
-    var $valName = 'indValue_' + $n;
-    $children[0].setAttribute('id', $fieldId);
-    $children[0].setAttribute('name', $fieldName);
-    $children[1].setAttribute('id', $valId);
-    $children[1].setAttribute('name', $valName);
-    $n = $n + 1;
-    $clone.append(" <button type='button' class='btn remove-row'>-</button>");
-    $clone.insertBefore(".add-fields");
+    var n_opts = document.getElementById('id_indField_0').options.length;
+    if (n_opts > $n){
+      var $clone = $( "div.form-fields" ).first().clone();
+      $clone.find('#id_indValue_0_chosen').remove().end();
+      $clone.find('option').remove().end();
+      var $children = $clone.children();
+      console.log($clone);
+      var $fieldId = 'id_indField_' + $n;
+      var $fieldName = 'indField_' + $n;
+      var $valId = 'id_indValue_' + $n;
+      var $valName = 'indValue_' + $n;
+      $children[0].setAttribute('id', $fieldId);
+      $children[0].setAttribute('name', $fieldName);
+      $children[1].setAttribute('id', $valId);
+      $children[1].setAttribute('name', $valName);
+      $children[1].removeAttribute('style');
+
+      populateAdditionalFieldNames($children[0], $n-1);
+      $n = $n + 1;
+      $clone.append(" <button type='button' class='btn remove-row'>-</button>");
+      //console.log($clone);
+      $clone.insertBefore(".add-fields");
+
+
+      $('#' + $fieldId).change(populateYValNames);
+      $('#' + $fieldId).val('').end();
+
+    //  $('#' + $valId).trigger('chosen:updated');
+    //  $('#' + $valId).chosen();
+
+    }
+    else{
+      console.log('NO!!');
+    }
   });
   $(document).on("click", ".remove-row", function(){
     $(this).parent().remove();

@@ -169,6 +169,7 @@ urlpatterns = [
     #value table views
     path('values/', ValueTableView.as_view(), name='value_table'),
     path('ajax/value-names/', ajax_value_table_view, name='ajax_value_names'),
+    path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 js_info_dict = {

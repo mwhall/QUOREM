@@ -2,7 +2,10 @@
 <div class="row">
     <div class="col-md-12 col-md-offset-3">
       <!-- action="{{ action }}" -->
-        <form action="{{ url( action ) }}" method="POST" id="msform" data-x-url="{{ url('ajax_value_names') }}" data-y-url="{{ url('ajax_trend_y_options')}}">
+        <form action="{{ url( action ) }}" method="POST" id="msform"
+              data-x-url="{{ url('ajax_value_names') }}"
+              data-y-url="{{ url('ajax_value_names') }}"
+              data-y-name-url="{{ url('ajax_field_names_y') }}">
             {% csrf_token %}
             <!-- progressbar -->
             <ul id="progressbar">
@@ -25,7 +28,7 @@
                 {% endfor %}
               </div>
               {% if fieldset.description =="Select Independant" %}
-              <button class="btn btn-info add-fields">Select More</button>
+              <button type="button" class="btn btn-info add-fields">Select More</button>
               {% endif %}
 
               {% if not loop.first %}

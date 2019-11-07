@@ -28,7 +28,7 @@ from django_jinja_knockout.views import (
 
 import django_tables2 as tables
 import io
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from .formatters import guess_filetype
 from .models import (
@@ -53,7 +53,7 @@ from .forms import *
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, ValueTableForm
 )
 """
-from .utils import barchart_html, trendchart_html
+from .utils import barchart_html, trendchart_html, value_table_html
 
 import pandas as pd
 import numpy as np
@@ -1010,7 +1010,7 @@ def ajax_aggregates_meta_view(request):
 class ValueTableView(FormView):
     template_name="search/value_tables.htm"
     form_class = ValueTableForm
-    action = "plot_trend" #change this after
+    action = 'value_table' #change this after
     success_url = '/values/'
 
     def get_context_data(self, *args, **kwargs):
@@ -1018,8 +1018,36 @@ class ValueTableView(FormView):
         context['action'] = self.action
         return context
 
+    def form_invalid(self, form):
+        print(form.errors)
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        print("form Valid!")
+        req = self.request.POST
+        x_selected = {}
+        y_selected = {}
+        x_selected[req.get('depField')] = req.getlist('depValue')
+        i = 0
+        key_name = 'indField_%s' % (i,)
+        print(req)
+        while req.get(key_name):
+            val_name = 'indValue_%s' % (i,)
+            y_selected[req.get(key_name)] = req.getlist(val_name)
+            i += 1
+            key_name = 'indField_%s' % i
+
+        html = value_table_html(x_selected, y_selected)
+        """
+        inv = req.getlist('invField')
+        html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
+                            req.getlist('metaValueField'))
+        """
+        return render(self.request, 'search/value_tables.htm', {'table': html, 'action': self.action, 'form':self.form_class()})
+
 #ajax view for populating Value Names based on Selected Model
 def ajax_value_table_view(request):
+    print("value name view was accessed")
     klass_map = {'1': (Investigation, 'investigations__in'),
                  '2': (Sample, 'samples__in'),
                  '3': (Feature, 'features__in'),
@@ -1036,7 +1064,43 @@ def ajax_value_table_view(request):
 
     return render(request, 'search/ajax_value_names.htm', {'qs': qs})
 
+def ajax_value_table_related_models_view(request):
+    #translate from input to query
+    klass_map = {'1': (Investigation, 'investigations__in'),
+                 '2': (Sample, 'samples__in'),
+                 '3': (Feature, 'features__in'),
+                 '4': (Step, 'steps__in'),
+                 '5': (Process, 'processes__in'),
+                 '6': (Analysis, 'analyses__in'),
+                 '7': (Result, 'results__in'),}
+    #use to populate form from results of this view
+    reverse_klass_map = {'investigations': ('1', 'Investigation'),
+                         'samples': ('2', 'Sample'),
+                         'features': ('3', 'Feature'),
+                         'steps': ('4', 'Step'),
+                         'processes': ('5', 'Process'),
+                         'analyses': ('6', 'Analysis'),
+                         'results': ('7', "Results"),
+                        }
 
+    klass_tuple = klass_map[request.GET.get('object_klass')]
+    klass = klass_tuple[0]
+    q = klass_tuple[1]
+    value_names = request.GET.getlist('vals[]') #getlist?
+    vqs = Value.objects.filter(**{q:klass.objects.all()}, name__in=value_names)
+    dd = defaultdict(set)
+    for val in vqs:
+        links_dict = val.get_links()
+        for key, value in links_dict.items():
+            dd[key].update(value)
+    linked_objects = dict(dd)
+    # Right now have a dict of all possible objects.
+    # Current logic prevents using more than just the names, so use them for now.
+    klasses = list(linked_objects.keys())
+    klass_list = [reverse_klass_map[k] for k in klasses]
+
+    #pass the class list to html snippet, which will be used to populate form
+    return render(request, 'search/ajax_value_names_y.htm', {'options': klass_list})
 
 class PlotTrendView(FormView):
     template_name="analyze/plot_trend.htm"
