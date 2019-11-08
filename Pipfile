@@ -24,7 +24,6 @@ Django = "==2.2.4"
 django-autocomplete-light = "==3.3.0"
 combomethod = "==1.0.12"
 arrow = "==0.13.1"
-q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor.git", ref="q2-extractor"}
-
+q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor.git", ref="master"}
 [requires]
 python_version = "3.7"
