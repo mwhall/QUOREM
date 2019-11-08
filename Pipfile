@@ -19,12 +19,12 @@ django-cors-headers = "==3.0.2"
 plotly = "==4.0.0"
 djk-ui = {editable = true,git = "https://github.com/Dmitri-Sintsov/djk-bootstrap4.git"}
 django-jinja-knockout = {editable = true,git = "https://github.com/Dmitri-Sintsov/django-jinja-knockout.git",ref = "v0.8.0"}
-q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor.git"}
 django-wiki = {editable = true,git = "https://github.com/django-wiki/django-wiki.git"}
 Django = "==2.2.4"
 django-autocomplete-light = "==3.3.0"
 combomethod = "==1.0.12"
 arrow = "==0.13.1"
+q2-extractor = {editable = true,git = "https://github.com/beiko-lab/q2-extractor.git"}
 
 [requires]
 python_version = "3.7"
