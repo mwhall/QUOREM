@@ -13,5 +13,5 @@ plotly==4.0.0
 selenium == 3.141.0
 -e git+https://github.com/Dmitri-Sintsov/djk-bootstrap4.git#egg=djk_ui
 -e git+https://github.com/Dmitri-Sintsov/django-jinja-knockout.git@v0.8.0#egg=django-jinja-knockout
--e git+https://github.com/beiko-lab/q2-extractor.git@master#egg=q2-extractor
+-e git+https://github.com/beiko-lab/q2-extractor.git#egg=q2_extractor
 -e git+https://github.com/django-wiki/django-wiki.git#egg=django-wiki
