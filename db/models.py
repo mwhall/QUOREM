@@ -2,7 +2,7 @@ from collections import defaultdict
 import logging
 import itertools
 
-from django.db import models
+from django.db import models, transaction
 from django.core import files
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -903,26 +903,31 @@ class Value(models.Model):
         # - All Measures must be linked to a Result, as a measure without a Result is metadata that has no provenance
         # Build up kwargs for all items in the table
         _id_fields = id_fields()
-        for idx, series in input_table.iterrows():
-            series = series.dropna()
-            value_name = series["value_name"]
-            if sum([x in series for x in Result.get_id_fields()]) == 0:
-                if log is not None:
-                    log.error("Line %d: Measure %s requires a Result", idx, value_name)
-                continue
-            value = series["value"]
-            targets = [series[x] for x in series.dropna().index if x.startswith("value_target")]
-            target_ids = series[[x for x in series.index if (x.split("_")[0] in targets) and (x in _id_fields)]]
-            links = defaultdict(list)
-            for field, target_id in target_ids.items():
-                links[field].append(target_id)
-            linked_to = [Obj.get_queryset(links) for Obj in object_list]
-            if cls._in_table(database_table, value_name, "measure", linked_to=linked_to):
-                if not cls._in_table(database_table, value_name, "measure", value, linked_to):
-                    log.error("Line %d: Value mismatch, did not overwrite Value\
-                               Name %s Type %s value %s, linked to %s" % (idx, value_name, "measure", str(value), str(linked_to)))
-            else:
-                cls.create_value(value_name, "measure", value, linked_to)
+        model_cache = {}
+        with transaction.atomic():
+            for idx, series in input_table.iterrows():
+                series = series.dropna()
+                value_name = series["value_name"]
+                if sum([x in series for x in Result.get_id_fields()]) == 0:
+                    if log is not None:
+                        log.error("Line %d: Measure %s requires a Result", idx, value_name)
+                    continue
+                value = series["value"]
+                targets = [series[x] for x in series.index if x.startswith("value_target")]
+                target_ids = series[[x for x in series.index if (x.split("_")[0] in targets) and (x in _id_fields)]]
+                links = defaultdict(list)
+                for field, target_id in target_ids.items():
+                    links[field].append(target_id)
+                linked_to = [Obj.get_queryset(links) for Obj in object_list] #NOTE: This could be the slowest bit here... Pass 
+                if cls._in_table(database_table, value_name, "measure", linked_to=linked_to):
+                    if not cls._in_table(database_table, value_name, "measure", value, linked_to):
+                        log.error("Line %d: Value mismatch, did not overwrite Value\
+                                   Name %s Type %s value %s, linked to %s" % (idx, value_name, "measure", str(value), str(linked_to)))
+                else:
+                    if value_name not in model_cache:
+                        model = cls.infer_type(value_name, "measure", value)
+                        model_cache[value_name] = model
+                    cls.create_value(value_name, "measure", value, linked_to, value_model=model_cache[value_name])
 
 
     @classmethod
@@ -934,6 +939,7 @@ class Value(models.Model):
         # - Grab all Objects referenced, then from theoretically smallest to largest table, search in those Objects for those Metadata linked to it
         # - If not found, make it and remove it from the proposed list
         _id_fields = id_fields()
+        model_cache = {}
         for idx, series in input_table.iterrows():
             series = series.dropna()
             value_name = series["value_name"]
@@ -949,7 +955,10 @@ class Value(models.Model):
                     log.error("Line %d: Value mismatch, did not overwrite Value\
                                Name %s Type %s value %s, linked to %s" % (idx, value_name, "metadata", str(value), str(linked_to)))
             else:
-                cls.create_value(value_name, "metadata", value, linked_to)
+                if value_name not in model_cache:
+                    model = cls.infer_type(value_name, "metadata", value)
+                    model_cache[value_name] = model
+                cls.create_value(value_name, "metadata", value, linked_to, value_model=model_cache[value_name])
 
     @classmethod
     def _table_queryset(cls, table):
@@ -974,7 +983,7 @@ class Value(models.Model):
         for val_qs in [Value.objects.filter(**{obj_qs.model.plural_name+"__in": obj_qs}) for obj_qs in table_objects]:
             all_vals = all_vals | val_qs
         print("Aggregating all info")
-        database_value_table = Value.queryset_to_table(all_vals, indexes="pk")
+        database_value_table = Value.queryset_to_table(all_vals, indexes=["pk"])
         print("Params")
         cls.add_parameters(table[table["value_type"]=="parameter"], database_value_table, log)
         print("Measures")

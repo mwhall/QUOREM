@@ -1,9 +1,8 @@
 from django.core.management.base import BaseCommand, CommandError
 from db.models import File, Analysis, UserProfile
-from db.tasks import react_to_file
 from django.conf import settings
 from django.core import files
-
+from celery import current_app
 class Command(BaseCommand):
     help = "Ingest an artifact through the shell, rather than the UI"
 
@@ -21,5 +20,6 @@ class Command(BaseCommand):
         upfile = File(upload_type="A", userprofile=UserProfile.objects.first())
         upfile.upload_file = files.File(artifact, name=artifact.name.split("/")[-1])
         upfile.save()
-        react_to_file(upfile.pk, analysis_pk=analysis.pk, register_provenance=register_provenance)
+        current_app.send_task('db.tasks.react_to_file', (upfile.pk,), kwargs={'analysis_pk': analysis.pk,
+                                                                              'register_provenance': register_provenance})
         
