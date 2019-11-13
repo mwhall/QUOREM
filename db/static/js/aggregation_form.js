@@ -249,7 +249,6 @@ function populateYFieldNames(){
     },
     success: function(data){
       console.log('success populate y names');
-      console.log(data);
       $('#id_indField_0').html(data);
     }
   });
@@ -261,11 +260,12 @@ function populateAdditionalFieldNames(e, n){
   console.log('sanity');
   console.log(e);
   var previousSelect = '#id_indField_' + n;
-  var options = document.querySelector(previousSelect).options
+  var options = document.querySelector(previousSelect).options;
   var selected = $( previousSelect ).val();
   var optcop = $( options ).clone();
+  $(e).empty();
   for (var i = 0; i < optcop.length; i++){
-    if ($(optcop[i]).val() != selected){
+    if ($(optcop[i]).val() != selected && $(optcop[i]).val() != ""){
       e.options.add(optcop[i],);
     }
   }
@@ -283,14 +283,22 @@ function populateYValNames(e){
       'object_klass': object_klass,
     },
     success: function(data){
-      console.log("Success populate y val");
       $( valId ).html(data);
       $( valId ).trigger('chosen:updated');
       $( valId ).chosen();
     }
   });
 }
-
+//when you select on object, change what's available downstream
+function updateDownstreamFields(e){
+  console.log('blep');
+  var indFields = $('*[id^="id_indField"]');
+  var n = parseInt(this.id.split("_")[2]);
+  for (var i = n+1; i < indFields.length; i++){
+    populateAdditionalFieldNames(indFields[i], i-1);
+    populateYValNames(indFields[i]);
+  }
+}
 
 
 $("#id_depField").change(populateXValNames);
@@ -310,10 +318,12 @@ $(document).ready(function(){
   $('#id_indValue').attr("id", "id_indValue_0");
 
   $('#id_indField_0').change(populateYValNames);
+  $('#id_indField_0').change(updateDownstreamFields);
+
 
   $(".add-fields").click(function(){
     var n_opts = document.getElementById('id_indField_0').options.length;
-    if (n_opts > $n){
+    if (n_opts -1 > $n ){
       var $clone = $( "div.form-fields" ).first().clone();
       $clone.find('#id_indValue_0_chosen').remove().end();
       $clone.find('option').remove().end();
@@ -337,6 +347,7 @@ $(document).ready(function(){
 
 
       $('#' + $fieldId).change(populateYValNames);
+      $('#' + $fieldId).change(updateDownstreamFields);
       $('#' + $fieldId).val('').end();
 
     //  $('#' + $valId).trigger('chosen:updated');
