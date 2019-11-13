@@ -296,7 +296,7 @@ function updateDownstreamFields(e){
   var n = parseInt(this.id.split("_")[2]);
   for (var i = n+1; i < indFields.length; i++){
     populateAdditionalFieldNames(indFields[i], i-1);
-    populateYValNames(indFields[i]);
+  //  populateYValNames(indFields[i]);
   }
 }
 
