@@ -471,6 +471,7 @@ class TrendPlotForm(forms.Form):
 class ValueTableForm(forms.Form):
     #need a field for choosing a dependant variable
     CHOICES = [
+                ('', "Select..."),
                 ('1', 'Investigation'),
                 ('2', 'Sample'),
                 ('3', 'Feature'),

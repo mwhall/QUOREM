@@ -1098,7 +1098,7 @@ def ajax_value_table_related_models_view(request):
     # Current logic prevents using more than just the names, so use them for now.
     klasses = list(linked_objects.keys())
     klass_list = [reverse_klass_map[k] for k in klasses]
-
+    klass_list.insert(0, ('', "Select..."))
     #pass the class list to html snippet, which will be used to populate form
     return render(request, 'search/ajax_value_names_y.htm', {'options': klass_list})
 
