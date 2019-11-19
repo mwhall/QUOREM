@@ -3,6 +3,7 @@ accounts/__pycache__/*
 backup.json
 db/migrations/*
 db/__pycache__/*
+db/models/__pycache__/*
 diagrams/
 imr_biological_replicate_protocol.csv
 *.ipynb
