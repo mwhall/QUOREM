@@ -1,8 +1,9 @@
 from collections import OrderedDict
 from django_jinja_knockout.views import KoGridView, KoGridInline
 
-from .models import Investigation, Sample, Step
 from .forms import ProcessForm, SampleForm
+
+from db.models import *
 
 class InvestigationGridView(KoGridView):
     model = Investigation

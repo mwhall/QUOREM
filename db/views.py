@@ -8,7 +8,7 @@ from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
-from django.db import models
+from django.db import models, utils
 from django.http import Http404
 from django.http import HttpResponseRedirect
 from django.contrib.contenttypes.models import ContentType
@@ -31,11 +31,8 @@ import io
 from collections import OrderedDict, defaultdict
 
 from .formatters import guess_filetype
-from .models import (
-        Sample, Investigation, Process, Analysis,
-        Step, Result, Feature, Value, Category,
-        File, load_mixed_objects, UserProfile, UserMail
-)
+
+from db.models import *
 
 from .forms import *
 """
@@ -350,32 +347,44 @@ class ProcessList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
+def get_unique_results():
+    try:
+        return [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")]
+    except utils.ProgrammingError:
+        return []
+
+def get_unique_steps():
+    try:
+        return [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")]
+    except utils.ProgrammingError:
+        return []
+
 class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    def __init__(self, *args, **kwargs):
-        self.allowed_filter_fields = OrderedDict([('type',
-                {
-                    'type': 'choices',
-                    'choices': [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")],
-                    # Do not display 'All' choice which resets the filter:
-                    # List of choices that are active by default:
-                    'active_choices': [],
-                    # Do not allow to select multiple choices:
-                }),
-                ('source_step',
-                {
-                    'type': 'choices',
-                    'choices': [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")],
-                    # Do not display 'All' choice which resets the filter:
-                    # List of choices that are active by default:
-                    'active_choices': [],
-                    # Do not allow to select multiple choices:
-                })])
-        super(ResultList, self).__init__(*args, **kwargs)
-
     grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'file']
+    allowed_filter_fields = OrderedDict([('type',
+           {
+               'type': 'choices',
+               'choices': get_unique_results(),
+               # Do not display 'All' choice which resets the filter:
+               # List of choices that are active by default:
+               'active_choices': [],
+               # Do not allow to select multiple choices:
+           }),
+           ('source_step',
+           {
+               'type': 'choices',
+               'choices': get_unique_steps(),
+               # Do not display 'All' choice which resets the filter:
+               # List of choices that are active by default:
+               'active_choices': [],
+               # Do not allow to select multiple choices:
+           })])
+
+    def __init__(self, *args, **kwargs):
+        super(ResultList, self).__init__(*args, **kwargs)
 
     def get_heading(self):
         return "Result List"
