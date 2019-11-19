@@ -1,4 +1,6 @@
 from django.db import models
+from django.apps import apps
+
 #for searching
 from django.contrib.postgres.search import SearchVector
 
@@ -22,8 +24,8 @@ class Step(Object):
     categories = models.ManyToManyField('Category', related_name='steps', blank=True)
 
     @classmethod
-    def update_search_vector(self):
-        Step.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector= (SearchVector('name', weight='A') +
                             SearchVector('description', weight='B'))
         )
@@ -39,25 +41,25 @@ class Step(Object):
         return parameters
 
     def related_samples(self, upstream=False):
-        samples = Sample.objects.filter(source_step__pk=self.pk)
+        samples = apps.get_model("db", "Sample").objects.filter(source_step__pk=self.pk)
         if upstream:
-            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+            samples = samples | apps.get_model("db", "Sample").objects.filter(pk__in=self.samples.values("all_upstream").distinct())
         return samples
 
     def related_processes(self, upstream=False):
         processes = self.processes.all()
         if upstream:
-            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+            processes = processes | apps.get_model("db", "Process").objects.filter(pk__in=processes.values("all_upstream").distinct())
         return processes
 
     def related_analyses(self):
         # SQL Depth: 2
-        return Analysis.objects.filter(extra_steps__pk=self.pk,
+        return apps.get_model("db", "Analysis").objects.filter(extra_steps__pk=self.pk,
                                        process__in=self.related_processes()).distinct()
 
     def related_results(self, upstream=False):
         # Results ejected from this step
-        results = Result.objects.filter(source_step__pk=self.pk)
+        results = apps.get_model("db", "Result").objects.filter(source_step__pk=self.pk)
         if upstream:
-            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+            results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results

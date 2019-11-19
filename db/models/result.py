@@ -5,6 +5,8 @@ from django.urls import reverse
 #for searching
 from django.contrib.postgres.search import SearchVector
 
+from django.apps import apps
+
 from db.models.object import Object
 
 class Result(Object):
@@ -44,8 +46,8 @@ class Result(Object):
                                  self.type + " from " + self.source_step.name))
 
     @classmethod
-    def update_search_vector(self):
-        Result.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector= (SearchVector('source', weight='A') +
                             SearchVector('type', weight='B') +
                             SearchVector('uuid', weight='C'))
@@ -65,7 +67,7 @@ class Result(Object):
     def related_samples(self, upstream=False):
         samples = self.samples.all()
         if upstream:
-            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+            samples = samples | apps.get_model("db", "Sample").objects.filter(pk__in=self.samples.values("all_upstream").distinct())
         return samples
 
     def related_features(self):
@@ -73,17 +75,17 @@ class Result(Object):
 
     def related_steps(self, upstream=False):
         if not self.source_step:
-            return Step.objects.none()
-        steps = Step.objects.filter(pk=self.source_step.pk)
+            return apps.get_model("db", "Step").objects.none()
+        steps = apps.get_model("db", "Step").objects.filter(pk=self.source_step.pk)
         if upstream:
-            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+            steps = steps | apps.get_model("db", "Step").objects.filter(pk__in=steps.values("all_upstream").distinct())
         return steps
 
     def related_processes(self, upstream=False):
-        processes = Process.objects.filter(pk=self.analysis.process.pk)
+        processes = apps.get_model("db", "Process").objects.filter(pk=self.analysis.process.pk)
         if upstream:
-            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+            processes = processes | apps.get_model("db", "Process").objects.filter(pk__in=processes.values("all_upstream").distinct())
         return processes
 
     def related_analyses(self):
-        return Analysis.objects.filter(pk=self.analysis.pk)
+        return apps.get_model("db", "Analysis").objects.filter(pk=self.analysis.pk)

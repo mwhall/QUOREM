@@ -1,5 +1,6 @@
 from collections import defaultdict
 from django.db import models
+from django.apps import apps
 
 #for searching
 from django.contrib.postgres.search import SearchVector
@@ -25,8 +26,8 @@ class Analysis(Object):
     categories = models.ManyToManyField('Category', related_name='analyses', blank=True)
 
     @classmethod
-    def update_search_vector(self):
-        Analysis.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector= (SearchVector('name', weight='A') +
                             SearchVector('date', weight='B') +
                             SearchVector('location', weight='C'))
@@ -37,7 +38,7 @@ class Analysis(Object):
         # including the extra ones
         parameters = defaultdict(dict)
         if steps != []:
-            steps = [Step.objects.filter(name__in=steps)]
+            steps = [apps.get_model("db", "Step").objects.filter(name__in=steps)]
         else:
             steps = [self.process.steps, self.extra_steps]
         for step_queryset in steps:
@@ -53,24 +54,24 @@ class Analysis(Object):
 
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
-        samples = Sample.objects.filter(pk__in=self.results.values("samples").distinct())
+        samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())
         if upstream:
-            samples = samples | Sample.objects.filter(pk__in=self.samples.values("all_upstream").distinct())
+            samples = samples | apps.get_model("db", "Sample").objects.filter(pk__in=self.samples.values("all_upstream").distinct())
         return samples
 
     def related_steps(self, upstream=False):
         steps = self.extra_steps.all() | self.process.steps.all()
         if upstream:
-            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+            steps = steps | apps.get_model("db", "Step").objects.filter(pk__in=steps.values("all_upstream").distinct())
         return steps
 
     def related_processes(self, upstream=False):
-        results = Process.objects.filter(pk=self.process.pk)
+        results = apps.get_model("db", "Process").objects.filter(pk=self.process.pk)
         if upstream:
-            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+            processes = processes | apps.get_model("db", "Process").objects.filter(pk__in=processes.values("all_upstream").distinct())
         return processes
 
     def related_results(self, upstream=False):
         results = self.results.all()
         if upstream:
-            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+            results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())

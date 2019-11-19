@@ -14,6 +14,9 @@ import numpy as np
 import arrow
 import uuid
 
+from .value_types import *
+from .register import object_list, value_list
+
 class Value(models.Model):
     base_name = "value"
     plural_name = "values"
@@ -491,8 +494,8 @@ class Value(models.Model):
             return None
 
     @classmethod
-    def update_search_vector(self):
-        Value.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector= (SearchVector('name', weight='A') +
 #                            SearchVector('', weight='B') +
                             SearchVector('type', weight='B'))

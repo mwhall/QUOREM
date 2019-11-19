@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
+from django.apps import apps
 
 #for searching
 from django.contrib.postgres.search import SearchVectorField
@@ -87,8 +88,8 @@ class Object(models.Model):
 
     def get_upstream_values(self, name, value_type):
         if not self.has_upstream:
-            return Value.objects.none()
-        return Value.objects.filter(pk__in=self.all_upstream.values("values__pk"))
+            return apps.get_model("db", "Value").objects.none()
+        return apps.get_model("db", "Value").objects.filter(pk__in=self.all_upstream.values("values__pk"))
 
     @combomethod
     def with_value(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
@@ -155,38 +156,38 @@ class Object(models.Model):
     # Default search methods, using only internal methods
     # At least one of these has to be overridden
     def related_samples(self, upstream=False):
-        samples = Sample.objects.filter(source_step__in=self.related_steps(upstream=upstream)).distinct()
+        samples = apps.get_model("db", "Sample").objects.filter(source_step__in=self.related_steps(upstream=upstream)).distinct()
         if upstream:
-            samples = samples | Sample.objects.filter(pk__in=samples.values("all_upstream").distinct())
+            samples = samples | apps.get_model("db", "Sample").objects.filter(pk__in=samples.values("all_upstream").distinct())
         return samples
 
     def related_processes(self, upstream=False):
-        processes = Process.objects.filter(pk__in=self.related_steps(upstream=upstream).values("processes").distinct())
+        processes = apps.get_model("db", "Process").objects.filter(pk__in=self.related_steps(upstream=upstream).values("processes").distinct())
         if upstream:
-            processes = processes | Process.objects.filter(pk__in=processes.values("all_upstream").distinct())
+            processes = processes | apps.get_model("db", "Process").objects.filter(pk__in=processes.values("all_upstream").distinct())
         return processes
 
     def related_features(self):
-        return Feature.objects.filter(samples__in=self.related_samples()).distinct()
+        return apps.get_model("db", "Feature").objects.filter(samples__in=self.related_samples()).distinct()
 
     def related_steps(self, upstream=False):
         # Return the source_step for each sample
-        steps = Step.objects.filter(pk__in=self.related_samples(upstream=upstream).values("source_step").distinct())
+        steps = apps.get_model("db", "Step").objects.filter(pk__in=self.related_samples(upstream=upstream).values("source_step").distinct())
         if upstream:
-            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+            steps = steps | apps.get_model("db", "Step").objects.filter(pk__in=steps.values("all_upstream").distinct())
         return steps
 
     def related_analyses(self):
-        return Analysis.objects.filter(results__in=self.related_results()).distinct()
+        return apps.get_model("db", "Analysis").objects.filter(results__in=self.related_results()).distinct()
 
     def related_results(self, upstream=False):
-        results = Result.objects.filter(samples__in=self.related_samples(upstream=upstream)).distinct()
+        results = apps.get_model("db", "Result").objects.filter(samples__in=self.related_samples(upstream=upstream)).distinct()
         if upstream:
-            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+            results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results
 
     def related_investigations(self):
-        return Investigation.objects.filter(samples__in=self.related_samples()).distinct()
+        return apps.get_model("db", "Investigation").objects.filter(samples__in=self.related_samples()).distinct()
 
     # Generic wrapper so we can get objects by string name instead of use getattr or something
     def related_objects(self, object_name, upstream=False):

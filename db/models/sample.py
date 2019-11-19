@@ -1,4 +1,5 @@
 from django.db import models
+from django.apps import apps
 
 #for searching
 from django.contrib.postgres.search import SearchVector
@@ -25,8 +26,8 @@ class Sample(Object):
 
 
     @classmethod
-    def update_search_vector(self):
-        Sample.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector = (SearchVector('name', weight= 'A') #+
                              # Should be investigation name, not pk.
                              # SearchVector('investigation', weight = 'B')
@@ -41,15 +42,15 @@ class Sample(Object):
         return self.features.all()
 
     def related_steps(self, upstream=False):
-        steps = Step.objects.filter(pk=self.source_step.pk)
+        steps = apps.get_model("db", "Step").objects.filter(pk=self.source_step.pk)
         if upstream:
-            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+            steps = steps | apps.get_model("db", "Step").objects.filter(pk__in=steps.values("all_upstream").distinct())
         return steps
 
     def related_results(self, upstream=False):
         # SQL Depth: 1
         results = self.results.all()
         if upstream:
-            results = results | Result.objects.filter(pk__in=results.values("all_upstream").distinct())
+            results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results.distinct()
 

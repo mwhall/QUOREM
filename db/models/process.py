@@ -1,6 +1,8 @@
 from collections import defaultdict
 
 from django.db import models
+from django.apps import apps
+
 #for searching
 from django.contrib.postgres.search import SearchVector
 
@@ -25,8 +27,8 @@ class Process(Object):
     categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
     @classmethod
-    def update_search_vector(self):
-        Process.objects.update(
+    def update_search_vector(cls):
+        cls.objects.update(
             search_vector = (SearchVector('name', weight='A') +
                              SearchVector('citation', weight='B') +
                              SearchVector('description', weight='C'))
@@ -37,7 +39,7 @@ class Process(Object):
         # including the extra ones
         parameters = defaultdict(dict)
         if steps != []:
-            steps = Step.objects.filter(name__in=steps)
+            steps = apps.get_model("db", "Step").objects.filter(name__in=steps)
         else:
             steps = self.steps
         for step in steps.all():
@@ -52,7 +54,7 @@ class Process(Object):
     def related_steps(self, upstream=False):
         steps = self.steps.all()
         if upstream:
-            steps = steps | Step.objects.filter(pk__in=steps.values("all_upstream").distinct())
+            steps = steps | apps.get_model("db", "Step").objects.filter(pk__in=steps.values("all_upstream").distinct())
         return steps
 
     def related_analyses(self):

@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from . import object_list, value_list
+from .register import object_list, value_list
 
 def all_fields():
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
