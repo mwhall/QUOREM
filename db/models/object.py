@@ -42,7 +42,7 @@ class Object(models.Model):
     gv_node_style = {}
 
     search_vector = SearchVectorField(blank=True,null=True)
-    created_by = models.ForeignKey(User, on_delete="CASCADE")
+    created_by = models.ForeignKey(User, on_delete="CASCADE",blank=True,null=True)
 
     class Meta:
         abstract = True
@@ -260,6 +260,7 @@ class Object(models.Model):
         found_ids = [str(x) for x in cls_queryset.values_list(cls.id_field, flat=True)]
         # If the id field is found in data, iterate over the ids
         ref_objects = defaultdict(dict)
+        object_list = Object.get_object_classes()
         for _id in ids:
             # Check if the id exists in the database, according to our previous query
             if isinstance(_id, int):
@@ -278,19 +279,21 @@ class Object(models.Model):
                             ref_id = data[field][0]
                         # Grab it as a query
                         ref_model = [x[2] for x in ref_fields if x[0]==field][0]
-                        if (ref_id in ref_objects[ref_model.base_name]):
-                            obj = ref_objects[ref_model.base_name][ref_id]
-                        else:
-                            if isinstance(ref_id, int):
-                                ref_id_field = "id"
+                        #Only grab Objects
+                        if hasattr(ref_model, "base_name"):
+                            if (ref_id in ref_objects[ref_model.base_name]):
+                                obj = ref_objects[ref_model.base_name][ref_id]
                             else:
-                                ref_id_field = ref_model.id_field
-                            try:
-                                obj = ref_model.objects.get(**{ref_id_field: ref_id})
-                                ref_objects[ref_model.base_name][ref_id] = obj
-                            except:
-                                raise ValueError("initialize %s: Cannot find referenced required %s '%s'" % (cls.base_name, ref_model.base_name, ref_id))
-                        kwargs[django_field] = obj
+                                if isinstance(ref_id, int):
+                                    ref_id_field = "id"
+                                else:
+                                    ref_id_field = ref_model.id_field
+                                try:
+                                    obj = ref_model.objects.get(**{ref_id_field: ref_id})
+                                    ref_objects[ref_model.base_name][ref_id] = obj
+                                except:
+                                    raise ValueError("initialize %s: Cannot find referenced required %s '%s'" % (cls.base_name, ref_model.base_name, ref_id))
+                            kwargs[django_field] = obj
                     elif django_field != cls.id_field:
                         kwargs[django_field] = data[field][0]
                 new_obj = cls()
@@ -315,6 +318,7 @@ class Object(models.Model):
         cls_queryset = cls.get_queryset(data)
         # If the id field is found in data, iterate over the ids
         obj_id_in_data = [ x for x in _id_fields if x.startswith(cls.base_name) and (x in data)]
+        object_list = Object.get_object_classes()
         for id_field in obj_id_in_data:
             for _id in data[id_field]:
                 # Check if the id exists in the database, according to our previous query
@@ -344,48 +348,49 @@ class Object(models.Model):
                             # If it is a reference, we need to fetch it, then set it
                             # We also need to translate reverse fields into their ID fields
                             ref_model = [x[2] for x in ref_fields if x[0]==field][0]
-                            proxy_fields.append(field)
-                            for search_field in proxy_fields:
-                                if search_field in data:
-                                    for ref_id in data[search_field]:
-                                        if isinstance(ref_id, int):
-                                            ref_id_field = "id"
-                                        else:
-                                            ref_id_field = ref_model.id_field
-                                        try:
-                                            ref_obj = ref_model.objects.get(**{ref_id_field: ref_id})
-                                        except:
-                                            #TODO: Set this to a warning?
-                                            raise ValueError("update: Cannot find referenced %s '%s'" % (ref_model.base_name, ref_id))
-                                        if field in [x[0] for x in many_ref_fields]:
-                                            getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
-                                            if field == cls.base_name + "_upstream":
-                                                # In order to update the symmetrical
-                                                # all_upstream/all_downstream fields
-                                                # we add ref_obj to upstream and all_upstream
-                                                # then we add all of ref_obj's upstream to
-                                                # obj, and all of obj's downstream to
-                                                # ref_obj's downstream
-                                                # and then we have to update the cross
-                                                # references of all other steps to one
-                                                # another, saving as we let variables go
-                                                obj.all_upstream.add(ref_obj)
-                                                upstream_qs = ref_obj.all_upstream.all()
-                                                downstream_qs = obj.all_downstream.all()
-                                                obj.all_upstream.add(*upstream_qs)
-                                                ref_obj.all_downstream.add(*downstream_qs)
-                                                ref_obj.save()
-                                                for down_obj in downstream_qs:
-                                                    for up_obj in upstream_qs:
-                                                        down_obj.all_upstream.add(up_obj)
-                                                    down_obj.save()
-                                        else:
-                                            if (db_datum == "") or (db_datum == None):
-                                                setattr(obj, field.replace(cls.base_name+"_",""), ref_obj)
-                                                #TODO: Set else to a warning? Overwrite?
-                            #elif datum != data[field]:
-                        #    pass
-                            #TODO: Add a warning that it didn't overwrite
+                            if hasattr(ref_model, "base_name"):
+                                proxy_fields.append(field)
+                                for search_field in proxy_fields:
+                                    if search_field in data:
+                                        for ref_id in data[search_field]:
+                                            if isinstance(ref_id, int):
+                                                ref_id_field = "id"
+                                            else:
+                                                ref_id_field = ref_model.id_field
+                                            try:
+                                                ref_obj = ref_model.objects.get(**{ref_id_field: ref_id})
+                                            except:
+                                                #TODO: Set this to a warning?
+                                                raise ValueError("update: Cannot find referenced %s '%s'" % (ref_model.base_name, ref_id))
+                                            if field in [x[0] for x in many_ref_fields]:
+                                                getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
+                                                if field == cls.base_name + "_upstream":
+                                                    # In order to update the symmetrical
+                                                    # all_upstream/all_downstream fields
+                                                    # we add ref_obj to upstream and all_upstream
+                                                    # then we add all of ref_obj's upstream to
+                                                    # obj, and all of obj's downstream to
+                                                    # ref_obj's downstream
+                                                    # and then we have to update the cross
+                                                    # references of all other steps to one
+                                                    # another, saving as we let variables go
+                                                    obj.all_upstream.add(ref_obj)
+                                                    upstream_qs = ref_obj.all_upstream.all()
+                                                    downstream_qs = obj.all_downstream.all()
+                                                    obj.all_upstream.add(*upstream_qs)
+                                                    ref_obj.all_downstream.add(*downstream_qs)
+                                                    ref_obj.save()
+                                                    for down_obj in downstream_qs:
+                                                        for up_obj in upstream_qs:
+                                                            down_obj.all_upstream.add(up_obj)
+                                                        down_obj.save()
+                                            else:
+                                                if (db_datum == "") or (db_datum == None):
+                                                    setattr(obj, field.replace(cls.base_name+"_",""), ref_obj)
+                                                    #TODO: Set else to a warning? Overwrite?
+                                #elif datum != data[field]:
+                            #    pass
+                                #TODO: Add a warning that it didn't overwrite
                     obj.save()
 
     def get_node_attrs(self, values=True):
@@ -442,6 +447,75 @@ class Object(models.Model):
                     edges.add((str(obj.pk), str(ds.pk)))
         dot.edges(list(edges))
         return dot
+
+    @classmethod
+    def get_object_classes(cls):
+        return cls.__subclasses__()
+
+def all_fields():
+    object_list = Object.get_object_classes()
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if (x.name not in ["search_vector", "content_type", \
+                     "all_upstream", "object_id", "category_of"]) and \
+                     x.concrete] for Obj in object_list] for item in sublist]
+
+def id_fields():
+    object_list = Object.get_object_classes()
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if (x.name in ["id", "name", "uuid"]) and (x.concrete)] \
+                         for Obj in object_list] for item in sublist]
+
+def required_fields():
+    object_list = Object.get_object_classes()
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
+                 for x in Obj._meta.get_fields() \
+                     if x.name not in ["search_vector", "content_type", \
+                                    "object_id", "category_of"] and x.concrete \
+                     and hasattr(x,"blank") and not x.blank] \
+                         for Obj in object_list] for item in sublist]
+
+def reference_fields():
+    object_list = Object.get_object_classes()
+    # Returns tuples of the field name, from model, and to model
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
+                                                      x.model, \
+                                                      x.related_model) \
+                 for x in Obj._meta.get_fields() if \
+                 (x.name not in ["values", "categories", "all_upstream", \
+                 "content_type", "object_id", "category_of"]) and x.concrete \
+                 and x.is_relation] for Obj in object_list] for item in sublist]
+
+def single_reference_fields():
+    object_list = Object.get_object_classes()
+    # Returns tuples of the field name, from model, and to model
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
+                                                      x.model, \
+                                                      x.related_model) \
+                 for x in Obj._meta.get_fields() if x.name not in \
+                 ["values", "categories", "all_upstream", "content_type", \
+                 "object_id", "category_of"] and x.concrete and x.many_to_one] \
+                 for Obj in object_list] for item in sublist]
+
+
+def many_reference_fields():
+    object_list = Object.get_object_classes()
+    return [item for sublist in [ [(Obj.base_name+"_"+x.name, x.model, x.related_model) \
+                 for x in Obj._meta.get_fields() if x.name not in \
+                 ["values", "categories", "all_upstream"] \
+                 and x.concrete and (x.many_to_many or x.one_to_many)] for Obj in object_list] \
+                 for item in sublist]
+
+def reference_proxies():
+    object_list = Object.get_object_classes()
+    proxies = defaultdict(list)
+    for field, source_model, ref_model in reference_fields():
+        if (ref_model.base_name not in ["value", "category", "file"]):
+            for proxy in ref_model.get_id_fields():
+                proxies[field].append(proxy)
+    return proxies
+
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.

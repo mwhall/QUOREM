@@ -15,7 +15,11 @@ import arrow
 import uuid
 
 from .value_types import *
-from .register import object_list, value_list
+from .object import Object, id_fields
+from .step import Step
+from .result import Result
+from .analysis import Analysis
+from .process import Process
 
 class Value(models.Model):
     base_name = "value"
@@ -168,7 +172,7 @@ class Value(models.Model):
                 links = defaultdict(list)
                 for field, target_id in target_ids.items():
                     links[field].append(target_id)
-                linked_to = [Obj.get_queryset(links) for Obj in object_list] 
+                linked_to = [Obj.get_queryset(links) for Obj in Object.get_object_classes()] 
                 if cls._in_table(database_table, value_name, "measure", linked_to=linked_to):
                     if not cls._in_table(database_table, value_name, "measure", value, linked_to):
                         log.error("Line %d: Value mismatch, did not overwrite Value\
@@ -199,7 +203,7 @@ class Value(models.Model):
             links = defaultdict(list)
             for field, target_id in target_ids.items():
                 links[field].append(target_id)
-            linked_to = [Obj.get_queryset(links) for Obj in object_list]
+            linked_to = [Obj.get_queryset(links) for Obj in Object.get_object_classes()]
             if cls._in_table(database_table, value_name, "metadata", linked_to=linked_to):
                 if not cls._in_table(database_table, value_name, "metadata", value, linked_to):
                     log.error("Line %d: Value mismatch, did not overwrite Value\
@@ -213,7 +217,7 @@ class Value(models.Model):
     @classmethod
     def _table_queryset(cls, table):
         queryset_list = []
-        for Obj in object_list:
+        for Obj in Object.get_object_classes():
             fields = {}
             for field in Obj.get_value_fields() + Obj.get_id_fields():
                 if field in table.columns.str.split(".").str.get(0):
@@ -268,7 +272,7 @@ class Value(models.Model):
         return True
 
     def get_links(self):
-        linked_to = [ (Obj.plural_name, Obj) for Obj in object_list if getattr(self, Obj.plural_name).exists() ]
+        linked_to = [ (Obj.plural_name, Obj) for Obj in Object.get_object_classes() if getattr(self, Obj.plural_name).exists() ]
         self_link_ids = {}
         for field, model in linked_to:
             ids = list(getattr(self, field).values_list(model.id_field, flat=True).distinct())
@@ -306,10 +310,10 @@ class Value(models.Model):
     @classmethod
     def queryset_to_table(cls, value_queryset, indexes=None, additional_values=[]):
         values = ["pk", "name"]
-        values.extend([Obj.plural_name + "__" + Obj.id_field for Obj in object_list])
-        values.extend([Val.type_name + "__value" for Val in value_list])
+        values.extend([Obj.plural_name + "__" + Obj.id_field for Obj in Object.get_object_classes()])
+        values.extend([Val.type_name + "__value" for Val in ValType.get_value_classes()])
         values.extend(additional_values)
-        value_queryset = value_queryset.prefetch_related(*[Obj.plural_name for Obj in object_list])
+        value_queryset = value_queryset.prefetch_related(*[Obj.plural_name for Obj in Object.get_object_classes()])
         value_queryset = value_queryset.values(*values)
         table = pd.DataFrame.from_records(value_queryset)
         values.pop(values.index("pk"))
@@ -368,7 +372,7 @@ class Value(models.Model):
             vname_table = vname_table.where(vname_table[field] == fields[field]).dropna(axis=0, how='all')
             if vname_table.empty:
                 return False
-        for Obj in object_list:
+        for Obj in Object.get_object_classes():
             field = Obj.plural_name + "__" + Obj.id_field
             if (field in vname_table) and (field not in fields):
                 vname_table = vname_table.where(pd.isna(vname_table[field])).dropna(axis=0, how='all')

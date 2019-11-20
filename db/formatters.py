@@ -6,7 +6,7 @@
 ####
 from collections import defaultdict
 
-from .models import object_list, id_fields, required_fields, all_fields
+from .models.object import Object, id_fields, required_fields, all_fields
 
 import io
 import zipfile
@@ -33,7 +33,7 @@ class TableParser(object):
     def initialize_generator(self):
         # Grabs the data necessary for Object.initialize(data)
         # Sorts it into objects so they can be initialized in dependency order
-        for Obj in object_list:
+        for Obj in Object.get_object_classes():
             data = self.initialize(Obj.base_name)
             if data:
                 yield (Obj, data)
@@ -56,7 +56,7 @@ class TableParser(object):
                 yield dd
 
     def update_generator(self):
-        for Obj in object_list:
+        for Obj in Object.get_object_classes():
             for data in self.update(Obj.base_name):
                 yield (Obj, data)
 

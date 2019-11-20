@@ -4,6 +4,18 @@ from django.contrib.auth import get_user_model
 from django.apps import apps
 
 User = get_user_model()
+#Needed for input
+User.base_name = "user"
+User.plural_name = "users"
+
+def get_id_fields():
+    return ["user_id", "user_pk", "user_name"]
+
+def get_value_fields():
+    return []
+
+User.get_id_fields = get_id_fields
+User.get_value_fields = get_value_fields
 
 class UserProfile(models.Model):
     #userprofile doesnt have a search vector bc it shouldn tbe searched.
