@@ -9,6 +9,8 @@ from django.apps import apps
 
 from db.models.object import Object
 
+import graphviz as gv
+
 class Result(Object):
     """
     Some kind of result from an analysis
@@ -17,6 +19,8 @@ class Result(Object):
     plural_name = "results"
     id_field = "uuid"
     has_upstream = True
+
+    gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffeea8'}
 
     list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'values', 'uuid')
     uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
@@ -89,3 +93,55 @@ class Result(Object):
 
     def related_analyses(self):
         return apps.get_model("db", "Analysis").objects.filter(pk=self.analysis.pk)
+
+    def simple_provenance_graph(self):
+        dot = gv.Digraph("provenance")
+        dot.graph_attr.update(compound='true')
+        dot.graph_attr.update(rankdir="LR")
+        rn=self.get_node_attrs()
+        rn['name']="R"
+        an=self.analysis.get_node_attrs(values=False)
+        an['name']="A"
+        pn=self.analysis.process.get_node_attrs(values=False)
+        pn['name']="P"
+        dot.node(**rn)
+        dot.node(**an)
+        dot.node(**pn)
+        dot.edges(["PA","AR"])
+        samplegraph = gv.Digraph("cluster0")
+        sample_name = None
+        nsamples = len(self.samples.all())
+        for sample in self.samples.all()[0:3]:
+            attrs = sample.get_node_attrs(values=False)
+            attrs['name'] = "S%d" % (sample.pk,)
+            sample_name = attrs['name']
+            samplegraph.node(**attrs)
+        if nsamples>3:
+            nmore = nsamples - 3
+            attrs = apps.get_model("db", "Sample").gv_node_style
+            attrs['fontname'] = 'FreeSans'
+            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
+            attrs['name'] = "SX"
+            samplegraph.node(**attrs)
+        dot.subgraph(samplegraph)
+        if sample_name is not None:
+            dot.edge(sample_name, "R", ltail="cluster0")
+        featuregraph = gv.Digraph("cluster1")
+        feature_name = None
+        nfeatures = len(self.features.all())
+        for feature in self.features.all()[0:3]:
+            attrs = feature.get_node_attrs(values=False)
+            attrs['name'] = "S%d" % (feature.pk,)
+            feature_name = attrs['name']
+            featuregraph.node(**attrs)
+        if nfeatures>3:
+            nmore = nfeatures - 3
+            attrs = apps.get_model("db", "Feature").gv_node_style
+            attrs['fontname'] = 'FreeSans'
+            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
+            attrs['name'] = "FX"
+            featuregraph.node(**attrs)
+        dot.subgraph(featuregraph)
+        if feature_name is not None:
+            dot.edge(feature_name, "R", ltail="cluster1")
+        return dot

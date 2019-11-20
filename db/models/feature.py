@@ -11,6 +11,8 @@ class Feature(Object):
     base_name = "feature"
     plural_name = "features"
 
+    gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ff5497'}
+
     name = models.CharField(max_length=255, verbose_name="Name")
     sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='+', blank=True)

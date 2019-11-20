@@ -14,6 +14,7 @@ from django.contrib.postgres.indexes import GinIndex
 from combomethod import combomethod
 
 import pandas as pd
+import graphviz as gv
 
 from quorem.wiki import refresh_automated_report
 
@@ -37,6 +38,8 @@ class Object(models.Model):
     id_field = "name"
     has_upstream = False
     search_set = None
+
+    gv_node_style = {}
 
     search_vector = SearchVectorField(blank=True,null=True)
     created_by = models.ForeignKey(User, on_delete="CASCADE")
@@ -384,6 +387,61 @@ class Object(models.Model):
                         #    pass
                             #TODO: Add a warning that it didn't overwrite
                     obj.save()
+
+    def get_node_attrs(self, values=True):
+        htm = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
+        if not values:
+           sep = ""
+        else:
+           sep = "border=\"1\" sides=\"b\""
+        htm += "<tr><td colspan=\"3\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
+        if values:
+            val_names = list(self.values.all().values_list("name","type").distinct())
+            val_counts = []
+            for name, type in val_names:
+                count = self.values.filter(name=name, type=type).count()
+                val_counts.append((name, type, count)) 
+            if len(val_counts) > 0:
+                htm += "<tr><td><i>Values Present</i></td><td><i>Type</i></td><td><i>Count</i></td></tr>"
+                for name, type, count in val_counts:
+                    htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (name,)
+                    htm += "<td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (type,)
+                    htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
+        htm += "</table>>"
+        attrs = self.gv_node_style
+        attrs["name"] = str(self.pk)
+        attrs["label"] = htm
+        attrs["fontname"] = "FreeSans"
+        return attrs
+
+    def get_node(self, values=True):
+        dot = gv.Digraph("node graph")
+        dot.node(**self.get_node_attrs(values=values))
+        return dot
+
+    def get_stream_graph(self, values=False):
+        dot = gv.Digraph("stream graph")
+        origin = self
+        dot.node(**origin.get_node_attrs(values=values))
+        edges = set()
+        for us in origin.upstream.all():
+            edges.add((str(us.pk), str(origin.pk)))
+        for ds in origin.downstream.all():
+            edges.add((str(origin.pk), str(ds.pk)))
+        upstream = origin.all_upstream.prefetch_related("upstream", "downstream")
+        downstream = origin.all_downstream.prefetch_related("upstream", "downstream")
+        both = upstream | downstream
+        for obj in both:
+            attrs = obj.get_node_attrs(values=values)
+            dot.node(**attrs)
+            for us in obj.upstream.all():
+                if us in both:
+                    edges.add((str(us.pk), str(obj.pk)))
+            for ds in obj.downstream.all():
+                if ds in both:
+                    edges.add((str(obj.pk), str(ds.pk)))
+        dot.edges(list(edges))
+        return dot
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.
