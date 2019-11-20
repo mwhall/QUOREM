@@ -420,12 +420,14 @@ class Object(models.Model):
         return attrs
 
     def get_node(self, values=True):
-        dot = gv.Digraph("node graph")
+        dot = gv.Digraph("node graph", format='svg')
+        dot.attr(size="5,5!")
         dot.node(**self.get_node_attrs(values=values))
         return dot
 
     def get_stream_graph(self, values=False):
-        dot = gv.Digraph("stream graph")
+        dot = gv.Digraph("stream graph", format='svg')
+        dot.attr(size="12,12!")
         origin = self
         dot.node(**origin.get_node_attrs(values=values))
         edges = set()

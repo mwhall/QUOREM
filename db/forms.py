@@ -270,16 +270,19 @@ class StepForm(BootstrapModelForm):
         super(StepForm, self).__init__(*args, **kwargs)
         self.fields['values'].label = "Default Parameters"
 
-
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
     default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
+    node = forms.CharField(max_length=4096, widget=DisplayText())
+    graph = forms.CharField(max_length=4096, widget=DisplayText())
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
             initial['downstream'] = [x.name for x in kwargs['instance'].downstream.all()]
             # This complication makes sure we only have the default parameters
             initial['default_parameters'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]))
+            initial['node'] = mark_safe(kwargs['instance'].get_node(values=True).pipe().decode().replace("\n",""))
+            initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
         super(StepDisplayForm, self).__init__(*args, **kwargs)
         self.fields.move_to_end('upstream')
         self.fields.move_to_end('categories')
