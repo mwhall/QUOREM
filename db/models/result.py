@@ -1,3 +1,4 @@
+from django import forms
 from django.db import models
 from django.forms.utils import flatatt
 from django.utils.html import mark_safe, format_html
@@ -7,6 +8,8 @@ from django.contrib.postgres.search import SearchVector
 
 from django.apps import apps
 
+from django_jinja_knockout.widgets import DisplayText
+from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
 from db.models.object import Object
 
 import graphviz as gv
@@ -48,6 +51,25 @@ class Result(Object):
                          flatatt({'href': reverse(self.base_name + '_detail',
                                  kwargs={self.base_name + '_id': self.pk})}),
                                  self.type + " from " + self.source_step.name))
+
+    @classmethod
+    def get_display_form(cls):
+        class DisplayForm(BootstrapModelForm,
+                          metaclass=DisplayModelMetaclass):
+            provenance = forms.CharField(max_length=4096, widget=DisplayText())
+            graph = forms.CharField(max_length=4096, widget=DisplayText())
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'features', 'samples']
+            def __init__(self, *args, **kwargs):
+                if kwargs.get('instance'):
+                    initial=kwargs.setdefault('initial',{})
+                    initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph(values=True).pipe().decode().replace("\n",""))
+                    initial['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
+                super().__init__(*args, **kwargs)
+                self.fields.move_to_end('created_by')
+                self.fields.move_to_end('categories')
+        return DisplayForm
 
     @classmethod
     def update_search_vector(cls):
@@ -95,19 +117,23 @@ class Result(Object):
         return apps.get_model("db", "Analysis").objects.filter(pk=self.analysis.pk)
 
     def simple_provenance_graph(self):
-        dot = gv.Digraph("provenance")
+        dot = gv.Digraph("provenance", format='svg')
         dot.graph_attr.update(compound='true')
         dot.graph_attr.update(rankdir="LR")
+        dot.graph_attr.update(size="10,10!")
         rn=self.get_node_attrs()
         rn['name']="R"
         an=self.analysis.get_node_attrs(values=False)
         an['name']="A"
         pn=self.analysis.process.get_node_attrs(values=False)
         pn['name']="P"
+        sn=self.source_step.get_node_attrs(values=False)
+        sn['name']="S"
+        dot.node(**sn)
         dot.node(**rn)
         dot.node(**an)
         dot.node(**pn)
-        dot.edges(["PA","AR"])
+        dot.edges(["PA","AS","SR"])
         samplegraph = gv.Digraph("cluster0")
         sample_name = None
         nsamples = len(self.samples.all())

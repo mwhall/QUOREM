@@ -493,8 +493,8 @@ class Object(models.Model):
                 if ds in both:
                     edges.add((str(obj.pk), str(ds.pk)))
         dot.edges(list(edges))
-        dim = max(4,int(nnodes/2.0))
-        dim = min(dim, 12)
+        dim = max(6,int(nnodes/2.0))
+        dim = min(dim, 11)
         dot.attr(size="%d,%d!" % (dim,dim))
         return dot
 
