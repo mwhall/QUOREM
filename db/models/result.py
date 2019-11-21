@@ -44,7 +44,7 @@ class Result(Object):
     categories = models.ManyToManyField('Category', related_name='results', blank=True)
 
     def __str__(self):
-        return str(self.uuid)
+        return self.get_detail_link()
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>',
@@ -60,7 +60,8 @@ class Result(Object):
             graph = forms.CharField(max_length=4096, widget=DisplayText())
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'features', 'samples']
+                exclude = ['search_vector', 'values', 'all_upstream', \
+                           'features', 'samples']
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     initial=kwargs.setdefault('initial',{})

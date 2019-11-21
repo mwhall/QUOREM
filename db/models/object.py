@@ -61,7 +61,7 @@ class Object(models.Model):
             self.search_set = self.__class__.objects.filter(pk=self.pk)
 
     def __str__(self):
-        return self.name
+        return self.get_detail_link()
 
     @classmethod
     def get_object_classes(cls):
@@ -99,6 +99,8 @@ class Object(models.Model):
             class Meta:
                 model = cls
                 exclude = ['search_vector', 'values']
+                if cls.has_upstream:
+                    exclude += ['all_upstream']
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     initial=kwargs.setdefault('initial',{})
