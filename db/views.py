@@ -480,72 +480,7 @@ class UploadList(ListSortingView):
 #  over items if it's a manyto relationship, so should return one name        ##
 #  Can also make CharFields in the DisplayForms and manually override their   ##
 #  values either here or there.                                               ##
-#                                                                             ##
-#  Pages here:                                                                ##
-#    - Investigation (/investigation/###)                                     ##
-#    - Sample (/sample/###)                                                   ##
-#    - Feature (/feature/###)                                                 ##
-#    - Analysis (/analysis/###)                                               ##
-#    - Step (/step/###)                                                       ##
-#    - Process (/process/###)                                                 ##
-#    - Result (/result/###)                                                   ##
-#    - Upload (/upload/###)                                                   ##
-#                                                                             ##
 ################################################################################
-
-class InvestigationDetail(InlineDetailView):
-    pk_url_kwarg = 'investigation_id'
-    form = InvestigationDisplayForm
-    def get_heading(self):
-        return ""
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        print([x for x in vars(context['form'].fields['institution'].widget)])
-        # An example of what we've been doing in the forms.py being done here
-        #context['form'].fields['institution'].widget.get_text_method = self.get_institution_name
-        return context
-
-class SampleDetail(InlineDetailView):
-    pk_url_kwarg = 'sample_id'
-    form = SampleDisplayForm
-    def get_heading(self):
-        return ""
-
-class FeatureDetail(InlineDetailView):
-    pk_url_kwarg = "feature_id"
-    form = FeatureDisplayForm
-    def get_heading(self):
-        return ""
-#    def get_context_data(self, **kwargs):
-#        context['form'].fields['measures'].widget.get_text_method =
-
-class AnalysisDetail(InlineDetailView):
-    pk_url_kwarg = 'analysis_id'
-    form = AnalysisDisplayForm
-    def get_heading(self):
-        return ""
-
-class StepDetail(InlineDetailView):
-    pk_url_kwarg = "step_id"
-    form = StepDisplayForm
-    def get_heading(self):
-        return ""
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        #context['form'].initial['parameters'] = [x for x in context['object'].parameters.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
-        return context
-
-class ProcessDetail(InlineDetailView):
-    pk_url_kwarg = 'process_id'
-    form = ProcessDisplayForm
-    def get_heading(self):
-        return ""
-
-class ResultDetail(InlineDetailView):
-    pk_url_kwarg = 'result_id'
-    form = ResultDisplayForm
-    def get_heading(self):
-        return ""
 
 class FileDetail(InlineDetailView):
     is_new = False

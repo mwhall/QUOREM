@@ -23,7 +23,19 @@ from db.views_ajax import InvestigationGridView, SampleFkWidgetGrid, StepFkWidge
 from db.views import *
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
-urlpatterns = [
+from db.models.object import Object
+
+object_list = Object.get_object_classes()
+
+urlpatterns = []
+
+for Obj in object_list:
+    urlpatterns += [re_path(r'%s/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name), 
+                     Obj.get_detail_view(as_view=True),
+                     name= Obj.base_name + '_detail',
+                     kwargs={'view_title': 'List of %s' % (Obj.plural_name,)})]
+
+urlpatterns += [
     # Main page routing
     path('admin/', admin.site.urls),
     # Wiki routing

@@ -14,6 +14,8 @@ class Investigation(Object):
     institution = models.CharField(max_length=255)
     description = models.TextField()
 
+    gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aeaee8'}
+
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
     categories = models.ManyToManyField('Category', related_name='investigations', blank=True)
 

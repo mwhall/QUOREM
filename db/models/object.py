@@ -1,11 +1,16 @@
 from collections import defaultdict
 
+from django import forms
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
 from django.apps import apps
+
+from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
+from django_jinja_knockout.views import InlineDetailView
+from django_jinja_knockout.widgets import DisplayText
 
 #for searching
 from django.contrib.postgres.search import SearchVectorField
@@ -58,11 +63,9 @@ class Object(models.Model):
     def __str__(self):
         return self.name
 
-    def get_detail_link(self):
-        return mark_safe(format_html('<a{}>{}</a>',
-                         flatatt({'href': reverse(self.base_name + '_detail',
-                                 kwargs={self.base_name + '_id': self.pk})}),
-                                 str(getattr(self, self.id_field))))
+    @classmethod
+    def get_object_classes(cls):
+        return cls.__subclasses__()
 
     @classmethod
     def get_id_fields(cls):
@@ -85,6 +88,42 @@ class Object(models.Model):
         if not kwargs:
             return cls._meta.model.objects.none()
         return cls._meta.model.objects.filter(**kwargs)
+
+    @classmethod
+    def get_display_form(cls):
+        class DisplayForm(BootstrapModelForm,
+                          metaclass=DisplayModelMetaclass):
+            node = forms.CharField(max_length=4096, widget=DisplayText())
+            if cls.has_upstream:
+                graph = forms.CharField(max_length=4096, widget=DisplayText())
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values']
+            def __init__(self, *args, **kwargs):
+                if kwargs.get('instance'):
+                    initial=kwargs.setdefault('initial',{})
+                    initial['node'] = mark_safe(kwargs['instance'].get_node(values=True).pipe().decode().replace("\n",""))
+                    if cls.has_upstream:
+                        initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
+                super().__init__(*args, **kwargs)
+                self.fields.move_to_end('created_by')
+                self.fields.move_to_end('categories')
+        return DisplayForm
+
+    @classmethod
+    def get_detail_view(cls, as_view=False):
+        class DetailView(InlineDetailView):
+            pk_url_kwarg = cls.base_name + '_id'
+            form = cls.get_display_form()
+            def get_heading(self):
+                return ""
+        DetailView.__module__ = cls.base_name
+        DetailView.__name__ = cls.__name__
+        DetailView.__qualname__ = DetailView.__name__
+        if as_view:
+            return DetailView.as_view()
+        else:
+            return DetailView
 
     def get_values(self, name, value_type):
         return self.values.filter(name=name, value=value_type)
@@ -393,6 +432,12 @@ class Object(models.Model):
                                 #TODO: Add a warning that it didn't overwrite
                     obj.save()
 
+    def get_detail_link(self):
+        return mark_safe(format_html('<a{}>{}</a>',
+                         flatatt({'href': reverse(self.base_name + '_detail',
+                                 kwargs={self.base_name + '_id': self.pk})}),
+                                 str(getattr(self, self.id_field))))
+
     def get_node_attrs(self, values=True):
         htm = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
         if not values:
@@ -421,13 +466,12 @@ class Object(models.Model):
 
     def get_node(self, values=True):
         dot = gv.Digraph("node graph", format='svg')
-        dot.attr(size="5,5!")
+        dot.attr(size="4,4!")
         dot.node(**self.get_node_attrs(values=values))
         return dot
 
     def get_stream_graph(self, values=False):
         dot = gv.Digraph("stream graph", format='svg')
-        dot.attr(size="12,12!")
         origin = self
         dot.node(**origin.get_node_attrs(values=values))
         edges = set()
@@ -438,6 +482,7 @@ class Object(models.Model):
         upstream = origin.all_upstream.prefetch_related("upstream", "downstream")
         downstream = origin.all_downstream.prefetch_related("upstream", "downstream")
         both = upstream | downstream
+        nnodes = len(both)+1
         for obj in both:
             attrs = obj.get_node_attrs(values=values)
             dot.node(**attrs)
@@ -448,11 +493,10 @@ class Object(models.Model):
                 if ds in both:
                     edges.add((str(obj.pk), str(ds.pk)))
         dot.edges(list(edges))
+        dim = max(4,int(nnodes/2.0))
+        dim = min(dim, 12)
+        dot.attr(size="%d,%d!" % (dim,dim))
         return dot
-
-    @classmethod
-    def get_object_classes(cls):
-        return cls.__subclasses__()
 
 def all_fields():
     object_list = Object.get_object_classes()

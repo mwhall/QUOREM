@@ -8,13 +8,9 @@ from django.template import loader
 from celery import shared_task
 from django.db import models, transaction
 from django.apps import apps
+
 from .formatters import guess_filetype, parse_csv_or_tsv, TableParser, ArtifactParser
-from .parser import resolve_input_row, resolve_table
-from .models import (
-Investigation, Sample, Feature, Process, Step, Analysis,
-Result, Value, StrVal, FloatVal, IntVal, DatetimeVal, ResultVal,
-UploadMessage, File, UserProfile, UserMail, object_list
-)
+from .models import *
 
 from q2_extractor.Extractor import Extractor
 import pandas as pd

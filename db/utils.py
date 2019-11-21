@@ -1,8 +1,9 @@
 import plotly.graph_objects as go
 from plotly.io._html import to_html
 from django.db.models import Count, Avg, Q
-from db.models import *
-from . import models
+
+from .models import *
+
 import pandas as pd
 
 #Code for barchart from plot_aggregate
