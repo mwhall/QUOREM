@@ -433,7 +433,7 @@ class ResultList(ListSortingView):
         elif field == 'uuid':
             return obj.get_detail_link()
         else:
-            return super().get_display_value(obj, field)
+            return mark_safe(super().get_display_value(obj, field))
 
     def get_table_attrs(self):
         return {
