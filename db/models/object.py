@@ -462,6 +462,8 @@ class Object(models.Model):
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
         attrs["fontname"] = "FreeSans"
+        attrs["href"] = reverse(self.base_name + "_detail", 
+                                kwargs={self.base_name+"_id":self.pk})
         return attrs
 
     def get_node(self, values=True):
