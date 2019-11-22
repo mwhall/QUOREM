@@ -8,5 +8,5 @@ from .result import Result
 from .file import File, LogFile
 from .user import User, UserProfile, UserMail, UploadMessage
 from .value import Value
-from .value_types import IntVal, FloatVal, StrVal, DatetimeVal, ResultVal
+from .value_types import IntDatum, FloatDatum, StrDatum, DatetimeDatum, ResultDatum
 from .category import Category
