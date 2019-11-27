@@ -7,6 +7,5 @@ from .step import Step
 from .result import Result
 from .file import File, LogFile
 from .user import User, UserProfile, UserMail, UploadMessage
-from .value import Value
-from .value_types import IntDatum, FloatDatum, StrDatum, DatetimeDatum, ResultDatum
-from .category import Category
+from .value import *
+from .data_types import *

@@ -41,7 +41,6 @@ class Result(Object):
     #from_provenance = models.BooleanField(default=False)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
-    categories = models.ManyToManyField('Category', related_name='results', blank=True)
 
     def __str__(self):
         return self.get_detail_link()

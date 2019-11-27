@@ -167,9 +167,7 @@ class InvestigationForm(BootstrapModelForm):
         attrs = {'data-minimum-input-length':3,
                  'data-placeholder': 'Type to search...'}
         widgets = {'values': autocomplete.ModelSelect2Multiple(url='value-autocomplete',
-                                                               attrs=attrs),
-                   'categories': autocomplete.ModelSelect2Multiple(url='category-autocomplete',
-                                                                   attrs=attrs)}
+                                                               attrs=attrs)}
 
 class InvestigationDisplayForm(BootstrapModelForm,
                                metaclass=DisplayModelMetaclass):

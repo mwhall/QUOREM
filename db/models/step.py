@@ -15,13 +15,11 @@ class Step(Object):
     has_upstream = True
 
     name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
     values = models.ManyToManyField('Value', related_name='steps', blank=True)
-    categories = models.ManyToManyField('Category', related_name='steps', blank=True)
 
     @classmethod
     def update_search_vector(cls):

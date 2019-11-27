@@ -17,22 +17,17 @@ class Process(Object):
     has_upstream = True
 
     name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True)
-    citation = models.TextField(blank=True)
 
     upstream = models.ManyToManyField('self', symmetrical=False, related_name="downstream", blank=True)
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="processes", blank=True)
-    categories = models.ManyToManyField('Category', related_name="processes", blank=True)
 
     @classmethod
     def update_search_vector(cls):
         cls.objects.update(
-            search_vector = (SearchVector('name', weight='A') +
-                             SearchVector('citation', weight='B') +
-                             SearchVector('description', weight='C'))
-        )
+            search_vector = (SearchVector('name', weight='A')
+        ))
 
     def get_parameters(self, steps=[]):
         # Get the parameters for this Analysis and all its steps

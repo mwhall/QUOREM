@@ -47,7 +47,6 @@ class Object(models.Model):
     gv_node_style = {}
 
     search_vector = SearchVectorField(blank=True,null=True)
-    created_by = models.ForeignKey(User, on_delete="CASCADE",blank=True,null=True)
 
     class Meta:
         abstract = True
@@ -55,13 +54,15 @@ class Object(models.Model):
             GinIndex(fields=['search_vector'])
         ]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, *kwargs)
-        if not self._state.adding:
-            self.search_set = self.__class__.objects.filter(pk=self.pk)
+#    def __str__(self):
+#        return self.get_detail_link()
 
-    def __str__(self):
-        return self.get_detail_link()
+    @classmethod
+    def linkable(cls, value_name):
+        # All Values can be linked to the base class
+        # and to everything else by default
+        # Override this for white/blacklist
+        return True
 
     @classmethod
     def get_object_classes(cls):
@@ -127,13 +128,14 @@ class Object(models.Model):
         else:
             return DetailView
 
-    def get_values(self, name, value_type):
+    def get_value(self, name, value_type):
         return self.values.filter(name=name, value=value_type)
 
-    def get_upstream_values(self, name, value_type):
+    def get_upstream_values(self):
         if not self.has_upstream:
             return apps.get_model("db", "Value").objects.none()
-        return apps.get_model("db", "Value").objects.filter(pk__in=self.all_upstream.values("values__pk"))
+        upval_pks = self.all_upstream.prefetch_related("values")
+        return apps.get_model("db", "Value").objects.filter(pk__in=upval_pks.values("values"))
 
     @combomethod
     def with_value(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
@@ -468,14 +470,14 @@ class Object(models.Model):
                                 kwargs={self.base_name+"_id":self.pk})
         return attrs
 
-    def get_node(self, values=True):
-        dot = gv.Digraph("node graph", format='svg')
+    def get_node(self, values=True, format='svg'):
+        dot = gv.Digraph("node graph", format=format)
         dot.attr(size="4,4!")
         dot.node(**self.get_node_attrs(values=values))
         return dot
 
-    def get_stream_graph(self, values=False):
-        dot = gv.Digraph("stream graph", format='svg')
+    def get_stream_graph(self, values=False, format='svg'):
+        dot = gv.Digraph("streamgraph_%s_%d" % (self.base_name, self.pk), format=format)
         origin = self
         dot.node(**origin.get_node_attrs(values=values))
         edges = set()
@@ -502,19 +504,22 @@ class Object(models.Model):
         dot.attr(size="%d,%d!" % (dim,dim))
         return dot
 
+## These define a subset of the complete model fields for use in
+## General I/O purposes, especially CSV/TSV input
+
 def all_fields():
     object_list = Object.get_object_classes()
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
                  for x in Obj._meta.get_fields() \
                      if (x.name not in ["search_vector", "content_type", \
-                     "all_upstream", "object_id", "category_of"]) and \
+                     "all_upstream", "object_id", "category_of", "created_by"]) and \
                      x.concrete] for Obj in object_list] for item in sublist]
 
 def id_fields():
     object_list = Object.get_object_classes()
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
                  for x in Obj._meta.get_fields() \
-                     if (x.name in ["id", "name", "uuid"]) and (x.concrete)] \
+                     if (x.name in ["id", "name", "uuid"]) and x.concrete] \
                          for Obj in object_list] for item in sublist]
 
 def required_fields():
@@ -522,8 +527,8 @@ def required_fields():
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
                  for x in Obj._meta.get_fields() \
                      if x.name not in ["search_vector", "content_type", \
-                                    "object_id", "category_of"] and x.concrete \
-                     and hasattr(x,"blank") and not x.blank] \
+                                    "object_id", "category_of", "created_by"] \
+                     and x.concrete and hasattr(x,"blank") and not x.blank] \
                          for Obj in object_list] for item in sublist]
 
 def reference_fields():
@@ -534,7 +539,7 @@ def reference_fields():
                                                       x.related_model) \
                  for x in Obj._meta.get_fields() if \
                  (x.name not in ["values", "categories", "all_upstream", \
-                 "content_type", "object_id", "category_of"]) and x.concrete \
+                 "content_type", "object_id", "category_of", "created_by"]) and x.concrete \
                  and x.is_relation] for Obj in object_list] for item in sublist]
 
 def single_reference_fields():
@@ -545,7 +550,7 @@ def single_reference_fields():
                                                       x.related_model) \
                  for x in Obj._meta.get_fields() if x.name not in \
                  ["values", "categories", "all_upstream", "content_type", \
-                 "object_id", "category_of"] and x.concrete and x.many_to_one] \
+                 "object_id", "category_of", "created_by"] and x.concrete and x.many_to_one] \
                  for Obj in object_list] for item in sublist]
 
 

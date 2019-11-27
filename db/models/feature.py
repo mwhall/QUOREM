@@ -20,7 +20,6 @@ class Feature(Object):
     samples = models.ManyToManyField('Sample', related_name='features', blank=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
-    categories = models.ManyToManyField('Category', related_name="features", blank=True)
 
     @classmethod
     def update_search_vector(cls):

@@ -19,7 +19,6 @@ from django.conf.urls import url
 from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
-from db.views_ajax import InvestigationGridView, SampleFkWidgetGrid, StepFkWidgetGrid
 from db.views import *
 from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 

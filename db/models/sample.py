@@ -22,8 +22,6 @@ class Sample(Object):
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="samples", blank=True)
-    categories = models.ManyToManyField('Category', related_name='samples', blank=True)
-
 
     @classmethod
     def update_search_vector(cls):

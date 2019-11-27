@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'wiki.plugins.macros.apps.MacrosConfig',
     'wiki.plugins.links.apps.LinksConfig',
     'wiki.plugins.help.apps.HelpConfig',
+    'polymorphic',
 ] + DJK_APPS
 
 DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'

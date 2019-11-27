@@ -11,19 +11,14 @@ class Investigation(Object):
     plural_name = "investigations"
 
     name = models.CharField(max_length=255, unique=True)
-    institution = models.CharField(max_length=255)
-    description = models.TextField()
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aeaee8'}
 
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
-    categories = models.ManyToManyField('Category', related_name='investigations', blank=True)
 
     @classmethod
     def update_search_vector(cls):
-        sv =( SearchVector('name', weight='A') +
-             SearchVector('description', weight='B') +
-             SearchVector('institution', weight='C') )
+        sv =( SearchVector('name', weight='A'))
         cls.objects.update(search_vector = sv)
 #        refresh_automated_report("investigation")
 #        refresh_automated_report("investigation", pk=self.pk)
