@@ -10,7 +10,7 @@ from django.core import exceptions
 from polymorphic.models import PolymorphicModel
 
 #import django.contrib.gis.db.models as gismodels # For very advanced GIS features
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.fields import ArrayField, JSONField
 
 #from .result import Result
 from .user import UserProfile
@@ -93,7 +93,7 @@ class VersionField(models.BigIntegerField):
         if value is None:
             return None
         try:
-            value = VersionParser(str(value))
+            value = VersionParser(value, parse_number=True)
         except ValueError:
             raise exceptions.ValidationError(self.error_messages['invalid'] % value)
         return value
@@ -101,7 +101,7 @@ class VersionField(models.BigIntegerField):
     def from_db_value(self, value, expression, connection):
         if value is None:
             return value
-        return VersionParser(str(value))
+        return VersionParser(value, parse_number=True)
 
     def get_prep_value(self, value):
         return self.to_python(value)
@@ -115,61 +115,104 @@ class VersionField(models.BigIntegerField):
 
 class DataSignature(models.Model):
     name = models.CharField(max_length=512)
-    description = models.TextField() #This seems useful to have... can store the interpretation for data with this signature
-    value_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    data_types = models.ManyToManyField(ContentType)
+    description = models.TextField(blank=True) #This seems useful to have... can store the interpretation for data with this signature
+    value_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    data_types = models.ManyToManyField(ContentType, related_name="+")
     # 0: None of these linked to these values
     # Positive integer: This many, exactly, are linked to these values
     # -1: Any number of these objects may be attached (including 0) NOTE: Currently unused case?
     # -2: Any positive number of these objects may be attached
-    object_counts = ArrayField(base_field=models.IntegerField(default=0),
-                               size=len(object_classes))
-    # Just to make sure we keep this association concrete since
-    # the order of object_classes might change on reboot, 
-    # but definitely with Object additions
-    current_models = [ ContentType.objects.get_for_model(Obj) for Obj in object_classes ]
-    assert len(current_models) > 0 # Overly cautious, but default can't be [] according to Django
-    object_models = ArrayField(base_field=models.ForeignKey(ContentType, on_delete=models.CASCADE), size=len(object_classes), default=current_models)
-    # NOTE: How would migrating this work? I assume it'd expand the size of the 
-    # arrays, and then we'd have to add the new Object to each of the object_models in each of the signatures
+    object_counts = JSONField()
 
     def __str__(self):
-        link_str = ", ".join([str(self.object_counts[idx]) + " " + Obj.plural_name for idx, Obj in enumerate(object_classes)])
-        return "Data Signature: %s %s storing %s, linked to %s" % (self.value_type.__name__, self.name, self.data_type.__name__, link_str)
+        link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in object_classes])
+        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, self.data_types, link_str)
 
     @classmethod
-    def get(cls, name, value_type=None, **kwargs):
-        if value_type is not None:
-            if type(value_type) == str:
-                value_type = Data.get_data_type(
-                
-        # Return the matching DataSignature
-        signatures = cls.objects.filter(name=name, 
+    def create(cls, name, value_type, object_counts):
+        for Obj in object_classes:
+            if Obj.plural_name not in object_counts:
+                object_counts[Obj.plural_name] = 0
+        signature = DataSignature(name=name, 
+                                  value_type=ContentType.objects.get_for_model(value_type), 
+                                  object_counts=object_counts)
+        signature.save()
+        return signature
+
+    @classmethod
+    def get_or_create(cls, name, **kwargs):
+        signatures, object_counts = cls.get(name, return_counts=True, **kwargs)
+        if not signatures.exists():
+            signature = cls.create(name, kwargs['value_type'], object_counts)
+            signatures = DataSignature.objects.filter(pk=signature.pk)
+        return signatures
+
+    @classmethod
+    def get(cls, name, value_type, return_counts=False, **kwargs):
+        object_counts = {}
+        object_querysets = {}
+        for Obj in object_classes:
+            if Obj.plural_name in kwargs:
+                if type(kwargs[Obj.plural_name]) == models.query.QuerySet:
+                    object_counts[Obj.plural_name] = kwargs[Obj.plural_name].count()
+                    object_querysets[Obj.plural_name] = kwargs[Obj.plural_name]
+                elif type(kwargs[Obj.plural_name]) == int:
+                    object_counts[Obj.plural_name] = kwargs[Obj.plural_name]
+                elif type(kwargs[Obj.plural_name]) == bool:
+                    object_counts[Obj.plural_name] = int(kwargs[Obj.plural_name])
+            else:
+                object_counts[Obj.plural_name] = 0
+        signatures = DataSignature.objects.filter(name=name,
+                     object_counts=object_counts,
+                     value_type=ContentType.objects.get_for_model(value_type))
+        if return_counts:
+            return (signatures, object_counts)
+        return signatures
 
 #Generic superclass that allows us to automatically list
 #Any new types defined here without needing to know their
 #names out there
 class Data(PolymorphicModel):
-    #Does this stay in RAM?
-    type_cache = {}
     type_name = "data"
     atomic = False
     native_type = None
     cast_function = lambda x: x
+    db_cast_function = lambda x: x
 
     @classmethod
     def get_data_types(cls):
         return cls.__subclasses__()
 
     @classmethod
-    def get_data_type(cls, data_type):
+    def get_data_type(cls, value=None, type_name=None, **kwargs):
+        #Convenience function for get_data_types that returns one by name, or
+        #returns the inferred value, if not named
         # Take in a string data_type and return the Datum model
-        for datum in Data.get_data_types():
-            if (datum.type_name == data_type.lower()) or (datum.__name__ == data_type):
-
+        if type_name is not None:
+            for datum in Data.get_data_types():
+                if (datum.type_name == type_name.lower()) or (datum.__name__.lower() == type_name.lower()):
+                    return datum
+        return cls.infer_type(value, **kwargs)
 
     @classmethod
-    def infer_type(cls, data, **kwargs):
+    def cast(cls, value):
+        # Casts for writing to the Postgres DB
+        # so the return value must be something Django can cast from
+        #NOTE: This must be overridden any time the cast_function isn't sufficient
+        # for converting a value to something acceptable for the database
+        if (type(value) != str) and (type(value) == cls.native_type):
+            return cls.db_cast_function(value)
+        else:
+            return cls.db_cast_function(cls.cast_function(value))
+
+    #Most of the time, this is very simple
+    #But some data types have to store the data in multiple parts
+    #and get_data will reconstitute it in Python form
+    def get_value(self):
+        return self.value
+
+    @classmethod
+    def infer_type(cls, value, **kwargs):
         #First, check if the user piped us a hint/request
         if "data_type" in kwargs:
             requested_type = kwargs["data_type"]
@@ -180,11 +223,11 @@ class Data(PolymorphicModel):
             warnings.warn("Could not find requested data type %s, attempting to infer" % (kwargs["data_type"],))
         #Second, check if the data is of an advanced type that we understand
         for vtype in cls.get_data_types():
-            if (type(data) != str) and (type(data) == vtype.native_type):
+            if (type(value) != str) and (type(value) == vtype.native_type):
                 # Catch and handle it more specifically if it's a Pint unit
-                if type(data) == Q_:
+                if type(value) == Q_:
                     for qtype in PintDatum.get_data_types():
-                        if qtype.eq_dimensionality(data):
+                        if qtype.eq_dimensionality(value):
                             return qtype
                 return vtype
         # Finally, we go through the types in a sensible order, trying casts
@@ -194,7 +237,8 @@ class Data(PolymorphicModel):
         castable = []
         for mdl in cast_order:
             try:
-                mdl.cast_function(data)
+                #NOTE: Not mdl.cast() because this 
+                mdl.cast_function(value)
                 castable.append(mdl)
             except:
                 pass
@@ -209,20 +253,21 @@ class Data(PolymorphicModel):
     @classmethod
     def get_or_create(cls, value, **kwargs):
         try:
-            value = cls.cast_function(str(value))
+            value = cls.cast(value)
         except:
             raise ValueError("Cannot parse value %s with cast function for data type %s" % (str(value), cls.type_name))
-        qs = cls.objects.filter(value=value)
-        if qs.exists():
-            return qs.get()
-        obj = cls.objects.create(value=value)
+        if type(value) != dict:
+            qs = cls.objects.filter(value=value)
+            if qs.exists():
+                return qs.get()
+            obj = cls.objects.create(value=value)
+        else:
+            #Special case: only MatrixDatum at the moment
+            qs = cls.objects.filter(**value)
+            if qs.exists():
+                return qs.get()
+            obj = cls.objects.create(**value)
         return obj
-
-    #Most of the time, this is very simple
-    #But some data types have to store the data in multiple parts
-    #and get_data will reconstitute it in Python form
-    def get_value(self):
-        return self.value
 
 class StrDatum(Data):
     atomic = True
@@ -300,6 +345,10 @@ class PintDatum(Data):
     value = models.FloatField()
     
     @classmethod
+    def db_cast_function(cls, x):
+        return x.to(cls.default_unit).magnitude
+
+    @classmethod
     def cast_function(cls, x):
         return unitregistry(x).to(cls.default_unit)
 
@@ -330,7 +379,6 @@ class TemperatureDatum(PintDatum):
         unitregistry.autoconvert_offset_to_baseunit = False
         return quantity
 
-
 # This is NOT a Datetime, but rather an *amount* of time
 class TimeDatum(PintDatum):
     type_name = "time"
@@ -360,16 +408,12 @@ class ViscosityDatum(PintDatum):
     type_name = "viscosity"
     default_unit = unitregistry.Unit("poise")
 
-def geopy_to_django(point_str):
-    point = geopy.point.Point(point_str)
-    #Simply discard the elevation
-    return [point.latitude, point.longitude, point.altitude]
-
 # If we ever want use GeoDjango, this will have to be converted to gismodels.PointField()
 class CoordDatum(Data):
     type_name = "coordinate"
     native_type = geopy.point.Point
-    cast_function = geopy_to_django
+    cast_function = geopy.point.Point
+    db_cast_function = lambda x: [x.latitude, x.longitude, x.altitude]
     value = ArrayField(base_field=models.FloatField(), size=3)
     
 def polygon_parser(poly_str):
@@ -393,6 +437,7 @@ class LocationDatum(Data):
     type_name = "textlocation"
     cast_function = geopy.location.Location
     native_type = geopy.location.Location
+    db_cast_function = lambda x: x.address
     value = models.TextField()
 
 class ImageDatum(Data):
@@ -402,12 +447,10 @@ class ImageDatum(Data):
 
 class BibtexDatum(Data):
     type_name = "bibtex"
-    cast_function = None #TODO
     value = models.TextField()
 
 class LinkDatum(Data):
     type_name = "link"
-    cast_function = None #TODO
     value = models.TextField()
 
 class LocalLinkDatum(LinkDatum):
@@ -421,7 +464,6 @@ class ExternalLinkDatum(LinkDatum):
 class FileDatum(Data):
     #Local server file paths
     type_name = "file"
-    cast_function = None #TODO
     value = models.ForeignKey("File", on_delete=models.CASCADE)
 
 class UserDatum(Data):
@@ -433,12 +475,12 @@ class MatrixDatum(Data):
     # A container for Sparse Matrices
     type_name = "matrix"
     native_type = csr_matrix
-    cast_function = None # We can't cast this from a String
+    db_cast_function = lambda x: {'value': x.data.tolist(), 'indptr': x.indptr.tolist(), 'indices': x.indices.tolist()}
     value = ArrayField(base_field=models.FloatField())
     indptr = ArrayField(base_field=models.IntegerField())
-    index = ArrayField(base_field=models.IntegerField())
-    def get_data(self):
-        pass
+    indices = ArrayField(base_field=models.IntegerField())
+    def get_value(self):
+        return csr_matrix((self.value, self.indices, self.indptr))
 
 #class BitStringDatum(Data):
 #    type_name = "bitstring"
@@ -448,6 +490,5 @@ class MatrixDatum(Data):
 class SequenceDatum(Data):
     # A container for a biological sequence
     type_name = "sequence"
-    cast_function = None #TODO
     value = models.TextField()
 

@@ -109,8 +109,8 @@ def process_table(upfile):
     print("Updating")
     for model, data in tp.update_generator():
         model.update(data, log=lgr)
-    print("Adding values")
-    Value.add_values(tp.value_table(), log=lgr)
+#    print("Adding values")
+#    Value.add_values(tp.value_table(), log=lgr)
     return "Success"
 
 @shared_task

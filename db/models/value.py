@@ -16,7 +16,7 @@ import numpy as np
 import arrow
 import uuid
 
-from .data_types import Data
+from .data_types import Data, DataSignature
 from .object import Object, id_fields
 from .step import Step
 from .result import Result
@@ -42,8 +42,35 @@ class Value(PolymorphicModel):
         return self.name
 
     @classmethod
-    def get_value_types(cls):
-        return cls.__subclasses__()
+    def get_or_create(cls, name, data, **kwargs):
+        vals = cls.get(name=name, all_types=False, **kwargs)
+        if not vals.exists():
+            val = cls.create(name, data, **kwargs)
+            return val
+        else:
+            return vals
+
+    @classmethod
+    def get_value_types(cls, name=None, data=None, type_name=None, data_types=False, **kwargs):
+        if name is None:
+            return cls.__subclasses__()
+        if type_name is not None:
+            for val in Value.get_value_types():
+                if (val.base_name == type_name.lower()) or (val.plural_name == type_name.lower()):
+                    return val
+        object_counts = {}
+        for Obj in object_classes:
+            if Obj.plural_name in kwargs:
+                objs = kwargs[Obj.plural_name]
+                if type(objs) == int:
+                    object_counts[Obj.plural_name] = objs
+                elif type(objs) == models.query.QuerySet:
+                    object_counts[Obj.plural_name] = objs.count()
+        signatures = DataSignature.objects.filter(name=name, object_counts=object_counts, **kwargs)
+        if data_types:
+            return signatures.values("value_type", "data_types")
+        else:
+            return signatures.values("value_type")
 
     @classmethod
     def update_search_vector(cls):
@@ -51,18 +78,43 @@ class Value(PolymorphicModel):
             search_vector= (SearchVector('name', weight='A')))
 
     @classmethod
-    def create(cls, name, data, **kwargs):
+    def create(cls, name, data, signature=None, **kwargs):
         for obj in cls.required_objects:
             if obj not in kwargs:
                 raise ValueError("Missing required links to %s for value %s" % (obj, name))
+        for Obj in object_classes:
+            if Obj.plural_name in kwargs:
+                if type(kwargs[Obj.plural_name]) != models.query.QuerySet:
+                    raise ValueError("Object arguments to Value.create() methods must be QuerySets, or left out of the arguments")
+        kwargs['value_type'] = cls
         linked_objects = [Obj.plural_name for Obj in object_classes if Obj.plural_name in kwargs]
         for obj in linked_objects:
             if obj not in cls.linkable_objects:
                 raise ValueError("Cannot link %s to Values of type %s" % (obj, cls.__name__))
-        data_type = Data.get_signature(name, data, **kwargs)
-        val = cls(name = name, data = data)
-        val.save()
-        return val
+        signatures = DataSignature.get_or_create(name=name, **kwargs)
+        if len(signatures) == 1:
+            #If unique, use that one
+            signature = signatures[0]
+        else:
+            #Ambiguous: need clarification in the form of a n_<objects> kwargs specifying the positive number, -1, or -2
+            raise ValueError("Multiple DataSignatures found. Provide n_<objects> arguments in kwargs to resolve the ambiguity, or provide the signature explicitly")
+        if 'data_type' in kwargs:
+            data_type = kwargs['data_type']
+            ct = ContentType.objects.get_for_model(data_type)
+            signature.data_types.add(ct)
+        elif signature.data_types.exists():
+            data_type = signature.data_types.first().model_class() #TODO; Allow users to select a preferred default
+        else:
+            data_type = Data.infer_type(data)
+            signature.data_types.add(ContentType.objects.get_for_model(data_type))
+        data = data_type.get_or_create(data)
+        value = cls(name = name, data = data, signature = signature)
+        value.save()
+        for Obj in object_classes:
+            if Obj.plural_name in kwargs:
+                for obj in kwargs[Obj.plural_name]:
+                    obj.values.add(value)
+        return value
     
     def get_links(self, return_objects=False):
         #Since this is the back side of these relationships, this should be quickest?
@@ -80,15 +132,7 @@ class Value(PolymorphicModel):
             return linked_objects
 
     @classmethod
-    def get_or_create(cls, name, data, **kwargs):
-        try:
-            val = cls.get(name=name, all_types=False, **kwargs)
-        except cls.DoesNotExist:
-            val = cls.create(name, data, **kwargs)
-        return val
-
-    @classmethod
-    def get(cls, name, all_types=True, count_querysets=False, **kwargs):
+    def get(cls, name, **kwargs):
         # kwargs should have as keys the plural_name attribute of Objects
         # It can contain either:
         #  - A QuerySet of those objects
@@ -100,33 +144,15 @@ class Value(PolymorphicModel):
         # If count_querysets, it will return anything with the same
         # number of Objects as each of the querysets
         # Return the Value/subclass with this name and links
-        qs = cls.objects.filter(name=name)
-        # This loop is mainly used when you just want vanilla Values
-        # Unfortunately, it seems django-polymorphic doesn't have any
-        # way to return these without looping through and requesting
-        # the Values that aren't subclassed
-        if not all_types:
-            for vtype in Value.get_value_types():
-                if vtype.base_name != cls.base_name:
-                    qs = qs.not_instance_of(vtype)
-        nullargs = {}
+        object_querysets = {}
         for Obj in object_classes:
-            if Obj.plural_name in kwargs:
-                if type(kwargs[Obj.plural_name]) == models.query.QuerySet:
-                    if count_querysets:
-                        qs = qs.annotate(**{Obj.plural_name + "_count": models.Count(Obj.plural_name)})
-                        qs = qs.filter(**{Obj.plural_name + "_count": len(kwargs[Obj.plural_name])})
-                    for obj in kwargs[Obj.plural_name]:
-                        qs = qs.filter(**{Obj.plural_name: obj})
-                elif type(kwargs[Obj.plural_name]) == int:
-                    qs = qs.annotate(**{Obj.plural_name + "_count": models.Count(Obj.plural_name)})
-                    qs = qs.filter(**{Obj.plural_name + "_count": kwargs[Obj.plural_name]})
-                elif type(kwargs[Obj.plural_name]) == bool:
-                    nullargs[Obj.plural_name + "__isnull"] = not kwargs[Obj.plural_name]
-            else:
-                nullargs[Obj.plural_name + "__isnull"] = True
-        qs = qs.filter(**nullargs)
-        return qs.distinct()
+            if (Obj.plural_name in kwargs) and (type(kwargs[Obj.plural_name])==models.query.QuerySet):
+                object_querysets[Obj.plural_name + "__in"] = kwargs[Obj.plural_name]
+        kwargs['value_type'] = cls
+        signatures = DataSignature.get(name=name, **kwargs)
+        if signatures.count() == 1:
+            return signatures.get().values.filter(**object_querysets)
+        return cls.objects.filter(pk__in=signatures.select_related("values").values("values")).filter(**object_querysets)
 
 class Parameter(Value):
     base_name = "parameter"

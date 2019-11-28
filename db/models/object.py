@@ -109,8 +109,6 @@ class Object(models.Model):
                     if cls.has_upstream:
                         initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
-                self.fields.move_to_end('created_by')
-                self.fields.move_to_end('categories')
         return DisplayForm
 
     @classmethod
@@ -136,68 +134,6 @@ class Object(models.Model):
             return apps.get_model("db", "Value").objects.none()
         upval_pks = self.all_upstream.prefetch_related("values")
         return apps.get_model("db", "Value").objects.filter(pk__in=upval_pks.values("values"))
-
-    @combomethod
-    def with_value(receiver, name, value_type=None, linked_to=None, search_set=None, upstream=False, only=False):
-        linkable_objects = ["samples", "features", "analyses", "steps", "processes",\
-                            "results", "investigations"]
-        if search_set is None:
-            search_set = receiver._meta.model.objects.all()
-        search_set = search_set.prefetch_related("values")
-        if receiver.has_upstream & upstream:
-            search_set = search_set.prefetch_related("all_upstream")
-            upstream_set = receiver._meta.model.objects.filter(pk__in=search_set.values("all_upstream__pk").distinct())
-            search_set = search_set.union(upstream_set).distinct()
-        kwargs = {"values__name": name, "pk__in": search_set}
-        if value_type is not None:
-            kwargs["values__type"] = value_type
-        #For some reason whittling down the search_set QuerySet doesn't work
-        # So we have to go to the whole table
-        if linked_to is not None:
-            if isinstance(linked_to, list):
-                for link in linked_to:
-                    kwargs["values__" + link + "__isnull"] = False
-                if only:
-                    for obj in linkable_objects:
-                        if "values__" + obj + "__isnull" not in kwargs:
-                            kwargs["values__" + obj + "__isnull"] = True
-            else:
-                 kwargs = {"values__" + linked_to + "__isnull": False}
-                 if only:
-                     for obj in linkable_objects:
-                         if obj != linked_to:
-                             kwargs["values__" + obj + "__isnull"] = True
-        hits = receiver._meta.model.objects.all()
-        hits = hits.filter(**kwargs).distinct()
-        if not hits.exists():
-            return False
-        else:
-            return hits
-
-    # In a combomethod, obj is either the class, or an instance
-    @combomethod
-    def with_metadata(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
-        if (search_set is None) and (receiver.search_set is not None):
-            # Go to instance default
-            search_set = receiver.search_set
-        return receiver.with_value(name, "metadata", linked_to,
-                                    search_set, upstream, only)
-
-    @combomethod
-    def with_measure(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
-        if (search_set is None) and (receiver.search_set is not None):
-            # Go to instance default
-            search_set = receiver.search_set
-        return receiver.with_value(name, "measure", linked_to,
-                                    search_set, upstream, only)
-
-    @combomethod
-    def with_parameter(receiver, name, linked_to=None, search_set=None, upstream=False, only=False):
-        if (search_set is None) and (receiver.search_set is not None):
-            # Go to instance default
-            search_set = receiver.search_set
-        return receiver.with_value(name, "parameter", linked_to,
-                                    search_set, upstream, only)
 
     # Default search methods, using only internal methods
     # At least one of these has to be overridden
@@ -450,7 +386,7 @@ class Object(models.Model):
            sep = "border=\"1\" sides=\"b\""
         htm += "<tr><td colspan=\"3\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
         if values:
-            val_names = list(self.values.all().values_list("name","type").distinct())
+            val_names = list(self.values.all().values_list("name","signature__value_type").distinct())
             val_counts = []
             for name, type in val_names:
                 count = self.values.filter(name=name, type=type).count()
@@ -512,7 +448,7 @@ def all_fields():
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
                  for x in Obj._meta.get_fields() \
                      if (x.name not in ["search_vector", "content_type", \
-                     "all_upstream", "object_id", "category_of", "created_by"]) and \
+                     "all_upstream", "object_id", "created_by"]) and \
                      x.concrete] for Obj in object_list] for item in sublist]
 
 def id_fields():
@@ -527,7 +463,7 @@ def required_fields():
     return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
                  for x in Obj._meta.get_fields() \
                      if x.name not in ["search_vector", "content_type", \
-                                    "object_id", "category_of", "created_by"] \
+                                    "object_id", "created_by"] \
                      and x.concrete and hasattr(x,"blank") and not x.blank] \
                          for Obj in object_list] for item in sublist]
 
@@ -539,7 +475,7 @@ def reference_fields():
                                                       x.related_model) \
                  for x in Obj._meta.get_fields() if \
                  (x.name not in ["values", "categories", "all_upstream", \
-                 "content_type", "object_id", "category_of", "created_by"]) and x.concrete \
+                 "content_type", "object_id", "created_by"]) and x.concrete \
                  and x.is_relation] for Obj in object_list] for item in sublist]
 
 def single_reference_fields():
@@ -550,7 +486,7 @@ def single_reference_fields():
                                                       x.related_model) \
                  for x in Obj._meta.get_fields() if x.name not in \
                  ["values", "categories", "all_upstream", "content_type", \
-                 "object_id", "category_of", "created_by"] and x.concrete and x.many_to_one] \
+                 "object_id", "created_by"] and x.concrete and x.many_to_one] \
                  for Obj in object_list] for item in sublist]
 
 
