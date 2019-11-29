@@ -22,7 +22,7 @@ def account_signup(request):
             up.save()
             authenticate(email=email, password=password)
             login(request, user)
-            return redirect('landing')
+            return redirect('homepage')
 
     elif request.method == 'POST':
         email = request.POST['email']
@@ -42,7 +42,7 @@ def account_signin(request):
         user = authenticate(email=email, password=password)
         if user:
             login(request, user)
-            return redirect('landing')
+            return redirect('homepage')
         else:
             login_failed = True
     return render(request, 'accounts/signin.html', context={'form': form,
@@ -63,5 +63,5 @@ def forgot_password(request):
     pass
 
 
-def unauthorized(requets):
+def unauthorized(request):
     return redirect('landing')

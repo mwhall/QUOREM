@@ -159,9 +159,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'quoremtest',
-        'USER': 'alex',
-        'PASSWORD': '15fdnigp',
+        'NAME': 'circle_test',
+        'USER': 'root',
+        'PASSWORD': '',
         'HOST': '127.0.0.1',
     }
 }
