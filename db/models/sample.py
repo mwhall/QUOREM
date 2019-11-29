@@ -12,6 +12,8 @@ class Sample(Object):
 
     has_upstream = True
 
+    description = "A Sample generally represents matter that was taken from a location at some date and time, or derived from something that was"
+
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aee8ae'}
 
     name = models.CharField(max_length=255,unique=True)

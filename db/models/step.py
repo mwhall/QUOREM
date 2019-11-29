@@ -14,6 +14,8 @@ class Step(Object):
 
     has_upstream = True
 
+    description = "A Step is an arbitrarily-defined set of instructions that belongs to a Process and may emit a Result"
+
     name = models.CharField(max_length=255)
     processes = models.ManyToManyField('Process', related_name='steps', blank=True)
 

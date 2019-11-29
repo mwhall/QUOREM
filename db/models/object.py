@@ -44,6 +44,8 @@ class Object(models.Model):
     has_upstream = False
     search_set = None
 
+    description = "The base class for all Objects in QUOR'em"
+
     gv_node_style = {}
 
     search_vector = SearchVectorField(blank=True,null=True)
@@ -54,8 +56,48 @@ class Object(models.Model):
             GinIndex(fields=['search_vector'])
         ]
 
-#    def __str__(self):
-#        return self.get_detail_link()
+    def __str__(self):
+        return self.get_detail_link()
+
+    @classmethod
+    def column_headings(cls):
+        #Defines the column headings for this Object's input scheme
+        headings = set([("%s_%s" % (cls.base_name, cls.id_field), True)])
+        if cls.has_upstream:
+            headings.add(("%s_upstream" % (cls.base_name,), False))
+        object_list = Object.get_object_classes()
+        object_names = [Obj.base_name for Obj in object_list]
+        # Returns tuples of the field name, from model, and to model
+        for field in cls._meta.get_fields():
+            if field.is_relation and \
+               (field.related_model != cls) and \
+               (field.related_model in object_list):
+                headings.add(("%s_%s" % (cls.base_name, field.related_model.base_name), 
+                                         not (hasattr(field, "blank") and field.blank) and field.concrete))
+        return list(headings)
+
+    @combomethod
+    def info(receiver):
+        out_str = "Object type name: %s\n" % (receiver.base_name.capitalize(),)
+        out_str += receiver.description + "\n"
+        if type(receiver) == models.base.ModelBase:
+            if receiver.has_upstream:
+                out_str += "%s have upstream/downstream links to other %s\n" % (receiver.plural_name.capitalize(), receiver.plural_name)
+            out_str += "There are %d %s in this QUOR'em instance\n" % (receiver.objects.count(), receiver.plural_name)
+        else:
+            out_str += "There are %d %s upstream of this one, and %d %s downstream of this one\n" % (receiver.all_upstream.count(), receiver.plural_name, receiver.all_downstream.count(), receiver.plural_name)
+            value_counts = ", ".join(["%d %s" % (vtype.objects.filter(pk__in=receiver.values.all()).count(), vtype.plural_name) for vtype in apps.get_model('db.Value').get_value_types()])
+            out_str += "It has %d Values (%s)\n" % (receiver.values.count(), value_counts)
+        return out_str
+
+    @classmethod
+    def get(cls, name):
+        return cls.objects.get(name=name)
+
+    @classmethod
+    def create(cls, name, **kwargs):
+        # Check 
+        cls.objects.create(name=name, **kwargs)
 
     @classmethod
     def linkable(cls, value_name):
@@ -67,14 +109,6 @@ class Object(models.Model):
     @classmethod
     def get_object_classes(cls):
         return cls.__subclasses__()
-
-    @classmethod
-    def get_id_fields(cls):
-        return [cls.base_name + "_" + cls.id_field, cls.base_name + "_id"]
-
-    @classmethod
-    def get_value_fields(cls):
-        return [cls.plural_name + "__" + cls.id_field, cls.plural_name + "__id"]
 
     @classmethod
     def get_queryset(cls, data):
@@ -125,9 +159,6 @@ class Object(models.Model):
             return DetailView.as_view()
         else:
             return DetailView
-
-    def get_value(self, name, value_type):
-        return self.values.filter(name=name, value=value_type)
 
     def get_upstream_values(self):
         if not self.has_upstream:
@@ -389,7 +420,7 @@ class Object(models.Model):
             val_names = list(self.values.all().values_list("name","signature__value_type").distinct())
             val_counts = []
             for name, type in val_names:
-                count = self.values.filter(name=name, type=type).count()
+                count = self.values.filter(name=name).count()
                 val_counts.append((name, type, count)) 
             if len(val_counts) > 0:
                 htm += "<tr><td><i>Values Present</i></td><td><i>Type</i></td><td><i>Count</i></td></tr>"
@@ -407,7 +438,7 @@ class Object(models.Model):
         return attrs
 
     def get_node(self, values=True, format='svg'):
-        dot = gv.Digraph("node graph", format=format)
+        dot = gv.Digraph("nodegraph_%s_%d" % (self.base_name, self.pk), format=format)
         dot.attr(size="4,4!")
         dot.node(**self.get_node_attrs(values=values))
         return dot
@@ -439,74 +470,6 @@ class Object(models.Model):
         dim = min(dim, 11)
         dot.attr(size="%d,%d!" % (dim,dim))
         return dot
-
-## These define a subset of the complete model fields for use in
-## General I/O purposes, especially CSV/TSV input
-
-def all_fields():
-    object_list = Object.get_object_classes()
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
-                 for x in Obj._meta.get_fields() \
-                     if (x.name not in ["search_vector", "content_type", \
-                     "all_upstream", "object_id", "created_by"]) and \
-                     x.concrete] for Obj in object_list] for item in sublist]
-
-def id_fields():
-    object_list = Object.get_object_classes()
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
-                 for x in Obj._meta.get_fields() \
-                     if (x.name in ["id", "name", "uuid"]) and x.concrete] \
-                         for Obj in object_list] for item in sublist]
-
-def required_fields():
-    object_list = Object.get_object_classes()
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name) \
-                 for x in Obj._meta.get_fields() \
-                     if x.name not in ["search_vector", "content_type", \
-                                    "object_id", "created_by"] \
-                     and x.concrete and hasattr(x,"blank") and not x.blank] \
-                         for Obj in object_list] for item in sublist]
-
-def reference_fields():
-    object_list = Object.get_object_classes()
-    # Returns tuples of the field name, from model, and to model
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
-                                                      x.model, \
-                                                      x.related_model) \
-                 for x in Obj._meta.get_fields() if \
-                 (x.name not in ["values", "categories", "all_upstream", \
-                 "content_type", "object_id", "created_by"]) and x.concrete \
-                 and x.is_relation] for Obj in object_list] for item in sublist]
-
-def single_reference_fields():
-    object_list = Object.get_object_classes()
-    # Returns tuples of the field name, from model, and to model
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name, \
-                                                      x.model, \
-                                                      x.related_model) \
-                 for x in Obj._meta.get_fields() if x.name not in \
-                 ["values", "categories", "all_upstream", "content_type", \
-                 "object_id", "created_by"] and x.concrete and x.many_to_one] \
-                 for Obj in object_list] for item in sublist]
-
-
-def many_reference_fields():
-    object_list = Object.get_object_classes()
-    return [item for sublist in [ [(Obj.base_name+"_"+x.name, x.model, x.related_model) \
-                 for x in Obj._meta.get_fields() if x.name not in \
-                 ["values", "categories", "all_upstream"] \
-                 and x.concrete and (x.many_to_many or x.one_to_many)] for Obj in object_list] \
-                 for item in sublist]
-
-def reference_proxies():
-    object_list = Object.get_object_classes()
-    proxies = defaultdict(list)
-    for field, source_model, ref_model in reference_fields():
-        if (ref_model.base_name not in ["value", "category", "file"]):
-            for proxy in ref_model.get_id_fields():
-                proxies[field].append(proxy)
-    return proxies
-
 
 ##Function for search.
 ##Search returns a list of dicts. Get the models from the dicts.

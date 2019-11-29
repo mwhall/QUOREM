@@ -6,7 +6,7 @@
 ####
 from collections import defaultdict
 
-from .models.object import Object, id_fields, required_fields, all_fields
+from .models.object import Object
 
 import io
 import zipfile

@@ -201,8 +201,6 @@ class AnalysisList(ListSortingView):
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
     def __init__(self, *args, **kwargs):
-        content_type = ContentType.objects.get(app_label='db',
-                                               model="analysis")
         self.allowed_filter_fields = OrderedDict([
                 ('process',
                 {
@@ -257,7 +255,7 @@ class StepList(ListSortingView):
             links = self.get_name_links(obj)
             return mark_safe(''.join(links))
         elif field == 'values':
-            default_params = [x.name + ": " + str(x.content_object.value) \
+            default_params = [x.name + ": " + str(x.data.value) \
                                for x in obj.values.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
             return mark_safe('</br>'.join(default_params))
         else:
@@ -293,12 +291,6 @@ class ProcessList(ListSortingView):
         else:
             return super().get_display_value(obj, field)
 
-def get_unique_results():
-    try:
-        return [(x['type'], x['type']) for x in Result.objects.all().values("type").distinct().order_by("type")]
-    except utils.ProgrammingError:
-        return []
-
 def get_unique_steps():
     try:
         return [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")]
@@ -309,16 +301,8 @@ class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['uuid', 'analysis',  'source', 'type', 'source_step', 'file']
-    allowed_filter_fields = OrderedDict([('type',
-           {
-               'type': 'choices',
-               'choices': get_unique_results(),
-               # Do not display 'All' choice which resets the filter:
-               # List of choices that are active by default:
-               'active_choices': [],
-               # Do not allow to select multiple choices:
-           }),
+    grid_fields = ['name', 'analysis',  'source_step', 'source_step']
+    allowed_filter_fields = OrderedDict([
            ('source_step',
            {
                'type': 'choices',
@@ -329,34 +313,31 @@ class ResultList(ListSortingView):
                # Do not allow to select multiple choices:
            })])
 
-    def __init__(self, *args, **kwargs):
-        super(ResultList, self).__init__(*args, **kwargs)
-
     def get_heading(self):
         return "Result List"
 
-    def get_file_links(self, obj):
-        links = []
-        if obj.file is not None:
-            links = [format_html(
-                '<a href="{}">{}</a>',
-                reverse('file_detail', kwargs={'file_id': obj.file.pk}),
-                obj.file.upload_file
-            )]
-        #can anonymous users download files???? For now, yes...
-        #though the website 404s if not logged in.
-        #Only succrss files can be downloaded.
-            if obj.file.upload_status == 'S':
-                links.append(format_html(
-                    ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
-                    #reverse('file_detail', kwargs={'file_id': obj.file.pk})
-                    "/" + obj.file.upload_file.url
-                ))
-                links.append(format_html(
-                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
-                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.file.upload_file.url
-                ))
-        return links
+#    def get_file_links(self, obj):
+#        links = []
+#        if obj.file is not None:
+#            links = [format_html(
+#                '<a href="{}">{}</a>',
+#                reverse('file_detail', kwargs={'file_id': obj.file.pk}),
+#                obj.file.upload_file
+#            )]
+#        #can anonymous users download files???? For now, yes...
+#        #though the website 404s if not logged in.
+#        #Only succrss files can be downloaded.
+#            if obj.file.upload_status == 'S':
+#                links.append(format_html(
+#                    ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
+#                    #reverse('file_detail', kwargs={'file_id': obj.file.pk})
+#                    "/" + obj.file.upload_file.url
+#                ))
+#                links.append(format_html(
+#                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
+#                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.file.upload_file.url
+#                ))
+#        return links
 
     def get_display_value(self, obj, field):
         if field == 'file':
@@ -375,8 +356,8 @@ class ResultList(ListSortingView):
         elif field == 'source_step':
             if obj.source_step:
                 return obj.source_step.get_detail_link()
-        elif field == 'uuid':
-            return obj.get_detail_link()
+        elif field == 'name':
+            return mark_safe(obj.get_detail_link())
         else:
             return mark_safe(super().get_display_value(obj, field))
 
@@ -394,15 +375,6 @@ class UploadList(ListSortingView):
 
     def get_heading(self):
         return "Upload List"
-
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('file_detail', kwargs={'file_id': obj.pk,}),
-            obj.upload_file
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        return links
 
     def get_display_value(self, obj, field):
         if field == 'upload_file':
@@ -667,7 +639,7 @@ def search(request):
 
             if min_selected and max_selected:
                 vals = Value.objects.filter(name=meta)
-                filt = q_map[vals[0].content_type.name]
+                filt = q_map[vals[0].name]
                 filt_lte = filt + "__lte"
                 filt_gte = filt + "__gte"
                 vals = vals.filter(**{filt_lte: max_selected, filt_gte: min_selected})
@@ -768,7 +740,7 @@ def search(request):
             meta_type = vals[0].content_type.name
             filt = q_map[meta_type]
             vals = vals.order_by(filt).distinct()
-            facets = [v.content_object.value for v in vals]
+            facets = [v.data.value for v in vals]
 
     elif selected['otype'] == 'step':
         metadata = Value.objects.filter(steps__isnull=False).order_by('name').distinct('name')

@@ -10,6 +10,8 @@ class Investigation(Object):
     base_name = "investigation"
     plural_name = "investigations"
 
+    description = "An Investigation represents a group of Samples"
+
     name = models.CharField(max_length=255, unique=True)
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aeaee8'}
