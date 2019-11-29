@@ -403,11 +403,20 @@ class Object(models.Model):
                                 #TODO: Add a warning that it didn't overwrite
                     obj.save()
 
-    def get_detail_link(self):
+    @combomethod
+    def get_detail_link(receiver):
+        kwargs = {}
+        if type(receiver) == models.base.ModelBase:
+            lookup = receiver.base_name + "_all"
+            name = "All Steps"
+        else:
+            lookup = receiver.base_name + "_detail"
+            kwargs[receiver.base_name + "_id"] = receiver.pk
+            name = getattr(receiver, receiver.id_field)
         return mark_safe(format_html('<a{}>{}</a>',
-                         flatatt({'href': reverse(self.base_name + '_detail',
-                                 kwargs={self.base_name + '_id': self.pk})}),
-                                 str(getattr(self, self.id_field))))
+                         flatatt({'href': reverse(lookup,
+                                 kwargs=kwargs)}),
+                                 name))
 
     def get_node_attrs(self, values=True):
         htm = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
