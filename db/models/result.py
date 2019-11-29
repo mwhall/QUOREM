@@ -15,35 +15,26 @@ from db.models.object import Object
 import graphviz as gv
 
 class Result(Object):
-    """
-    Some kind of result from an analysis
-    """
     base_name = "result"
     plural_name = "results"
-    id_field = "uuid"
     has_upstream = True
+
+    description = "A Result is something that is produced by a Step and is required for registering Measures\nResults link Measures to the Analysis and Process chain that generated them"
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffeea8'}
 
-    list_display = ('source', 'type', 'source_step', 'processes', 'samples', 'values', 'uuid')
-    uuid = models.UUIDField(unique=True) #For QIIME2 results, this is the artifact UUID
-    file = models.ForeignKey('File', on_delete=models.CASCADE, verbose_name="Result File Name", blank=True, null=True)
-    source = models.CharField(max_length=255, verbose_name="Source Software/Instrument", blank=True, null=True)
-    type = models.CharField(max_length=255, verbose_name="Result Type", blank=True, null=True)
+    list_display = ('source_step', 'processes', 'samples', 'values')
+    name = models.CharField(max_length=255, unique=True) #For QIIME2 results, this can still be the UUID
     analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
     # This process result is from this step
-    source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step", blank=True, null=True)
+    source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")
     # Samples that this thing is the result for
     samples = models.ManyToManyField('Sample', related_name='results', verbose_name="Samples", blank=True)
     features = models.ManyToManyField('Feature', related_name='results', verbose_name="Features", blank=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
-    #from_provenance = models.BooleanField(default=False)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
-
-    def __str__(self):
-        return self.get_detail_link()
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>',
@@ -67,8 +58,6 @@ class Result(Object):
                     initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph(values=True).pipe().decode().replace("\n",""))
                     initial['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
-                self.fields.move_to_end('created_by')
-                self.fields.move_to_end('categories')
         return DisplayForm
 
     @classmethod
@@ -78,17 +67,6 @@ class Result(Object):
                             SearchVector('type', weight='B') +
                             SearchVector('uuid', weight='C'))
         )
-
-    def get_parameters(self):
-        # Get the parameters for this Result, with respect to its source step
-        parameters = {}
-        for queryset in [self.source_step.values.filter(results=self),
-                         self.analysis.process.values,
-                         self.analysis.values,
-                         self.values]:
-            for value in queryset.filter(steps=self.source_step, type="parameter"):
-                parameters[value.name] = value.content_object.value
-        return parameters
 
     def related_samples(self, upstream=False):
         samples = self.samples.all()

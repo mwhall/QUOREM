@@ -13,6 +13,8 @@ class Analysis(Object):
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffb37f'}
 
+    description = "An Analysis represents an instantiation of a Process and its Steps, and optionally extra steps"
+
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
     process = models.ForeignKey('Process', on_delete=models.CASCADE, related_name='analyses')

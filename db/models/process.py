@@ -14,6 +14,8 @@ class Process(Object):
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffd4d4'}
 
+    description = "A set of Steps run with a typical series of Parameters"
+
     has_upstream = True
 
     name = models.CharField(max_length=255, unique=True)
@@ -28,23 +30,6 @@ class Process(Object):
         cls.objects.update(
             search_vector = (SearchVector('name', weight='A')
         ))
-
-    def get_parameters(self, steps=[]):
-        # Get the parameters for this Analysis and all its steps
-        # including the extra ones
-        parameters = defaultdict(dict)
-        if steps != []:
-            steps = apps.get_model("db", "Step").objects.filter(name__in=steps)
-        else:
-            steps = self.steps
-        for step in steps.all():
-            for queryset in [step.values.filter(processes__isnull=True,
-                                                analyses__isnull=True,
-                                                results__isnull=True),
-                             self.values.filter(steps=step)]:
-                for value in queryset.filter(steps=step, type="parameter"):
-                    parameters[step.name][value.name] = value.content_object.value
-        return parameters
 
     def related_steps(self, upstream=False):
         steps = self.steps.all()

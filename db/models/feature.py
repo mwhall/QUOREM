@@ -13,8 +13,9 @@ class Feature(Object):
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ff5497'}
 
+    description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
+
     name = models.CharField(max_length=255, verbose_name="Name")
-    sequence = models.TextField(null=True, blank=True)
     annotations = models.ManyToManyField('Value', related_name='+', blank=True)
     first_result = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
     samples = models.ManyToManyField('Sample', related_name='features', blank=True)
