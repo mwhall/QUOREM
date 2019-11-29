@@ -1,0 +1,43 @@
+{% extends 'base.htm' -%}
+{% block main -%}
+{% if main_navs is defined -%}
+    {% from 'bs_navs.htm' import bs_navs with context -%}
+    {{ bs_navs(navs=main_navs) }}
+{% endif -%}
+<div row class="welcome">
+  <h3> welcome to <span class="quorem">QUOR'em.</span></h3>
+</div>
+<div id="object-carousel" class="carousel slide pt-4" data-ride="carousel">
+  <!-- slideshow part -->
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+      <div class="carousel-content pl-5 pr-5">
+        <h4> Lorem impsum </h4>
+        <p> Set in the fictional world of Middle-earth, the films follow the hobbit Frodo Baggins as he and the Fellowship embark on a quest to destroy the One Ring, to ensure the destruction of its maker, the Dark Lord Sauron. The Fellowship eventually splits up and Frodo continues the quest with his loyal companion Sam and the treacherous Gollum. </p>
+        <button class="btn btn-primary">Little Thang</button>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <div class="carousel-content pl-5 pr-5">
+        <h4> Lorem Quantum </h4>
+        <p> The three films were shot simultaneously and entirely in Jackson's native New Zealand from 11 October 1999 until 22 December 2000, with pick-up shots done from 2001 to 2004. </p>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <div class="carousel-content pl-5 pr-5">
+        <h4> I dunno. </h4>
+        <p> This one too. </p>
+      </div>
+    </div>
+  </div>
+  <!-- Left and right controls -->
+  <a class="carousel-control-prev" href="#object-carousel" data-slide="prev">
+    &lsaquo;
+    <!--span class="carousel-control-prev-icon"></span-->
+  </a>
+  <a class="carousel-control-next" href="#object-carousel" data-slide="next">
+    &rsaquo;
+    <!--span class="carousel-control-next-icon"></span-->
+  </a>
+</div>
+{% endblock main -%}

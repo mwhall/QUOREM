@@ -23,6 +23,7 @@ from django.core.paginator import(
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
         FormDetailView, FormatTitleMixin, FormViewmodelsMixin, FormWithInlineFormsetsMixin,
+        ViewmodelView,
 )
 
 
@@ -71,6 +72,11 @@ from django.views.generic import TemplateView
 ###############################################################################
 ### Database Browse DJK views                                              ####
 ###############################################################################
+class HomePage(BsTabsMixin, ViewmodelView):
+    format_view_title=True
+    template_name= "core/homepage.htm"
+
+
 
 ## LIST VIEWS ##################################################################
 #  These list *all* the objects of a given type                               ##
@@ -455,6 +461,7 @@ class FileDetail(InlineDetailView):
 #    - Result (/result/create)                                                ##
 #                                                                             ##
 ################################################################################
+
 
 class InvestigationCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True

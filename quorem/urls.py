@@ -29,7 +29,7 @@ object_list = Object.get_object_classes()
 urlpatterns = []
 
 for Obj in object_list:
-    urlpatterns += [re_path(r'%s/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name), 
+    urlpatterns += [re_path(r'%s/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name),
                      Obj.get_detail_view(as_view=True),
                      name= Obj.base_name + '_detail',
                      kwargs={'view_title': 'List of %s' % (Obj.plural_name,)})]
@@ -40,6 +40,8 @@ urlpatterns += [
     # Wiki routing
     path('notifications/', include('django_nyt.urls')),
     path('wiki/', include('wiki.urls')),
+    # Home Page after login
+    path('home/', HomePage.as_view(), name='homepage'),
     # Upload routing
     path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
     path('upload/artifact', artifact_upload.as_view(), name='upload_artifact'),
