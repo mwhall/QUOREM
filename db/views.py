@@ -75,7 +75,13 @@ from django.views.generic import TemplateView
 class HomePage(BsTabsMixin, ViewmodelView):
     format_view_title=True
     template_name= "core/homepage.htm"
-
+    # get an object list to populate the carousel
+    obs = Object.get_object_classes()
+    ob_list = [{'name': ob.base_name.capitalize(), 'info': ob.info(), 'link': ob.base_name+"/all/"} for ob in obs]
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['obj_list'] = ob_list
+        return context
 
 
 ## LIST VIEWS ##################################################################

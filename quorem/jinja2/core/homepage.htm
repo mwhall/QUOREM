@@ -7,8 +7,9 @@
 <div row class="welcome">
   <h3> welcome to <span class="quorem">QUOR'em.</span></h3>
 </div>
+<!--
 <div id="object-carousel" class="carousel slide pt-4" data-ride="carousel">
-  <!-- slideshow part -->
+
   <div class="carousel-inner">
     <div class="carousel-item active">
       <div class="carousel-content pl-5 pr-5">
@@ -30,14 +31,32 @@
       </div>
     </div>
   </div>
-  <!-- Left and right controls -->
+
   <a class="carousel-control-prev" href="#object-carousel" data-slide="prev">
     &lsaquo;
-    <!--span class="carousel-control-prev-icon"></span-->
   </a>
   <a class="carousel-control-next" href="#object-carousel" data-slide="next">
     &rsaquo;
-    <!--span class="carousel-control-next-icon"></span-->
   </a>
 </div>
+-->
+<div id="object-carousel" class="carousel slide pt-4" data-ride="carousel">
+    <div class="carousel-inner">
+      {% for obj in obj_list %}
+      <div class="carousel-item {% if loop.first %}active{% endif %}">
+        <div class="carousel-content pl-5 pr-5">
+          <h5>{{ obj.name }}</h5>
+          <p>{{ obj.info }}</p>
+          <a href="{{ obj.link }}" class="btn btn-information">View All</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <a class="carousel-control-prev" href="#object-carousel" data-slide="prev">
+      &lsaquo;
+    </a>
+    <a class="carousel-control-next" href="#object-carousel" data-slide="next">
+      &rsaquo;
+    </a>
+  </div>
 {% endblock main -%}

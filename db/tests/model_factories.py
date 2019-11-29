@@ -132,7 +132,10 @@ class SampleFactory(DjangoModelFactory):
 ###             Concrete factories for each val type.                       ###
 ###             Concrete factory for values linked to val type.             ###
 ############################################################################"""
-
+"""
+!!!
+DEPRECATED
+!!!
 #Abstract base factory for all values
 class ValueFactory(DjangoModelFactory):
     name = factory.Faker('word', ext_word_list=None)
@@ -145,7 +148,7 @@ class ValueFactory(DjangoModelFactory):
         exclude = ['content_object']
         abstract = True
 
-"""### ### ### ### Factories for ValTypes  ### ### ### ### """
+### ### ### ### Factories for ValTypes  ### ### ### ###
 #Factory for StrVal Type
 class StrValFactory(DjangoModelFactory):
     value = factory.Faker('word', ext_word_list=None)
@@ -170,7 +173,7 @@ class DatetimeValFactory(DjangoModelFactory):
 class ResultValFactory(DjangoModelFactory):
     pass
 
-"""### ### ### ### Factories for Values with linked valTypes ### ### ### ### """
+### ### ### ### Factories for Values with linked valTypes ### ### ### ###
 #Factory for Value linke to StrVal
 class LinkedStrValFactory(ValueFactory):
     content_object = factory.SubFactory(StrValFactory)
@@ -195,4 +198,5 @@ class LinkedDateTimeValFactory(ValueFactory):
 class LinkedResultValFactory(ValueFactory):
     pass
 
-""" #########################################################################"""
+#########################################################################
+"""
