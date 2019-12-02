@@ -25,7 +25,7 @@ import version_parser.version as version
 import re
 from scipy.sparse import csr_matrix
 
-object_classes = Object.get_object_classes()
+object_classes = Object.get_object_types()
 
 #This should be fine to live here, but may need to move if this file reloads often
 unitregistry = pint.UnitRegistry()
@@ -162,9 +162,15 @@ class DataSignature(models.Model):
                     object_counts[Obj.plural_name] = int(kwargs[Obj.plural_name])
             else:
                 object_counts[Obj.plural_name] = 0
+        if type(value_type) == ContentType:
+            ctype = value_type
+        elif type(value_type) == str:
+            ctype = ContentType.objects.get_for_model(Value.get_value_types(type_name=value_type))
+        else:
+            ctype = ContentType.objects.get_for_model(value_type)
         signatures = DataSignature.objects.filter(name=name,
                      object_counts=object_counts,
-                     value_type=ContentType.objects.get_for_model(value_type))
+                     value_type=ctype)
         if return_counts:
             return (signatures, object_counts)
         return signatures
@@ -180,11 +186,7 @@ class Data(PolymorphicModel):
     db_cast_function = lambda x: x
 
     @classmethod
-    def get_data_types(cls):
-        return cls.__subclasses__()
-
-    @classmethod
-    def get_data_type(cls, value=None, type_name=None, **kwargs):
+    def get_data_types(cls, data=None, type_name=None, **kwargs):
         #Convenience function for get_data_types that returns one by name, or
         #returns the inferred value, if not named
         # Take in a string data_type and return the Datum model
@@ -192,7 +194,9 @@ class Data(PolymorphicModel):
             for datum in Data.get_data_types():
                 if (datum.type_name == type_name.lower()) or (datum.__name__.lower() == type_name.lower()):
                     return datum
-        return cls.infer_type(value, **kwargs)
+        if data is not None:
+            return cls.infer_type(data, **kwargs)
+        return cls.__subclasses__()
 
     @classmethod
     def cast(cls, value):
@@ -327,7 +331,7 @@ def datum_factory(obj):
 
 #NOTE: These aren't directly importable from here... any way to get these into
 # the file's namespace?
-for Obj in Object.get_object_classes():
+for Obj in object_classes:
     datum_factory(Obj)
 
 # Using definitions from Pint to power these
@@ -383,6 +387,13 @@ class TemperatureDatum(PintDatum):
 class TimeDatum(PintDatum):
     type_name = "time"
     default_unit = unitregistry.Unit("second")
+
+    @classmethod
+    def cast_function(cls, x):
+        try:
+            return unitregistry(x)
+        except:
+            return sum([unitregistry(t.replace("and","")) for t in x.split(",")])
 
 class LengthDatum(PintDatum):
     type_name = "length"

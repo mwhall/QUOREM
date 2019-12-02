@@ -40,7 +40,7 @@ class Result(Object):
         return mark_safe(format_html('<a{}>{}</a>',
                          flatatt({'href': reverse(self.base_name + '_detail',
                                  kwargs={self.base_name + '_id': self.pk})}),
-                                 self.type + " from " + self.source_step.name))
+                                 self.name + " from " + self.source_step.name))
 
     @classmethod
     def get_display_form(cls):

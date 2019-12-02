@@ -28,14 +28,6 @@ User = get_user_model()
 ##################################
 # Generic Base Class for Objects #
 #
-# Class Methods:
-#  - .get_id_fields(): Get ID fields for this object
-#  - .get_value_fields(): Get value fields for this object
-#  - .get_queryset({"id_field":[id1,id2,...]}): Get a QuerySet from a list of IDs as values in a dictionary of with ID fields as keys
-#  - .initialize({"field":[data1, data2,...]}): Validate data in dictionary and write only required fields, if not present in database
-#  - .update({"field":[data1]}): writes the values for each field on each of the ID fields present in the dictionary, and makes the appropriate links
-#
-# Combo Methods:
 
 class Object(models.Model):
     base_name = "object"
@@ -60,21 +52,93 @@ class Object(models.Model):
         return self.get_detail_link()
 
     @classmethod
-    def column_headings(cls):
-        #Defines the column headings for this Object's input scheme
-        headings = set([("%s_%s" % (cls.base_name, cls.id_field), True)])
-        if cls.has_upstream:
-            headings.add(("%s_upstream" % (cls.base_name,), False))
-        object_list = Object.get_object_classes()
+    def id_fields(cls):
+        return ["%s_%s" % (x.base_name, x.id_field) for x in cls.get_object_types()]
+
+    @combomethod
+    def column_headings(receiver):
+        object_list = Object.get_object_types()
         object_names = [Obj.base_name for Obj in object_list]
-        # Returns tuples of the field name, from model, and to model
-        for field in cls._meta.get_fields():
-            if field.is_relation and \
-               (field.related_model != cls) and \
-               (field.related_model in object_list):
-                headings.add(("%s_%s" % (cls.base_name, field.related_model.base_name), 
-                                         not (hasattr(field, "blank") and field.blank) and field.concrete))
+        if receiver.base_name == "object":
+            return_list = object_list
+        else:
+            return_list = [receiver]
+        headings = set()
+        for Obj in return_list:
+            #Defines the column headings for this Object's input scheme
+            headings.add(*[("%s_%s" % (Obj.base_name, Obj.id_field), True)])
+            if Obj.has_upstream:
+                headings.add(("%s_upstream" % (Obj.base_name,), False))
+            # Returns tuples of the field name, from model, and to model
+            for field in Obj._meta.get_fields():
+                if field.is_relation and \
+                   (field.related_model != Obj) and \
+                   (field.related_model in object_list):
+                    headings.add(("%s_%s" % (Obj.base_name, field.related_model.base_name), 
+                                             not (hasattr(field, "blank") and field.blank) and field.concrete))
         return list(headings)
+
+    @classmethod
+    def relational_field(cls, field):
+        return cls._meta.get_field(field).is_relation
+
+    @classmethod
+    def heading_to_field(cls, heading, m2m=False):
+        if "_" in heading:
+            field_name = heading.split("_")[1]
+        else:
+            field_name = heading
+        if field_name == "upstream":
+            return (field_name, True) if m2m else field_name
+        for field in cls._meta.get_fields():
+            if field.name == "id":
+                continue #skip database id field
+            if field.is_relation and (field.related_model in Object.get_object_types()) and \
+            ( (field_name == field.related_model.base_name) or (field_name == field.related_model.plural_name)):
+                return (field.name, field.many_to_many) if m2m else field.name
+            elif not field.is_relation and (field.name == field_name):
+                return (field.name, False) if m2m else field.name
+        return (None, None) if m2m else None
+
+    @classmethod
+    def _parse_kwargs(cls, value_kwargs=False, **kwargs):
+        # Parses input arguments from the user-friendly IO fields into API-friendly keyword fields
+        object_ids = {Obj.plural_name: [] for Obj in Object.get_object_types()}
+        object_kwargs = {Obj.plural_name: {} for Obj in Object.get_object_types()}
+        for column_heading, required in Object.column_headings():
+            headings = [x for x in kwargs if x.startswith(column_heading)]
+            if not headings:
+                continue
+            heading = headings[0].split(".")[0]
+            base_type = Object.get_object_types(type_name=heading.split("_")[0])
+            field, m2m = base_type.heading_to_field(heading, m2m=True)
+            if field:
+                if field == base_type.id_field:
+                    for h in headings:
+                        object_ids[base_type.plural_name].append(kwargs[h])
+                else:
+                    for h in headings:
+                        if base_type.relational_field(field):
+                            related_kwargs = kwargs.copy()
+                            related_kwargs = {base_type.heading_to_field(x): y for x,y in related_kwargs.items() if x in [x[0] for x in base_type.column_headings()]}
+                            for key, val in related_kwargs.items():
+                                if base_type.relational_field(key):
+                                    relfield = base_type._meta.get_field(key)
+                                    if relfield.many_to_many:
+                                        related_kwargs[key] = relfield.related_model.get_or_create(name=val)
+                                    else:
+                                        print("Hmmmmmmm")
+                                        related_kwargs[key] = relfield.related_model.get_or_create(name=val).first()
+                                        print("Made it through")
+                            print(related_kwargs)
+                            data = base_type._meta.get_field(field).related_model.get_or_create(**related_kwargs)
+                            print("Made it again")
+                        else:
+                            data = kwargs[h]
+                        object_kwargs[base_type.plural_name][field] = data
+        object_ids = {x: object_ids[x] for x in object_ids if object_ids[x]}
+        object_kwargs = {x: object_kwargs[x] for x in object_kwargs if object_kwargs[x] != {}}
+        return object_ids, object_kwargs
 
     @combomethod
     def info(receiver):
@@ -92,23 +156,70 @@ class Object(models.Model):
 
     @classmethod
     def get(cls, name):
-        return cls.objects.get(name=name)
+        return cls.objects.filter(name=name)
 
     @classmethod
     def create(cls, name, **kwargs):
-        # Check 
-        cls.objects.create(name=name, **kwargs)
+        # Check for the required fields:
+        req_fields = [col for col, req in cls.column_headings() if req]
+        for heading in req_fields:
+            field = cls.heading_to_field(heading)
+            if (heading in kwargs) and field:
+                kwargs[field] = kwargs[heading]
+                del kwargs[heading]
+            if field == 'name':
+                continue
+            elif field not in kwargs:
+                raise ValueError("Required field %s not found when creating %s" % (field, cls.base_name.capitalize()))
+        obj = cls.objects.create(name=name, **kwargs)
+        obj.update(**kwargs)
+        return cls.objects.filter(pk=obj.pk)
+
+    def update(self, **kwargs):
+        for heading in kwargs:
+            field, m2m = self.heading_to_field(heading, m2m=True)
+            if field:
+                data = kwargs[heading]
+                field = getattr(self, field)
+                if m2m:
+                    field.add(*data)
+                else:
+                    field = data
+        self.save()
+
+    @classmethod
+    def get_or_create(cls, name, **kwargs):
+        try:
+            obj = cls.get(name)
+        except:
+            obj = None
+        if not obj or (hasattr(obj, "exists") and not obj.exists()):
+            try:
+               obj = cls.create(name, **kwargs)
+            except:
+                print(name)
+                print(kwargs)
+                raise
+        return cls.objects.filter(pk__in=obj.values("pk"))
+
 
     @classmethod
     def linkable(cls, value_name):
         # All Values can be linked to the base class
         # and to everything else by default
         # Override this for white/blacklist
-        return True
+        value_type = apps.get_model("db.Value").get_value_types(type_name=value_name)
+        return cls.plural_name in value_type.linkable_objects
 
     @classmethod
-    def get_object_classes(cls):
-        return cls.__subclasses__()
+    def get_object_types(cls, type_name=None):
+        if type_name == None:
+            return cls.__subclasses__()
+        else:
+            for Obj in cls.__subclasses__():
+                if (type_name.lower() == Obj.base_name) or (type_name.lower() == Obj.plural_name):
+                    return Obj
+            raise ValueError("Unknown Object %s" % (type_name,))
 
     @classmethod
     def get_queryset(cls, data):
@@ -118,8 +229,12 @@ class Object(models.Model):
             return cls._meta.model.objects.none()
         kwargs = {}
         for id_field in [cls.id_field, "id"]:
-            if cls.base_name + "_" + id_field in data:
-                kwargs[id_field + "__in"] = data[cls.base_name + "_" + id_field]
+            field = "%s_%s" % (cls.base_name, id_field)
+            if field in data:
+                if type(data[field]) == list:
+                    kwargs[id_field + "__in"] = data[field]
+                else:
+                    kwargs[id_field + "__in"] = [data[field]]
         if not kwargs:
             return cls._meta.model.objects.none()
         return cls._meta.model.objects.filter(**kwargs)
@@ -215,193 +330,6 @@ class Object(models.Model):
         if object_name in ["samples", "steps", "processes", "results"]:
             kwargs["upstream"] = upstream
         return name_map[object_name](**kwargs)
-
-    # Creates bare minimum objects from the given data set
-    @classmethod
-    def initialize(cls, data, log=None):
-        #data is a dict with {"field_name": [field data],}
-        _id_fields = id_fields()
-        req_fields = [ x for x in required_fields() if x.startswith(cls.base_name + "_") ]
-        ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        single_ref_fields = [ x[0] for x in single_reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        many_ref_fields = [ x for x in many_reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        ref_proxies = reference_proxies()
-        cls_proxies = [x for x in ref_proxies if ref_proxies[x][0].startswith(cls.base_name)]
-        ids = []
-        cls_proxy = False
-        if (cls.base_name + "_id" not in data) and \
-           (cls.base_name + "_" + cls.id_field not in data):
-                cls_proxy_fields = []
-                for proxy_field in cls_proxies:
-                    if proxy_field in data:
-                        cls_proxy = True
-                        cls_proxy_fields.append(proxy_field)
-                if not cls_proxy:
-                    #Nothing to do for this class, so bail
-                    return
-       # Fast non-database data validation:
-        required_proxies = dict()
-        for field_name in req_fields:
-            if (field_name not in data) and (field_name in ref_proxies):
-                #Search for a proxy field
-                proxy = False
-                for proxy_field in ref_proxies[field_name]:
-                    if proxy_field in data:
-                        proxy = True
-                        required_proxies[field_name] = proxy_field
-                # If no proxy is present, raise error
-                if not proxy:
-                    raise ValueError("initialize %s: Missing required field name %s for object %s and no proxies found" % (cls.base_name, field_name, cls.base_name))
-            elif field_name not in data:
-                    raise ValueError("initialize %s: Missing required field name %s for object %s" % (cls.base_name, field_name, cls.base_name))
-            if (field_name in [x[0] for x in single_ref_fields]):
-                if len(data[field_name]) > 1:
-                    raise ValueError("initialize %s: Can only have one item in list for atomic field %s" % (cls.base_name, field_name,))
-        assert (cls.base_name + "_id" in data) or (cls.base_name + "_" + cls.id_field in data) or (cls_proxy)
-        if cls.base_name + "_id" in data:
-            ids.extend(data[cls.base_name + "_id"])
-        if cls.base_name + "_" + cls.id_field in data:
-            ids.extend(data[cls.base_name + "_" + cls.id_field])
-        if cls_proxy:
-            for cls_proxy_field in cls_proxy_fields:
-                ids.extend(data[cls_proxy_field])
-        #This should be the only true database hit for each call of this, unless references have to be pulled
-        cls_queryset = cls.get_queryset(data)
-        found_ids = [str(x) for x in cls_queryset.values_list(cls.id_field, flat=True)]
-        # If the id field is found in data, iterate over the ids
-        ref_objects = defaultdict(dict)
-        object_list = Object.get_object_classes()
-        for _id in ids:
-            # Check if the id exists in the database, according to our previous query
-            if isinstance(_id, int):
-                # Nothing to do for an initialize
-                continue
-            _id = str(_id)
-            if not _id in found_ids:
-                #Create the new one
-                kwargs = {cls.id_field: _id}
-                for field in req_fields:
-                    django_field = field.split("_")[1]
-                    if field in single_ref_fields:
-                        if field in required_proxies:
-                            ref_id = data[required_proxies[field]][0]
-                        else:
-                            ref_id = data[field][0]
-                        # Grab it as a query
-                        ref_model = [x[2] for x in ref_fields if x[0]==field][0]
-                        #Only grab Objects
-                        if hasattr(ref_model, "base_name"):
-                            if (ref_id in ref_objects[ref_model.base_name]):
-                                obj = ref_objects[ref_model.base_name][ref_id]
-                            else:
-                                if isinstance(ref_id, int):
-                                    ref_id_field = "id"
-                                else:
-                                    ref_id_field = ref_model.id_field
-                                try:
-                                    obj = ref_model.objects.get(**{ref_id_field: ref_id})
-                                    ref_objects[ref_model.base_name][ref_id] = obj
-                                except:
-                                    raise ValueError("initialize %s: Cannot find referenced required %s '%s'" % (cls.base_name, ref_model.base_name, ref_id))
-                            kwargs[django_field] = obj
-                    elif django_field != cls.id_field:
-                        kwargs[django_field] = data[field][0]
-                new_obj = cls()
-                for field in kwargs:
-                    setattr(new_obj, field, kwargs[field])
-                new_obj.save()
-
-    @classmethod
-    def update(cls, data, log=None):
-        _id_fields = id_fields()
-        _all_fields = [ x for x in all_fields() if x.startswith(cls.base_name + "_") ]
-        ref_fields = [ x for x in reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        single_ref_fields = [ x for x in single_reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        many_ref_fields = [ x for x in many_reference_fields() if x[0].startswith(cls.base_name + "_") ]
-        ref_proxies = reference_proxies()
-        # data validation
-        for field_name in [x for x in _all_fields if x in data]:
-            if (field_name in single_ref_fields):
-                if len(data[field_name]) > 1:
-                    raise ValueError("update: Can only have one item in list for atomic field %s" % (field_name,))
-        #This is all the objects that already exist
-        cls_queryset = cls.get_queryset(data)
-        # If the id field is found in data, iterate over the ids
-        obj_id_in_data = [ x for x in _id_fields if x.startswith(cls.base_name) and (x in data)]
-        object_list = Object.get_object_classes()
-        for id_field in obj_id_in_data:
-            for _id in data[id_field]:
-                # Check if the id exists in the database, according to our previous query
-                obj_queryset = cls_queryset.filter(**{id_field.split("_")[1]: _id})
-                if not obj_queryset.exists():
-                    raise ValueError("update: %s %s not found when attempting to update. Did you use initialize?" % (cls.base_name,_id))
-                else:
-                    obj = obj_queryset.get()
-                    for field in [x for x in _all_fields if (x not in _id_fields) and (x.startswith(cls.base_name))]:
-                        proxy_fields = []
-                        if (field not in data) and (field in ref_proxies) and (not field.endswith("_upstream")):
-                            for proxy in ref_proxies[field]:
-                                if proxy in data:
-                                    proxy_fields.append(proxy)
-                            if (field in required_fields()) and (len(proxy_fields) == 0):
-                                raise ValueError("Field %s required and not found, and no proxy ID fields found." % (field,))
-                        db_datum = getattr(obj, field.replace(cls.base_name+"_",""))
-                        #Blank, feel free to overwrite
-                        if (field not in [x[0] for x in ref_fields]) and (field in data):
-                            # If it isn't a reference, we just set the data
-                            if (db_datum == "") or (db_datum == None):
-                                setattr(obj, field.replace(cls.base_name+"_",""), data[field][0])
-                            #elif datum != data[field][0]:
-                            #    #TODO: set this as a warning? Overwrite?
-                            #    pass
-                        elif (field in [x[0] for x in ref_fields]):
-                            # If it is a reference, we need to fetch it, then set it
-                            # We also need to translate reverse fields into their ID fields
-                            ref_model = [x[2] for x in ref_fields if x[0]==field][0]
-                            if hasattr(ref_model, "base_name"):
-                                proxy_fields.append(field)
-                                for search_field in proxy_fields:
-                                    if search_field in data:
-                                        for ref_id in data[search_field]:
-                                            if isinstance(ref_id, int):
-                                                ref_id_field = "id"
-                                            else:
-                                                ref_id_field = ref_model.id_field
-                                            try:
-                                                ref_obj = ref_model.objects.get(**{ref_id_field: ref_id})
-                                            except:
-                                                #TODO: Set this to a warning?
-                                                raise ValueError("update: Cannot find referenced %s '%s'" % (ref_model.base_name, ref_id))
-                                            if field in [x[0] for x in many_ref_fields]:
-                                                getattr(obj, field.replace(cls.base_name+"_","")).add(ref_obj)
-                                                if field == cls.base_name + "_upstream":
-                                                    # In order to update the symmetrical
-                                                    # all_upstream/all_downstream fields
-                                                    # we add ref_obj to upstream and all_upstream
-                                                    # then we add all of ref_obj's upstream to
-                                                    # obj, and all of obj's downstream to
-                                                    # ref_obj's downstream
-                                                    # and then we have to update the cross
-                                                    # references of all other steps to one
-                                                    # another, saving as we let variables go
-                                                    obj.all_upstream.add(ref_obj)
-                                                    upstream_qs = ref_obj.all_upstream.all()
-                                                    downstream_qs = obj.all_downstream.all()
-                                                    obj.all_upstream.add(*upstream_qs)
-                                                    ref_obj.all_downstream.add(*downstream_qs)
-                                                    ref_obj.save()
-                                                    for down_obj in downstream_qs:
-                                                        for up_obj in upstream_qs:
-                                                            down_obj.all_upstream.add(up_obj)
-                                                        down_obj.save()
-                                            else:
-                                                if (db_datum == "") or (db_datum == None):
-                                                    setattr(obj, field.replace(cls.base_name+"_",""), ref_obj)
-                                                    #TODO: Set else to a warning? Overwrite?
-                                #elif datum != data[field]:
-                            #    pass
-                                #TODO: Add a warning that it didn't overwrite
-                    obj.save()
 
     @combomethod
     def get_detail_link(receiver):

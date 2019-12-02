@@ -16,10 +16,9 @@ class Feature(Object):
     description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
 
     name = models.CharField(max_length=255, verbose_name="Name")
-    annotations = models.ManyToManyField('Value', related_name='+', blank=True)
-    first_result = models.ForeignKey('Result', on_delete=models.CASCADE, blank=True, null=True)
     samples = models.ManyToManyField('Sample', related_name='features', blank=True)
 
+    annotations = models.ManyToManyField('Value', related_name='+', blank=True)
     values = models.ManyToManyField('Value', related_name="features", blank=True)
 
     @classmethod

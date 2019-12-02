@@ -76,8 +76,9 @@ class HomePage(BsTabsMixin, ViewmodelView):
     format_view_title=True
     template_name= "core/homepage.htm"
     # get an object list to populate the carousel
-    obs = Object.get_object_classes()
-    ob_list = [{'name': ob.base_name.capitalize(), 'info': ob.info(), 'link': ob.base_name + "/all/"} for ob in obs]
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ob_list = [{'name': ob.base_name.capitalize(), 'info': ob.info(), 'link': ob.base_name + "/all/"} for ob in Object.get_object_types()]
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['obj_list'] = self.ob_list
