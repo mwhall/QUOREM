@@ -20,6 +20,13 @@
         margin-right: .75rem;
         margin-left: .75rem;
       }
+      .v2{
+        color: grey;
+      }
+      .announcement{
+        color: #17a2b8;
+        opacity: 0.7;
+      }
     </style>
   </head>
   <body>
@@ -41,8 +48,8 @@
       <div class="col-lg-4">
         <img class="rounded-circle" src="{{ static ('img/microscope.png') }}"
         alt="graph image" width="140" height="140">
-        <h2>Data Analysis</h2>
-        <p>Perform data analysis techniques on QUOR'em data. Click to find out more.
+        <h2>Complex Queries</h2>
+        <p>Perform more complicated search operations to view your data as a table.
         </p>
         <p>
           <a class="btn btn-secondary" href="{{ url('value_table') }}" role="button">
@@ -52,11 +59,12 @@
     <div class="col-lg-4">
       <img class="rounded-circle" src="{{ static ('img/report.png') }}"
       alt="graph image" width="140" height="140">
-      <h2>Detailed Reports</h2>
-      <p>Get custom reports about the data in a team-specific manner.
+      <h2 class="v2">Detailed Reports</h2>
+      <p class="announcement">This feature is coming in version 2.</p>
+      <p class="v2">Get custom reports about the data in a team-specific manner.
       </p>
       <p>
-        <a class="btn btn-secondary" href="#" role="button">
+        <a class="btn btn-secondary disabled" href="#" role="button">
           Summarize</a>
       </p>
   </div>
