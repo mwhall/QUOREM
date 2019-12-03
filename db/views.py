@@ -202,6 +202,8 @@ class FeatureList(ListSortingView):
     def get_display_value(self, obj, field):
         if field=='name':
             return self.get_name_links(obj)
+        elif field=='annotations':
+            return "\n".join(StrDatum.objects.filter(pk__in=obj.annotations.values("data")).values_list("value", flat=True))
 
 class AnalysisList(ListSortingView):
     model = Analysis
