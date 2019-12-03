@@ -3,6 +3,8 @@ import yaml
 import re
 import os
 
+import pandas as pd
+
 from .models.object import Object
 from .models.value import Value
 
@@ -83,7 +85,7 @@ class ArtifactIterator:
                     else:
                         base_type = yf[x]
         for uuid, yf in self.iter_actionyaml():
-            if yf['action']['type'] in ['method', 'pipeline']:
+            if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] +\
                                "__" + yf['action']['action']
                 yield {"step_name": step_name}
@@ -132,7 +134,7 @@ class ArtifactIterator:
                     else:
                         base_type = yf[x]
         for uuid, yf in self.iter_actionyaml():
-            if yf['action']['type'] in ['method', 'pipeline']:
+            if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] + \
                                "__" + yf['action']['action']
                 for pdict in yf["action"]["parameters"]:

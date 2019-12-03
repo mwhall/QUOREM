@@ -73,6 +73,7 @@ class Feature(Object):
                     htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype,)
                     htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
             data_types = self.annotations.values_list("signature__data_types", flat=True).distinct()
+            annotations = []
             for data_type_pk in data_types:
                 data_type = ContentType.objects.get_for_id(data_type_pk).model_class()
                 annotations = data_type.objects.filter(pk__in=self.annotations.values("data")).values_list("value", flat=True)
