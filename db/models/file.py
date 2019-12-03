@@ -10,7 +10,8 @@ from django.contrib.postgres.search import SearchVector
 
 from django.apps import apps
 
-class File(models.Model):
+# Note: This is called UploadFile because we have File as a Value which is a pointer to a broader set of things considered Files
+class UploadFile(models.Model):
     base_name = "file"
     plural_name = "files"
     STATUS_CHOICES = (
@@ -38,10 +39,7 @@ class File(models.Model):
         lf.save()
         self.logfile = lf
         super().save(*args, **kwargs)
-        #Call to celery, without importing from tasks.py (avoids circular import)
-    #    current_app.send_task('db.tasks.react_to_file', (self.pk,))
-        #output = result.collect()
-        ##    print(i)
+
     def update(self, *args, **kwargs):
         super().save(*args, **kwargs)
         

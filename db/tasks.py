@@ -11,6 +11,7 @@ from django.apps import apps
 
 from .formatters import guess_filetype, parse_csv_or_tsv, TableParser, ArtifactParser
 from .models import *
+from .artifacts import ingest_artifact
 
 from q2_extractor.Extractor import Extractor
 import pandas as pd
@@ -25,12 +26,12 @@ def react_to_file(upload_file_id, **kwargs):
     #it throws an ID not found error. Trying again and changing nothing seems to work
     #So, make it try twice, then throw an error if it still doesn't work.
     try:
-        upfile = File.objects.get(id=upload_file_id)
+        upfile = UploadFile.objects.get(id=upload_file_id)
     except:
         try:
         #rarely it doesn't work for no apparent reason. Sleep and try again.
             time.sleep(1)
-            upfile = File.objects.get(id=upload_file_id)
+            upfile = UploadFile.objects.get(id=upload_file_id)
         except Exception as e:
             print("error with upfile. Cannot find the file. Sys Admin should remove.")
             print(e)
@@ -46,7 +47,7 @@ def react_to_file(upload_file_id, **kwargs):
             mail.title="The qiime artifact you uploaded "
             print("Processing qiime file...")
             try:
-                status = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"], register_provenance=kwargs["register_provenance"])
+                status = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"])
             except Exception as e:
                 print(e)
 
@@ -114,35 +115,16 @@ def process_table(upfile):
     return "Success"
 
 @shared_task
-def process_qiime_artifact(upfile, analysis_pk, register_provenance):
+def process_qiime_artifact(upfile, analysis_pk):
     infile = upfile.upload_file._get_file().open()
     print("Getting logger")
     lgr = upfile.logfile.get_logger()
     start_time = time.time()
-    analysis_name = Analysis.objects.get(pk=analysis_pk).name
-    ap = ArtifactParser(infile, provenance=register_provenance)
-    result_uuid = ap.extractor.base_uuid
-    for model, data in ap.initialize_generator():
-        print("Initializing for %s" % (model.plural_name,))
-        if not data:
-            continue
-        #Injnect the analysis name as an atomic list
-        if model.base_name == "result":
-            data["result_analysis"] = [analysis_name]
-        model.initialize(data, log=lgr)
-    print("Updating")
-    for model, data in ap.update_generator():
-        if not data:
-            continue
-        # Inject the analysis name as an atomic list
-        if model.base_name == "result":
-            data["result_analysis"] = [analysis_name]
-        model.update(data, log=lgr)
-    print("Adding and linking values")
-    Value.add_values(ap.value_table(), log=lgr)
-    res = Result.objects.get(uuid=result_uuid)
-    res.file = upfile
-    res.save()
+    analysis = Analysis.objects.get(pk=analysis_pk)
+    result_uuid = ingest_artifact(infile, analysis)
+    res = Result.get(name=result_uuid)
+    fileval = File.get_or_create(name="uploaded_artifact", data=upfile, 
+                       data_type="uploadfile", results=res)
     print("#\n#\n")
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
     print(time.time() - start_time)

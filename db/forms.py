@@ -9,7 +9,7 @@ from .models import (
     Result,
     Sample, Feature,
     Value,
-    File, UserProfile, UploadMessage
+    UploadFile, UserProfile, UploadMessage
 )
 
 from django_jinja_knockout.forms import (
@@ -85,11 +85,11 @@ class UserProfileForm(BootstrapModelForm):
 
 class UploadForm(WidgetInstancesMixin, BootstrapModelForm):
     class Meta:
-        model = File
+        model = UploadFile
         fields = ['upload_file']
 
 UserUploadFormset = ko_inlineformset_factory(UserProfile,
-                                             File,
+                                             UploadFile,
                                              form=UploadForm,
                                              extra=0,
                                              min_num=1)
@@ -97,18 +97,17 @@ UserUploadFormset = ko_inlineformset_factory(UserProfile,
 ################ Upload Forms
 class ArtifactUploadForm(ModelForm):
     analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(), empty_label="Select an Analysis")
-    register_provenance = forms.BooleanField(initial=False, required=False, label="Register Provenance")
     class Meta:
-        model = File
+        model = UploadFile
         #exclude = ('userprofile', )
-        fields = ('analysis', 'register_provenance', 'upload_file',)
+        fields = ('analysis', 'upload_file',)
     def __init__(self, *args, **kwargs):
         self.userprofile = kwargs.pop('userprofile')
         super(ArtifactUploadForm, self).__init__(*args, **kwargs)
 
 class SpreadsheetUploadForm(ModelForm):
     class Meta:
-        model = File
+        model = UploadFile
         #exclude = ('userprofile', )
         fields = ('upload_file',)
     def __init__(self, *args, **kwargs):
@@ -119,11 +118,11 @@ class SpreadsheetUploadForm(ModelForm):
 
 
 #This form used only for display purposes
-class FileDisplayForm(WidgetInstancesMixin,
+class UploadFileDisplayForm(WidgetInstancesMixin,
                                 BootstrapModelForm,
                                 metaclass=DisplayModelMetaclass):
         class Meta:
-            model=File
+            model=UploadFile
             fields = '__all__'
 
 class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
@@ -135,7 +134,7 @@ class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
 
 
 FileDisplayErrorFormset = ko_inlineformset_factory(
-                                                File,
+                                                UploadFile,
                                                 UploadMessage,
                                                 form=ErrorDisplayForm,
                                                 extra=0,
@@ -143,7 +142,7 @@ FileDisplayErrorFormset = ko_inlineformset_factory(
                                                 can_delete=False)
 
 class FileDisplayWithInlineErrors(FormWithInlineFormsets):
-    FormClass = FileDisplayForm
+    FormClass = UploadFileDisplayForm
     FormsetClasses =[FileDisplayErrorFormset]
     def get_formset_inline_title(self, formset):
         return "Error Messages"

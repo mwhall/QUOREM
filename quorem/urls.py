@@ -24,7 +24,7 @@ from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
 
 from db.models.object import Object
 
-object_list = Object.get_object_classes()
+object_list = Object.get_object_types()
 
 urlpatterns = []
 
@@ -48,11 +48,11 @@ urlpatterns += [
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),
-    re_path(r'upload/(?P<file_id>\d+)/$', FileDetail.as_view(),
-            name='file_detail',
+    re_path(r'upload/(?P<file_id>\d+)/$', UploadFileDetail.as_view(),
+            name='uploadfile_detail',
             kwargs={'view_title': "Upload Details"}),
-    path('upload/<int:file_id>/<new>/', FileDetail.as_view(is_new=True),
-            name='file_detail_new',
+    path('upload/<int:file_id>/<new>/', UploadFileDetail.as_view(is_new=True),
+            name='uploadfile_detail_new',
             kwargs={'view_title':"Upload Details"}),
     path('accounts/', include('accounts.urls')),
     path('', index, name='landing'),

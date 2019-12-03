@@ -33,7 +33,7 @@ class TableParser(object):
     def initialize_generator(self):
         # Grabs the data necessary for Object.initialize(data)
         # Sorts it into objects so they can be initialized in dependency order
-        for Obj in Object.get_object_classes():
+        for Obj in Object.get_object_types():
             data = self.initialize(Obj.base_name)
             if data:
                 yield (Obj, data)
@@ -56,7 +56,7 @@ class TableParser(object):
                 yield dd
 
     def update_generator(self):
-        for Obj in Object.get_object_classes():
+        for Obj in Object.get_object_types():
             for data in self.update(Obj.base_name):
                 yield (Obj, data)
 

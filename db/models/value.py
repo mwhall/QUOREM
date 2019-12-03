@@ -44,7 +44,7 @@ class Value(PolymorphicModel):
     required_objects = []
 
     def __str__(self):
-        return self.name
+        return self.base_name.capitalize() + ": " + self.name
 
     @combomethod
     def info(receiver):
@@ -109,10 +109,8 @@ class Value(PolymorphicModel):
         if "value_data" in kwargs:
             newkwargs["data"] = kwargs["value_data"]
         if "data_type" in kwargs:
-            dtype = Data.get_data_types(type_name = kwargs["data_type"])
-            assert issubclass(dtype, Data)
-            newkwargs["data_type"] = dtype
-        vobj_keys = [x for x in kwargs.keys() if x.startswith("value_object")]
+                newkwargs["data_type"] = kwargs["data_type"]
+        vobj_keys = [x for x in kwargs if x.startswith("value_object")]
         id_fields = Object.id_fields()
         for vobj_key in vobj_keys:
             vobj = Object.get_object_types(type_name=kwargs[vobj_key])
@@ -120,7 +118,7 @@ class Value(PolymorphicModel):
                 continue # We already have it in QS format
             qsdata = defaultdict(list)
             for arg in kwargs:
-                if arg.split(".")[0] in id_fields:
+                if arg.split(".")[0] == vobj.base_name+"_"+vobj.id_field:
                     qsdata[arg.split(".")[0]].append(kwargs[arg])
             vobjs = vobj.get_queryset(qsdata)
             newkwargs[vobj.plural_name] = vobjs
@@ -134,6 +132,8 @@ class Value(PolymorphicModel):
         if (name is None) and (type_name) is None:
             return cls.__subclasses__()
         elif type_name is not None:
+            if type_name.lower() == "value":
+                return Value
             for val in Value.get_value_types():
                 if (val.base_name == type_name.lower()) or (val.plural_name == type_name.lower()):
                     return val
@@ -164,6 +164,8 @@ class Value(PolymorphicModel):
             return cls
         value_type = kwargs["value_type"]
         if type(value_type) == str:
+            if value_type.lower() == "value":
+                return Value
             return Value.get_value_types(type_name=value_type)
         if type(value_type) == polymorphic.base.PolymorphicModelBase:
             return value_type
@@ -174,7 +176,8 @@ class Value(PolymorphicModel):
     @classmethod
     def create(cls, name, data, signature=None, **kwargs):
         for obj in cls.required_objects:
-            if obj not in kwargs:
+            t = Object.get_object_types(type_name=obj)
+            if (t.base_name not in kwargs) and (t.plural_name not in kwargs):
                 raise ValueError("Missing required links to %s for value %s" % (obj, name))
         for Obj in object_classes:
             if Obj.plural_name in kwargs:
@@ -195,7 +198,9 @@ class Value(PolymorphicModel):
             raise ValueError("Multiple DataSignatures found. Provide n_<objects> arguments in kwargs to resolve the ambiguity, or provide the signature explicitly")
         if 'data_type' in kwargs:
             data_type = kwargs['data_type']
-            if type(data_type) == str:
+            if data_type == "auto":
+                data_type = Data.infer_type(data)
+            else:
                 data_type = Data.get_data_types(type_name=data_type)
             add_dtype_to_signature = True
         elif signature.data_types.exists():
@@ -275,13 +280,15 @@ class Parameter(Value):
         # Check what we can infer
         if "steps" not in kwargs:
             if "results" in kwargs:
+                result = kwargs["results"].first() # Should only be one
                 step = result.source_step
             else:
                 raise ValueError("Parameters must be requested relative to a Step")
-        steps = kwargs["steps"]
-        assert steps.count() == 1, "Only one Step can be linked to a Parameter"
-        step = steps.first()
-        object_list = ["results", "analyses", "processes"]
+        else:
+            steps = kwargs["steps"]
+            assert steps.count() == 1, "Only one Step can be linked to a Parameter"
+            step = steps.first()
+        object_list = ["results", "analyses", "processes", "steps"]
         for objs in object_list:
             if (objs in kwargs) and kwargs[objs].exists():
                 obj = kwargs[objs].first()
@@ -342,6 +349,12 @@ class Measure(Value):
     str_description = "A Measure represents a measurement or a computation that is obtained through a Result"
 
     required_objects = ["result"]
+
+class File(Value):
+    base_name = "file"
+    plural_name = "files"
+
+    str_description = "A value for keeping track of Files that are either on the QUOR'em server or elsewhere"
 
 class Category(Value):
     # Links to a homogeneous set of Objects, providing potentially-overlapping categories

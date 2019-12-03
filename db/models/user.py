@@ -41,6 +41,6 @@ class UploadMessage(models.Model):
     """
     Store messages for file uploads.
     """
-    file = models.ForeignKey("File", on_delete=models.CASCADE, verbose_name='Uploaded File')
+    file = models.ForeignKey("UploadFile", on_delete=models.CASCADE, verbose_name='Uploaded File')
     error_message = models.CharField(max_length = 1000, null=True)
 

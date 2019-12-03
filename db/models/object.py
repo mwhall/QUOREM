@@ -39,6 +39,8 @@ class Object(models.Model):
     description = "The base class for all Objects in QUOR'em"
 
     gv_node_style = {}
+    node_height = 3
+    node_width = 3
 
     search_vector = SearchVectorField(blank=True,null=True)
 
@@ -103,42 +105,49 @@ class Object(models.Model):
     @classmethod
     def _parse_kwargs(cls, value_kwargs=False, **kwargs):
         # Parses input arguments from the user-friendly IO fields into API-friendly keyword fields
-        object_ids = {Obj.plural_name: [] for Obj in Object.get_object_types()}
-        object_kwargs = {Obj.plural_name: {} for Obj in Object.get_object_types()}
-        for column_heading, required in Object.column_headings():
-            headings = [x for x in kwargs if x.startswith(column_heading)]
-            if not headings:
-                continue
-            heading = headings[0].split(".")[0]
-            base_type = Object.get_object_types(type_name=heading.split("_")[0])
-            field, m2m = base_type.heading_to_field(heading, m2m=True)
+        object_types = Object.get_object_types()
+        object_ids = {Obj.plural_name: [] for Obj in object_types}
+        create_kwargs = {Obj.plural_name: {} for Obj in object_types}
+        update_kwargs = {Obj.plural_name: {} for Obj in object_types}
+        # Rough save order for getting existence straightened out #TODO: Introspect this through related fields
+        object_order = [apps.get_model("db.Investigation"), 
+                        apps.get_model("db.Step"), 
+                        apps.get_model("db.Sample"), 
+                        apps.get_model("db.Feature"),
+                        apps.get_model("db.Process"), 
+                        apps.get_model("db.Analysis"),
+                        apps.get_model("db.Result")]
+        object_headings = [y for x in [x.column_headings() for x in object_order] for y in x]
+        for column_heading, required in object_headings:
+            keys = [x for x in kwargs if x.startswith(column_heading)]
+            base_type = Object.get_object_types(type_name=column_heading.split("_")[0])
+            field, m2m = base_type.heading_to_field(column_heading, m2m=True)
             if field:
+                if field in kwargs:
+                    keys.append(field)
+                if len(keys) == 0:
+                    continue
                 if field == base_type.id_field:
-                    for h in headings:
-                        object_ids[base_type.plural_name].append(kwargs[h])
+                    for k in keys:
+                        object_ids[base_type.plural_name].append(kwargs[k])
                 else:
-                    for h in headings:
+                    for k in keys:
                         if base_type.relational_field(field):
-                            related_kwargs = kwargs.copy()
-                            related_kwargs = {base_type.heading_to_field(x): y for x,y in related_kwargs.items() if x in [x[0] for x in base_type.column_headings()]}
-                            for key, val in related_kwargs.items():
-                                if base_type.relational_field(key):
-                                    relfield = base_type._meta.get_field(key)
-                                    if relfield.many_to_many:
-                                        related_kwargs[key] = relfield.related_model.get_or_create(name=val)
-                                    else:
-                                        print("Hmmmmmmm")
-                                        related_kwargs[key] = relfield.related_model.get_or_create(name=val).first()
-                                        print("Made it through")
-                            print(related_kwargs)
-                            data = base_type._meta.get_field(field).related_model.get_or_create(**related_kwargs)
-                            print("Made it again")
+                            data = base_type._meta.get_field(field).related_model.get(name=kwargs[k])
+                            if not data.exists():
+                                continue #Skip it. TODO: indicate it's not found somehow, so we don't have to iterate twice (once for create, once for update) and can just add it later
+                            if not m2m:
+                                data = data.first()
                         else:
-                            data = kwargs[h]
-                        object_kwargs[base_type.plural_name][field] = data
+                            data = kwargs[k]
+                        if required and (field != "upstream"):
+                            create_kwargs[base_type.plural_name][field] = data
+                        if not required or (field == base_type.id_field) or (field=="upstream"):
+                            update_kwargs[base_type.plural_name][field] = data
         object_ids = {x: object_ids[x] for x in object_ids if object_ids[x]}
-        object_kwargs = {x: object_kwargs[x] for x in object_kwargs if object_kwargs[x] != {}}
-        return object_ids, object_kwargs
+        create_kwargs = {x: create_kwargs[x] for x in create_kwargs if create_kwargs[x] != {}}
+        update_kwargs = {x: update_kwargs[x] for x in update_kwargs if update_kwargs[x] != {}}
+        return object_ids, create_kwargs, update_kwargs
 
     @combomethod
     def info(receiver):
@@ -161,47 +170,54 @@ class Object(models.Model):
     @classmethod
     def create(cls, name, **kwargs):
         # Check for the required fields:
-        req_fields = [col for col, req in cls.column_headings() if req]
-        for heading in req_fields:
-            field = cls.heading_to_field(heading)
-            if (heading in kwargs) and field:
-                kwargs[field] = kwargs[heading]
-                del kwargs[heading]
-            if field == 'name':
-                continue
-            elif field not in kwargs:
-                raise ValueError("Required field %s not found when creating %s" % (field, cls.base_name.capitalize()))
-        obj = cls.objects.create(name=name, **kwargs)
-        obj.update(**kwargs)
+        req_headings = [col for col, req in cls.column_headings() if req]
+        req_fields = []
+        all_headings = [col for col, req in cls.column_headings()]
+        create_kwargs = {}
+        for heading in req_headings:
+            field, m2m = cls.heading_to_field(heading, m2m=True)
+            req_fields.append(field)
+            # ID is provided by name so we can skip it here
+            if field and (field != cls.id_field):
+                if field in kwargs:
+                    key = field
+                elif heading in kwargs:
+                    key = heading
+                else:
+                    raise ValueError("Required heading %s (or argument '%s') not found when creating %s" % (heading, field, cls.base_name.capitalize()))
+                create_kwargs[field] = kwargs[key]
+        obj = cls.objects.create(name=name, **create_kwargs)
         return cls.objects.filter(pk=obj.pk)
 
     def update(self, **kwargs):
-        for heading in kwargs:
-            field, m2m = self.heading_to_field(heading, m2m=True)
-            if field:
-                data = kwargs[heading]
-                field = getattr(self, field)
-                if m2m:
-                    field.add(*data)
-                else:
-                    field = data
-        self.save()
+        field_names = [x.name for x in self._meta.get_fields()]
+        save_required = False
+        for arg in kwargs:
+            if arg in field_names:
+                field = arg
+            else:
+                field = self.heading_to_field(arg)
+            if not field:
+                continue
+            data = kwargs[arg]
+            Field = getattr(self, field)
+            if hasattr(Field, 'add'):
+                Field.add(*data)
+            else:
+                setattr(self, field, data)
+                save_required = True
+        if save_required:
+            self.save()
 
     @classmethod
     def get_or_create(cls, name, **kwargs):
-        try:
-            obj = cls.get(name)
-        except:
-            obj = None
-        if not obj or (hasattr(obj, "exists") and not obj.exists()):
+        objs = cls.get(name)
+        if not objs.exists():
             try:
-               obj = cls.create(name, **kwargs)
+               objs = cls.create(name, **kwargs)
             except:
-                print(name)
-                print(kwargs)
-                raise
-        return cls.objects.filter(pk__in=obj.values("pk"))
-
+               raise
+        return cls.objects.filter(pk__in=objs)
 
     @classmethod
     def linkable(cls, value_name):
@@ -347,23 +363,24 @@ class Object(models.Model):
                                  name))
 
     def get_node_attrs(self, values=True):
-        htm = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
+        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
         if not values:
            sep = ""
         else:
            sep = "border=\"1\" sides=\"b\""
-        htm += "<tr><td colspan=\"3\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
+        htm += "<tr><td colspan=\"2\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
         if values:
-            val_names = list(self.values.all().values_list("name","signature__value_type").distinct())
+            val_types = apps.get_model("db.Value").get_value_types()
             val_counts = []
-            for name, type in val_names:
-                count = self.values.filter(name=name).count()
-                val_counts.append((name, type, count)) 
+            for vtype in val_types:
+                count = self.values.instance_of(vtype).count()
+                val_counts.append((vtype.base_name.capitalize(), count)) 
             if len(val_counts) > 0:
-                htm += "<tr><td><i>Values Present</i></td><td><i>Type</i></td><td><i>Count</i></td></tr>"
-                for name, type, count in val_counts:
-                    htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (name,)
-                    htm += "<td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (type,)
+                htm += "<tr><td><i>Type</i></td><td><i>Count</i></td></tr>"
+                for vtype, count in val_counts:
+                    if count == 0:
+                        continue
+                    htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype,)
                     htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
         htm += "</table>>"
         attrs = self.gv_node_style
@@ -376,7 +393,7 @@ class Object(models.Model):
 
     def get_node(self, values=True, format='svg'):
         dot = gv.Digraph("nodegraph_%s_%d" % (self.base_name, self.pk), format=format)
-        dot.attr(size="4,4!")
+        dot.attr(size="%d,%d!" % (self.node_height, self.node_width))
         dot.node(**self.get_node_attrs(values=values))
         return dot
 
@@ -403,8 +420,8 @@ class Object(models.Model):
                 if ds in both:
                     edges.add((str(obj.pk), str(ds.pk)))
         dot.edges(list(edges))
-        dim = max(6,int(nnodes/2.0))
-        dim = min(dim, 11)
+        dim = max(10,int(nnodes/2.0))
+        dim = min(dim, 14)
         dot.attr(size="%d,%d!" % (dim,dim))
         return dot
 

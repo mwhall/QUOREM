@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.apps import apps
 from django.core import exceptions
+from django.utils.timezone import make_aware
 
 from polymorphic.models import PolymorphicModel
 
@@ -194,9 +195,16 @@ class Data(PolymorphicModel):
             for datum in Data.get_data_types():
                 if (datum.type_name == type_name.lower()) or (datum.__name__.lower() == type_name.lower()):
                     return datum
+            raise ValueError("Unrecognized requested 'data_type'/'type_name' of %s" % (type_name,))
         if data is not None:
             return cls.infer_type(data, **kwargs)
-        return cls.__subclasses__()
+        data_subclasses = set()
+        def all_subclasses(c, data_subclasses):
+            for sc in c.__subclasses__():
+                data_subclasses.add(sc)
+                data_subclasses = all_subclasses(sc, data_subclasses)
+            return data_subclasses
+        return all_subclasses(Data, data_subclasses)
 
     @classmethod
     def cast(cls, value):
@@ -237,7 +245,7 @@ class Data(PolymorphicModel):
         # Finally, we go through the types in a sensible order, trying casts
         # until one works
         cast_order = [ IntDatum, FloatDatum, DatetimeDatum, CoordDatum ] + \
-                       PintDatum.get_data_types() + [ VersionDatum ]
+                     [ VersionDatum ] + PintDatum.__subclasses__()
         castable = []
         for mdl in cast_order:
             try:
@@ -298,7 +306,8 @@ class DatetimeDatum(Data):
 #    default_date_format = "DD/MM/YYYY" #TODO: This needs a better home. Global defaults somewhere?
     type_name = "datetime"
     native_type = datetime.datetime
-    cast_function = lambda x: arrow.get(x, "DD/MM/YYYY").datetime
+    cast_function = lambda x: make_aware(arrow.get(x, "DD/MM/YYYY").datetime)
+    db_cast_function: lambda x: make_aware(x)
     value = models.DateTimeField()
 
 class VersionDatum(Data):
@@ -354,7 +363,11 @@ class PintDatum(Data):
 
     @classmethod
     def cast_function(cls, x):
-        return unitregistry(x).to(cls.default_unit)
+        val = unitregistry(x).to(cls.default_unit)
+        if type(val) == cls.native_type:
+            return val
+        else:
+            raise ValueError
 
     @classmethod
     def eq_dimensionality(cls, quantity):
@@ -390,10 +403,14 @@ class TimeDatum(PintDatum):
 
     @classmethod
     def cast_function(cls, x):
-        try:
-            return unitregistry(x)
-        except:
-            return sum([unitregistry(t.replace("and","")) for t in x.split(",")])
+        if "and" in x:
+            val = sum([unitregistry(t.replace("and","")) for t in x.split(",")]).to(cls.default_unit)
+        else:  
+            val = unitregistry(x).to(cls.default_unit)
+        if type(val) == cls.native_type:
+            return val
+        else:
+            raise ValueError
 
 class LengthDatum(PintDatum):
     type_name = "length"
@@ -472,10 +489,10 @@ class ExternalLinkDatum(LinkDatum):
     #Links that go outside of the Django app
     type_name = "externallink"
 
-class FileDatum(Data):
+class UploadFileDatum(Data):
     #Local server file paths
-    type_name = "file"
-    value = models.ForeignKey("File", on_delete=models.CASCADE)
+    type_name = "uploadfile"
+    value = models.ForeignKey("UploadFile", on_delete=models.CASCADE)
 
 class UserDatum(Data):
     type_name = "user"

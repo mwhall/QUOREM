@@ -46,7 +46,7 @@ from .forms import *
     SampleDisplayForm, SampleForm,
     FeatureDisplayForm, FeatureForm,
     StepDisplayForm, StepForm,
-    UploadForm, UserWithInlineUploads, FileDisplayForm,
+    UploadForm, UserWithInlineUploads, UploadFileDisplayForm,
     FileDisplayWithInlineErrors,
     SpreadsheetUploadForm, ArtifactUploadForm,
     AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, ValueTableForm
@@ -191,7 +191,7 @@ class FeatureList(ListSortingView):
     model = Feature
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'sequence', 'annotations']
+    grid_fields = ['name', 'annotations']
 
     def get_heading(self):
         return "Feature List"
@@ -223,7 +223,7 @@ class AnalysisList(ListSortingView):
                 #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
                 })])
         super(AnalysisList, self).__init__(*args, **kwargs)
-    grid_fields = ['name', 'process', 'date', 'location']
+    grid_fields = ['name', 'process']
 
     def get_heading(self):
         return "Analysis List"
@@ -272,7 +272,7 @@ class ProcessList(ListSortingView):
     model = Process
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'description']
+    grid_fields = ['name']
 
     def get_heading(self):
         return "Process List"
@@ -375,13 +375,22 @@ class ResultList(ListSortingView):
         }
 
 class UploadList(ListSortingView):
-    model = File
+    model = UploadFile
     allowed_sort_orders = '__all__'
     template_name = 'core/custom_cbv_list.htm'
-    grid_fields = ['upload_file', 'upload_status','userprofile']
+    grid_fields = ['upload_file', 'upload_status', 'userprofile']
 
     def get_heading(self):
         return "Upload List"
+
+    def get_name_links(self, obj):
+        links = [format_html(
+            '<a href="{}">{}</a>',
+            reverse('uploadfile_detail', kwargs={'file_id': obj.pk}),
+            str(obj.upload_file)
+        )]
+        # is_authenticated is not callable in Django 2.0.
+        return links
 
     def get_display_value(self, obj, field):
         if field == 'upload_file':
@@ -406,7 +415,7 @@ class UploadList(ListSortingView):
 #  values either here or there.                                               ##
 ################################################################################
 
-class FileDetail(InlineDetailView):
+class UploadFileDetail(InlineDetailView):
     is_new = False
     pk_url_kwarg = 'file_id'
     form_with_inline_formsets = FileDisplayWithInlineErrors
@@ -1081,7 +1090,7 @@ class spreadsheet_upload(CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('file_detail_new', kwargs={'file_id': self.object.pk,
+        return reverse('uploadfile_detail_new', kwargs={'file_id': self.object.pk,
                                                                     'new':"new"})
 
 class artifact_upload(CreateView):
@@ -1100,12 +1109,12 @@ class artifact_upload(CreateView):
         self.object.userprofile = userprofile
         self.object.upload_type = "A"
         self.object.save()
-        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk,
-                                                                                   'register_provenance': form['register_provenance'].value()})
+        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), 
+                kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('file_detail_new', kwargs={'file_id': self.object.pk,
+        return reverse('uploadfile_detail_new', kwargs={'file_id': self.object.pk,
                                                                     'new':"new"})
 ################################################################################
 ## onto testing                                                              ###
