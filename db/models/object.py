@@ -404,6 +404,11 @@ class Object(models.Model):
                 valuecount = self.values.count() - total
                 htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % ("Value",)
                 htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (valuecount,)
+            descriptions = self.values.instance_of(apps.get_model("db.Description"))
+            if descriptions.exists():
+                htm+="<tr><td colspan=\"2\">Description</td></tr>"
+            for descrip in descriptions:
+                htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % (descrip.data.get_value(),)
         htm += "</table>>"
         attrs = self.gv_node_style
         attrs["name"] = str(self.pk)

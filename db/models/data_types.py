@@ -404,8 +404,8 @@ class TimeDatum(PintDatum):
     @classmethod
     def cast_function(cls, x):
         if "and" in x:
-            val = sum([unitregistry(t.replace("and","")) for t in x.split(",")]).to(cls.default_unit)
-        else:  
+            val = sum([unitregistry(t.replace("and","")).to(cls.default_unit) for t in x.split(",") if "microseconds" not in t])
+        else:
             val = unitregistry(x).to(cls.default_unit)
         if type(val) == cls.native_type:
             return val

@@ -63,7 +63,10 @@ class Value(PolymorphicModel):
     @classmethod
     def get_or_create(cls, name, data, signature=None, **kwargs):
         kwargs["value_type"] = cls._clean_value_type(**kwargs)
-        vals = kwargs["value_type"].get(name=name, all_types=False, signature=signature, **kwargs)
+        if kwargs["value_type"] != Matrix:
+            vals = kwargs["value_type"].get(name=name, all_types=False, signature=signature, **kwargs)
+        else:
+            vals = Matrix.objects.none() #NOTE: I think skipping the get for Matrices saves a lot of time...
         if not vals.exists():
             val = kwargs["value_type"].create(name, data, signature=signature, **kwargs)
             return kwargs["value_type"].objects.filter(pk=val.pk)

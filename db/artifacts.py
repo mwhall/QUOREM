@@ -107,9 +107,10 @@ class ArtifactIterator:
                 record.update(upstream)
                 yield record
             elif yf['action']['type'] == 'import':
-                yield {"step_name": "qiime2_import"}
+                step_name = "qiime2_import"
+                yield {"step_name": step_name}
                 yield {"result_name": uuid,
-                       "result_step": "qiime2_import"}
+                       "result_step": step_name}
                 for item in yf['action']['manifest']:
                     for prop, val in item.items():
                         if prop == 'name':
@@ -117,9 +118,9 @@ class ArtifactIterator:
                                 val = re.sub("_S0_L001_R[12]_001.fastq.gz", "", val)
                                 yield {"result_name": uuid,
                                        "sample_name": val, 
-                                       "sample_step": "qiime2_import",
+                                       "sample_step": step_name,
                                        "result_sample": val,
-                                       "result_step": "qiime2_import"}
+                                       "result_step": step_name}
                                 yield {"result_name": self.base_uuid,
                                        "result_sample": val}
 
@@ -158,6 +159,7 @@ class ArtifactIterator:
                            "value_data": yf["action"]["alias-of"],
                            "data_type": "auto"}
             elif yf['action']['type'] == 'import':
+                step_name = "qiime2_import"
                 for item in yf['action']['manifest']:
                     if "name" in item:
                         val = item["name"]
@@ -222,6 +224,11 @@ class ArtifactIterator:
         if self.scraper:
             for record in self.scraper.iter_values():
                 yield record
+        yield {"result_name": self.base_uuid,
+               "value_name": "primary",
+               "value_type": "description",
+               "value_data": "QIIME2 %s file of type %s from Step %s" % (yf["action"]["type"], self.base_type, step_name),
+               "value_object": "result"}
 
     def iter_actionyaml(self):
         actions = ["action/action.yaml"]
