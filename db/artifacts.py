@@ -283,22 +283,22 @@ class Taxonomy(ArtifactDataScraper):
     def iter_values(self):
         for feat, tax, conf in self.iter_data():
             #Same for all records being generated
-            base_dict = {"result_name": self.uuid,
-                         "value_object": "result",
-                         "value_object.1": "feature",
-                         "feature_name": feat,
-                         "value_type": "measure"}
-            #Additional bits
-            exp_dicts = [ {"value_name": "taxonomic_classification",
-                           "value_data": tax,
-                           "data_type": "str"},
-                          {"value_name": "confidence",
-                           "value_data": conf,
-                           "data_type": "float"}]
-            for ed in exp_dicts:
-                nd = base_dict.copy()
-                nd.update(ed)
-                yield nd
+            yield {"result_name": self.uuid,
+                   "value_object": "result",
+                   "value_object.1": "feature",
+                   "feature_name": feat,
+                   "value_type": "measure",
+                   "value_name": "taxonomic_classification",
+                   "value_data": tax,
+                   "data_type": "str"}
+            yield {"result_name": self.uuid,
+                   "value_object": "result",
+                   "value_object.1": "feature",
+                   "feature_name": feat,
+                   "value_type": "measure",
+                   "value_name": "confidence",
+                   "value_data": conf,
+                   "data_type": "float"}
 
     def iter_objects(self):
         for feat, tax, conf in self.iter_data():

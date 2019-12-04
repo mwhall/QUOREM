@@ -25,8 +25,6 @@ from .result import Result
 from .analysis import Analysis
 from .process import Process
 
-object_classes = Object.get_object_types()
-
 class Value(PolymorphicModel):
     base_name = "value"
     plural_name = "values"
@@ -40,7 +38,7 @@ class Value(PolymorphicModel):
 
     search_vector = SearchVectorField(null=True)
 
-    linkable_objects = [Obj.plural_name for Obj in object_classes]
+    linkable_objects = ["steps", "processes", "investigations", "analyses", "results", "samples", "features"]
     required_objects = []
 
     def __str__(self):
@@ -57,7 +55,7 @@ class Value(PolymorphicModel):
                 out_str += "%s must contain a link to %s\n" % (receiver.plural_name.capitalize(), ", ".join(receiver.required_objects))
         else:
             object_counts = {}
-            for Obj in object_classes:
+            for Obj in Object.get_object_types():
                 object_counts[Obj.plural_name] = getattr(receiver, Obj.plural_name).count()
             out_str += "Linked to %s Objects (%s)\n" % (sum(list(object_counts.values())), ", ".join(["%d %s" % (y,x) for x,y in object_counts.items()]))
         return out_str
@@ -79,7 +77,7 @@ class Value(PolymorphicModel):
                 ("value_name", True), 
                 ("value_data", True),
                 ("data_type", False)] + \
-               [("n_" + Obj.plural_name, False) for Obj in object_classes]
+               [("n_" + Obj.plural_name, False) for Obj in Object.get_object_types()]
 
     @classmethod
     def _parse_kwargs(cls, **kwargs):
@@ -88,7 +86,7 @@ class Value(PolymorphicModel):
         newkwargs = {}
         fetch_signature = False #Only grab this if we need to be explicit about it
         signatureargs = {}
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if ("n_" + Obj.plural_name in kwargs) and (Obj.plural_name in kwargs):
                 fetch_signature = True
             if ("n_" + Obj.plural_name in kwargs):
@@ -109,9 +107,8 @@ class Value(PolymorphicModel):
         if "value_data" in kwargs:
             newkwargs["data"] = kwargs["value_data"]
         if "data_type" in kwargs:
-                newkwargs["data_type"] = kwargs["data_type"]
+            newkwargs["data_type"] = kwargs["data_type"]
         vobj_keys = [x for x in kwargs if x.startswith("value_object")]
-        id_fields = Object.id_fields()
         for vobj_key in vobj_keys:
             vobj = Object.get_object_types(type_name=kwargs[vobj_key])
             if (vobj.plural_name in kwargs) and (type(kwargs[vobj.plural_name]) == models.query.QuerySet):
@@ -138,7 +135,7 @@ class Value(PolymorphicModel):
                 if (val.base_name == type_name.lower()) or (val.plural_name == type_name.lower()):
                     return val
         object_counts = {}
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
                 objs = kwargs[Obj.plural_name]
                 if type(objs) == int:
@@ -179,11 +176,11 @@ class Value(PolymorphicModel):
             t = Object.get_object_types(type_name=obj)
             if (t.base_name not in kwargs) and (t.plural_name not in kwargs):
                 raise ValueError("Missing required links to %s for value %s" % (obj, name))
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
                 if type(kwargs[Obj.plural_name]) != models.query.QuerySet:
                     raise ValueError("Object arguments to Value.create() methods must be QuerySets, or left out of the arguments")
-        linked_objects = [Obj.plural_name for Obj in object_classes if Obj.plural_name in kwargs]
+        linked_objects = [Obj.plural_name for Obj in Object.get_object_types() if Obj.plural_name in kwargs]
         for obj in linked_objects:
             if obj not in cls.linkable_objects:
                 raise ValueError("Cannot link %s to Values of type %s" % (obj, cls.__name__))
@@ -214,7 +211,7 @@ class Value(PolymorphicModel):
         if add_dtype_to_signature:
             ct = ContentType.objects.get_for_model(data_type)
             signature.data_types.add(ct)
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
                 for obj in kwargs[Obj.plural_name]:
                     obj.values.add(value)
@@ -224,7 +221,7 @@ class Value(PolymorphicModel):
         #Since this is the back side of these relationships, this should be quickest?
         linked_objects = []
         object_querysets = []
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             qs = Obj.objects.filter(values=self.pk)
             if qs:
                 linked_objects.append(Obj)
@@ -249,19 +246,17 @@ class Value(PolymorphicModel):
         # number of Objects as each of the querysets
         # Return the Value/subclass with this name and links
         object_querysets = {}
-        for Obj in object_classes:
-            if (Obj.plural_name in kwargs) and (type(kwargs[Obj.plural_name])==models.query.QuerySet):
-                object_querysets[Obj.plural_name + "__in"] = kwargs[Obj.plural_name]
+        for Obj in Object.get_object_types():
+            if (Obj.plural_name in kwargs):
+                object_querysets[Obj.plural_name+"__in"] = kwargs[Obj.plural_name]
         kwargs["value_type"] = cls._clean_value_type(**kwargs)
         if signature is None:
             signatures = DataSignature.get(name=name, **kwargs)
             if not signatures.exists():
                 return kwargs["value_type"].objects.none()
-            elif signatures.count() == 1:
-                return signatures.get().values.filter(**object_querysets)
-            else:
+            elif signatures.count() > 1:
                 raise ValueError("Multiple Signatures possible for this input. Specify the number of Objects explicitly with a 'n_object' kwarg")
-        return kwargs["value_type"].objects.filter(pk__in=signatures.select_related("values").values("values")).filter(**object_querysets)
+        return kwargs["value_type"].objects.filter(pk__in=signatures.select_related("values").values("values"), **object_querysets)
 
 class Parameter(Value):
     base_name = "parameter"
