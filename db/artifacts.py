@@ -2,11 +2,19 @@ import zipfile
 import yaml
 import re
 import os
+import tempfile
+import h5py as h5
 
 import pandas as pd
 
+from django.contrib.contenttypes.models import ContentType
+
+from scipy.sparse import coo_matrix, csr_matrix
+
 from .models.object import Object
 from .models.value import Value
+from .models.sample import Sample
+from .models.feature import Feature
 
 def scalar_constructor(loader, node):
     value = loader.construct_scalar(node)
@@ -74,16 +82,17 @@ class ArtifactIterator:
         self.zfile = zipfile.ZipFile(path_or_file)
         self.infolist = self.zfile.infolist()
         self.base_uuid = base_uuid(self.infolist[0].filename)
+        for uuid, yf in self.iter_metadatayaml():
+            if (yf['uuid'] == self.base_uuid):
+                self.base_format = yf["format"]
+                self.base_type = yf["type"]
+        self.scraper = None
+        ads = ArtifactDataScraper.for_format(self.base_format)
+        if ads:
+            self.scraper = ads(self)
 
     def iter_objects(self):
         # Yields single records of artifact contents that describe QUOR'em Objects
-        for uuid, yf in self.iter_metadatayaml():
-            for x in ["type", "format"]:
-                if (yf['uuid'] == self.base_uuid):
-                    if x=="format":
-                        base_format = yf[x]
-                    else:
-                        base_type = yf[x]
         for uuid, yf in self.iter_actionyaml():
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] +\
@@ -114,9 +123,8 @@ class ArtifactIterator:
                                 yield {"result_name": self.base_uuid,
                                        "result_sample": val}
 
-        ads = ArtifactDataScraper.for_format(base_format)
-        if ads:
-            for record in ads.iter_objects(self):
+        if self.scraper:
+            for record in self.scraper.iter_objects():
                 yield record
 
     def iter_values(self):
@@ -128,11 +136,6 @@ class ArtifactIterator:
                        "value_type": "value",
                        "value_data": yf[x],
                        "value_object": "result"}
-                if (yf['uuid'] == self.base_uuid):
-                    if x=="format":
-                        base_format = yf[x]
-                    else:
-                        base_type = yf[x]
         for uuid, yf in self.iter_actionyaml():
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] + \
@@ -161,7 +164,8 @@ class ArtifactIterator:
                         for direc, num in [("forward", 1), ("reverse", 2)]:
                             if re.compile('.*_S0_L001_R%d_001.fastq.gz'%(num,)).match(val):
                                 sample_name = re.sub("_S0_L001_R[12]_001.fastq.gz", "", val)
-                                yield {"sample_name": sample_name, 
+                                yield {"sample_name": sample_name,
+                                        "value_object": "sample",
                                           "value_name": "%s_filename" % (direc,),
                                           "value_type": "file",
                                           "data_type": "str",
@@ -170,6 +174,7 @@ class ArtifactIterator:
                                     val = item["md5sum"]
                                     yield {"sample_name": sample_name,
                                               "value_name": "%s_file_md5sum" % (direc,),
+                                              "value_object": "sample",
                                               "value_type": "value",
                                               "value_data": val,
                                               "data_type": "str"}
@@ -214,9 +219,8 @@ class ArtifactIterator:
                           "value_type": "version",
                           "data_type": "auto",
                           "value_data": version}
-        ads = ArtifactDataScraper.for_format(base_format)
-        if ads:
-            for record in ads.iter_values(self):
+        if self.scraper:
+            for record in self.scraper.iter_values():
                 yield record
 
     def iter_actionyaml(self):
@@ -263,22 +267,23 @@ class ArtifactDataScraper:
 class Taxonomy(ArtifactDataScraper):
     qiime_format = 'TSVTaxonomyDirectoryFormat'
 
-    @classmethod
-    def iter_data(cls, ai):
-        data_file = ai.base_uuid + "/data/taxonomy.tsv"
-        xf = ai.zfile.open(data_file)
-        tf = pd.read_csv(xf, sep="\t")
-        for index, row in tf.iterrows():
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/taxonomy.tsv"
+        xf = ai.zfile.open(self.data_file)
+        self.tf = pd.read_csv(xf, sep="\t")
+
+    def iter_data(self):
+        for index, row in self.tf.iterrows():
             tax = row['Taxon']
             conf = row['Confidence']
             feat = row['Feature ID']
             yield (feat, tax, conf)
 
-    @classmethod
-    def iter_values(cls, ai):
-        for feat, tax, conf in cls.iter_data(ai):
+    def iter_values(self):
+        for feat, tax, conf in self.iter_data():
             #Same for all records being generated
-            base_dict = {"result_name": ai.base_uuid,
+            base_dict = {"result_name": self.uuid,
                          "value_object": "result",
                          "value_object.1": "feature",
                          "feature_name": feat,
@@ -295,10 +300,86 @@ class Taxonomy(ArtifactDataScraper):
                 nd.update(ed)
                 yield nd
 
-    @classmethod
-    def iter_objects(cls, ai):
-        for feat, tax, conf in cls.iter_data(ai):
+    def iter_objects(self):
+        for feat, tax, conf in self.iter_data():
             yield {"feature_name": feat,
-                   "result_name": ai.base_uuid,
-                   "feature_result": ai.base_uuid} # Result goes last
-        
+                   "result_name": self.uuid,
+                   "feature_result": self.uuid}
+
+class FeatureTable(ArtifactDataScraper):
+    qiime_format = 'BIOMV210DirFmt'
+
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.coo_mat, self.samples, self.features = self.get_data(ai)
+        for uuid, yf in ai.iter_actionyaml():
+            if uuid == self.uuid:
+                plugin = yf['action']['plugin'].split(":")[-1]
+        if plugin in ['dada2', "deblur"]:
+            self.value_name = "asv_table"
+        elif plugin == "vsearch":
+            self.value_name = "otu_table"
+        elif plugin == "diversity":
+            self.value_name = "rarefied_table"
+        else:
+            self.value_name = "feature_table"
+
+    def iter_objects(self):
+        for feature in self.features:
+            yield {"feature_name": feature.name,
+                   "result_name": self.uuid,
+                   "result_feature": feature.name}
+        for sample in self.samples:
+            yield {"result_name": self.uuid,
+                   "sample_name": sample.name,
+                   "result_sample": sample.name}
+            record = {"result_name": self.uuid,
+                      "sample_name": sample.name}
+            features_present = self.coo_mat.getcol(sample.pk).tocoo().row
+            feature_names = self.features.values_list("name", flat=True)
+            record.update({"sample_feature.%d" % (idx,): feature for idx, feature in enumerate(feature_names)})
+            yield record
+
+    def iter_values(self):
+        # Infer the table type if we can
+        self.coo_mat.colobj = "sample"
+        self.coo_mat.rowobj = "feature"
+        record = {"result_name": self.uuid,
+                  "value_name": self.value_name,
+                  "value_object": "result",
+                  "value_object.0": "sample",
+                  "value_object.1": "feature",
+                  "value_type": "matrix",
+                  "data_type": "coomatrix",
+                  "value_data": self.coo_mat}
+        record.update({"sample_name.%d" % (idx,): sample.name for idx, sample in enumerate(self.samples)})
+        record.update({"feature_name.%d" % (idx,): feature.name for idx, feature in enumerate(self.features)})
+        yield record
+
+    def get_data(self, ai):
+        data_file = ai.base_uuid + "/data/feature-table.biom"
+        with tempfile.NamedTemporaryFile() as temp_file:
+            x=ai.zfile.read(data_file)
+            temp_file.write(x)
+            tf = h5.File(temp_file.name)
+            data = tf['observation/matrix/data'][:]
+            indptr = tf['observation/matrix/indptr'][:]
+            indices = tf['observation/matrix/indices'][:]
+            sample_ids = tf['sample/ids'][:]
+            feature_ids = tf['observation/ids'][:]
+        csr_mat = csr_matrix((data,indices,indptr))
+        # We have to convert the names in the BIOM files to database PKs for the
+        # matrix
+        coo_mat = csr_mat.tocoo()
+        # We can release the h5 file at this point: we have all we need from it
+        sample_pks = dict([(idx, Sample.get_or_create(name=sample).get().pk) for idx, sample in enumerate(sample_ids)])
+        feature_pks = dict([(idx, Feature.get_or_create(name=feature).get().pk) for idx, feature in enumerate(feature_ids)])
+        row = [feature_pks[x] for x in coo_mat.row]
+        col = [sample_pks[x] for x in coo_mat.col]
+        coo_mat = coo_matrix((coo_mat.data, (row, col)))
+        features = Feature.objects.filter(pk__in=row)
+        samples = Sample.objects.filter(pk__in=col)
+        return coo_mat, samples, features
+
+
+

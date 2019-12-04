@@ -145,7 +145,7 @@ class FileDisplayWithInlineErrors(FormWithInlineFormsets):
     FormClass = UploadFileDisplayForm
     FormsetClasses =[FileDisplayErrorFormset]
     def get_formset_inline_title(self, formset):
-        return "Error Messages"
+        return "Status Messages"
 
 class UserWithInlineUploads(FormWithInlineFormsets):
     FormClass = UserProfileForm

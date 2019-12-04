@@ -11,6 +11,7 @@ from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from db.models.object import Object
+from db.models.value import Value
 from django.utils.html import format_html, mark_safe
 
 from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
@@ -37,6 +38,15 @@ class Feature(Object):
             search_vector = (SearchVector('name', weight= 'A') +
                              SearchVector(StringAgg('annotations__str', delimiter=' '), weight='B'))
         )
+
+    @classmethod
+    def add_to_annotations(cls, name, value_type=None, data_type=None):
+        if value_type is None:
+            value_type = Value # This will add all subclasses of Values too, I think
+        else:
+            value_type = Value.get_value_types(type_name=value_type)
+        for feat in cls.objects.all():
+            feat.annotations.add(*feat.values.instance_of(value_type).filter(name=name))
 
     def related_samples(self, upstream=False):
         #SQL Depth: 1

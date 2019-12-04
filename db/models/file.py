@@ -5,6 +5,10 @@ from django.core import files
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
+from django.utils.html import mark_safe, format_html
+from django.forms.utils import flatatt
+from django.urls import reverse
+
 #for searching
 from django.contrib.postgres.search import SearchVector
 
@@ -12,8 +16,8 @@ from django.apps import apps
 
 # Note: This is called UploadFile because we have File as a Value which is a pointer to a broader set of things considered Files
 class UploadFile(models.Model):
-    base_name = "file"
-    plural_name = "files"
+    base_name = "uploadfile"
+    plural_name = "uploadfiles"
     STATUS_CHOICES = (
         ('P', "Processing"),
         ('S', "Success"),
@@ -32,6 +36,14 @@ class UploadFile(models.Model):
 
     def __str__(self):
         return "UserProfile: {0}, UploadFile: {1}".format(self.userprofile, self.upload_file)
+
+    def get_detail_link(self):
+        kwargs = {}
+        kwargs["uploadfile_id"] = self.pk
+        return format_html('<a{}>{}</a>',
+                         flatatt({'href': reverse("uploadfile_detail",
+                                 kwargs=kwargs)}),
+                                 str(self.upload_file).split("/")[-1])
 
     def save(self, *args, **kwargs):
         self.upload_status = 'P'

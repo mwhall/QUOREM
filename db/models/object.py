@@ -93,8 +93,6 @@ class Object(models.Model):
         if field_name == "upstream":
             return (field_name, True) if m2m else field_name
         for field in cls._meta.get_fields():
-            if field.name == "id":
-                continue #skip database id field
             if field.is_relation and (field.related_model in Object.get_object_types()) and \
             ( (field_name == field.related_model.base_name) or (field_name == field.related_model.plural_name)):
                 return (field.name, field.many_to_many) if m2m else field.name
@@ -200,12 +198,31 @@ class Object(models.Model):
             if not field:
                 continue
             data = kwargs[arg]
+            if field == "upstream":
+                update_upstream = False
+                for obj in data:
+                    if obj not in self.upstream.all():
+                        update_upstream=True
+                if not update_upstream:
+                    continue
             Field = getattr(self, field)
             if hasattr(Field, 'add'):
                 Field.add(*data)
             else:
                 setattr(self, field, data)
                 save_required = True
+            if field == "upstream":
+                for ref_obj in data:
+                    self.all_upstream.add(ref_obj)
+                    upstream_qs = ref_obj.all_upstream.all()
+                    downstream_qs = self.all_downstream.all()
+                    self.all_upstream.add(*upstream_qs)
+                    ref_obj.all_downstream.add(*downstream_qs)
+                    ref_obj.save()
+                    for down_obj in downstream_qs:
+                        for up_obj in upstream_qs:
+                            down_obj.all_upstream.add(up_obj)
+                        down_obj.save()
         if save_required:
             self.save()
 
@@ -372,9 +389,11 @@ class Object(models.Model):
         if values:
             val_types = apps.get_model("db.Value").get_value_types()
             val_counts = []
+            total = 0
             for vtype in val_types:
                 count = self.values.instance_of(vtype).count()
-                val_counts.append((vtype.base_name.capitalize(), count)) 
+                val_counts.append((vtype.base_name.capitalize(), count))
+                total += count
             if len(val_counts) > 0:
                 htm += "<tr><td><i>Type</i></td><td><i>Count</i></td></tr>"
                 for vtype, count in val_counts:
@@ -382,6 +401,9 @@ class Object(models.Model):
                         continue
                     htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype,)
                     htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
+                valuecount = self.values.count() - total
+                htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % ("Value",)
+                htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (valuecount,)
         htm += "</table>>"
         attrs = self.gv_node_style
         attrs["name"] = str(self.pk)

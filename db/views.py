@@ -310,7 +310,7 @@ class ResultList(ListSortingView):
     model = Result
     allowed_sort_orders = '__all__'
     template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'analysis',  'source_step', 'source_step']
+    grid_fields = ['name', 'analysis',  'source_step', 'values']
     allowed_filter_fields = OrderedDict([
            ('source_step',
            {
@@ -354,7 +354,7 @@ class ResultList(ListSortingView):
             return mark_safe(''.join(links))
             #return self.get_file_name(obj)
         elif field == 'values':
-            values = ", ".join(np.unique([x.name for x in obj.values.all()]))
+            values = mark_safe(", ".join(np.unique([x.data.get_value().get_detail_link() for x in obj.values.instance_of(File)])))
             return values
         elif field == 'samples':
             samples = mark_safe(', '.join(np.unique([x.get_detail_link() for x in obj.samples.all()])))
@@ -419,7 +419,7 @@ class UploadList(ListSortingView):
 
 class UploadFileDetail(InlineDetailView):
     is_new = False
-    pk_url_kwarg = 'file_id'
+    pk_url_kwarg = 'uploadfile_id'
     form_with_inline_formsets = FileDisplayWithInlineErrors
     format_view_title = True
 

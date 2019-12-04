@@ -48,10 +48,10 @@ urlpatterns += [
     #Upload list.
     re_path('upload/all', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),
-    re_path(r'upload/(?P<file_id>\d+)/$', UploadFileDetail.as_view(),
+    re_path(r'upload/(?P<uploadfile_id>\d+)/$', UploadFileDetail.as_view(),
             name='uploadfile_detail',
             kwargs={'view_title': "Upload Details"}),
-    path('upload/<int:file_id>/<new>/', UploadFileDetail.as_view(is_new=True),
+    path('upload/<int:uploadfile_id>/<new>/', UploadFileDetail.as_view(is_new=True),
             name='uploadfile_detail_new',
             kwargs={'view_title':"Upload Details"}),
     path('accounts/', include('accounts.urls')),

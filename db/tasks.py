@@ -124,7 +124,7 @@ def process_qiime_artifact(upfile, analysis_pk):
     result_uuid = ingest_artifact(infile, analysis)
     res = Result.get(name=result_uuid)
     fileval = File.get_or_create(name="uploaded_artifact", data=upfile, 
-                       data_type="uploadfile", results=res)
+                                 data_type="uploadfile", results=res)
     print("#\n#\n")
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
     print(time.time() - start_time)

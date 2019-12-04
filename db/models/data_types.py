@@ -24,7 +24,7 @@ import geopy
 import datetime
 import version_parser.version as version
 import re
-from scipy.sparse import csr_matrix
+from scipy.sparse import coo_matrix
 
 object_classes = Object.get_object_types()
 
@@ -275,9 +275,9 @@ class Data(PolymorphicModel):
             obj = cls.objects.create(value=value)
         else:
             #Special case: only MatrixDatum at the moment
-            qs = cls.objects.filter(**value)
-            if qs.exists():
-                return qs.get()
+            #qs = cls.objects.filter(**value)
+            #if qs.exists():
+            #    return qs.get()
             obj = cls.objects.create(**value)
         return obj
 
@@ -501,14 +501,19 @@ class UserDatum(Data):
 
 class MatrixDatum(Data):
     # A container for Sparse Matrices
-    type_name = "matrix"
-    native_type = csr_matrix
-    db_cast_function = lambda x: {'value': x.data.tolist(), 'indptr': x.indptr.tolist(), 'indices': x.indices.tolist()}
+    type_name = "coomatrix"
+    native_type = coo_matrix
+    db_cast_function = lambda x: {'value': x.data.tolist(), 'row': x.row.tolist(), 'col': x.col.tolist(), 
+                                  'rowobj': ContentType.objects.get_by_natural_key('db', x.rowobj),
+                                  'colobj': ContentType.objects.get_by_natural_key('db', x.colobj)}
     value = ArrayField(base_field=models.FloatField())
-    indptr = ArrayField(base_field=models.IntegerField())
-    indices = ArrayField(base_field=models.IntegerField())
+    row = ArrayField(base_field=models.IntegerField())
+    col = ArrayField(base_field=models.IntegerField())
+    # Generally intended to be Object subclasses, but I could see abusing this for other purposes
+    rowobj = models.ForeignKey(ContentType, related_name="matrix_row", on_delete=models.CASCADE)
+    colobj = models.ForeignKey(ContentType, related_name="matrix_col", on_delete=models.CASCADE)
     def get_value(self):
-        return csr_matrix((self.value, self.indices, self.indptr))
+        return coo_matrix((self.value, (self.row, self.col)))
 
 #class BitStringDatum(Data):
 #    type_name = "bitstring"
