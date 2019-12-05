@@ -1,4 +1,5 @@
 from collections import defaultdict
+from textwrap import fill, wrap
 
 from django import forms
 from django.db import models
@@ -20,6 +21,7 @@ from combomethod import combomethod
 
 import pandas as pd
 import graphviz as gv
+import colour
 
 from quorem.wiki import refresh_automated_report
 
@@ -379,7 +381,7 @@ class Object(models.Model):
                                  kwargs=kwargs)}),
                                  name))
 
-    def get_node_attrs(self, values=True):
+    def get_node_attrs(self, values=True, highlight=False):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
         if not values:
            sep = ""
@@ -408,17 +410,25 @@ class Object(models.Model):
             if descriptions.exists():
                 htm+="<tr><td colspan=\"2\">Description</td></tr>"
             for descrip in descriptions:
-                htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % (descrip.data.get_value(),)
+                htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % ("<BR/>".join(wrap(descrip.data.get_value(), width=70)),)
         htm += "</table>>"
-        attrs = self.gv_node_style
+        attrs = self.gv_node_style.copy()
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
         attrs["fontname"] = "FreeSans"
         attrs["href"] = reverse(self.base_name + "_detail", 
                                 kwargs={self.base_name+"_id":self.pk})
+        if not highlight:
+            col = colour.Color(attrs["fillcolor"])
+        else:
+            black= colour.Color('black')
+            col = colour.Color(attrs["fillcolor"])
+            col = list(col.range_to(black, 10))[1]
+            attrs['penwidth'] = "3"
+        attrs['fillcolor'] = col.hex_l
         return attrs
 
-    def get_node(self, values=True, format='svg'):
+    def get_node(self, values=True, highlight=False, format='svg'):
         dot = gv.Digraph("nodegraph_%s_%d" % (self.base_name, self.pk), format=format)
         dot.attr(size="%d,%d!" % (self.node_height, self.node_width))
         dot.node(**self.get_node_attrs(values=values))
@@ -427,7 +437,7 @@ class Object(models.Model):
     def get_stream_graph(self, values=False, format='svg'):
         dot = gv.Digraph("streamgraph_%s_%d" % (self.base_name, self.pk), format=format)
         origin = self
-        dot.node(**origin.get_node_attrs(values=values))
+        dot.node(**origin.get_node_attrs(values=values, highlight=True))
         edges = set()
         for us in origin.upstream.all():
             edges.add((str(us.pk), str(origin.pk)))

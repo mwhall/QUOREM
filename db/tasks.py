@@ -9,11 +9,10 @@ from celery import shared_task
 from django.db import models, transaction
 from django.apps import apps
 
-from .formatters import guess_filetype, parse_csv_or_tsv, TableParser, ArtifactParser
+from .formatters import guess_filetype, parse_csv_or_tsv, TableParser
 from .models import *
 from .artifacts import ingest_artifact
 
-from q2_extractor.Extractor import Extractor
 import pandas as pd
 import io
 import re

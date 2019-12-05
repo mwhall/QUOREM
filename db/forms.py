@@ -131,8 +131,6 @@ class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
         model = UploadMessage
         fields = '__all__'
 
-
-
 FileDisplayErrorFormset = ko_inlineformset_factory(
                                                 UploadFile,
                                                 UploadMessage,

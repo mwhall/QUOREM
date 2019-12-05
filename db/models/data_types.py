@@ -18,7 +18,6 @@ from .user import UserProfile
 from .object import Object
 
 import arrow
-warnings.simplefilter("ignore", arrow.factory.ArrowParseWarning)
 import pint
 import geopy
 import datetime

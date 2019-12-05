@@ -15,6 +15,7 @@ from .models.object import Object
 from .models.value import Value
 from .models.sample import Sample
 from .models.feature import Feature
+from .models.step import Step
 
 def scalar_constructor(loader, node):
     value = loader.construct_scalar(node)
@@ -30,6 +31,59 @@ def base_uuid(filename):
     regex = re.compile("[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-" \
                        "[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}")
     return regex.match(filename)[0]
+
+def qiime2_default_args(plugin_str, func_str):
+    import qiime2
+    pm = qiime2.sdk.PluginManager()
+    if func_str in pm.plugins[plugin_str].methods:
+        params = pm.plugins[plugin_str].methods[func_str].signature.parameters
+        desc = pm.plugins[plugin_str].methods[func_str].description
+    elif func_str in pm.plugins[plugin_str].visualizers:
+        params = pm.plugins[plugin_str].visualizers[func_str].signature.parameters
+        desc = pm.plugins[plugin_str].visualizers[func_str].description
+    elif func_str in pm.plugins[plugin_str].pipelines:
+        params = pm.plugins[plugin_str].pipelines[func_str].signature.parameters
+        desc = pm.plugins[plugin_str].pipelines[func_str].description
+    else:
+        params = {}
+        desc = "No description found"
+    step_name = plugin_str + "__" + func_str
+    for param in params:
+        yield {"value_data": params[param].default,
+               "value_name": param,
+               "value_type": "parameter",
+               "step_name": step_name,
+               "value_object": "step"}
+    yield {"value_data": desc,
+           "value_name": "from_qiime2",
+           "value_type": "description",
+           "step_name": step_name,
+           "value_object": "step"}
+
+def qiime2_steps():
+    import qiime2
+    pm = qiime2.sdk.PluginManager()
+    for ps in pm.plugins:
+        for method in pm.plugins[ps].methods:
+            yield {"step_name": ps+"__"+method}
+        for viz in pm.plugins[ps].visualizers:
+            yield {"step_name": ps+"__"+viz}
+        for pipe in pm.plugins[ps].pipelines:
+            yield {"step_name": ps+"__"+pipe}
+
+def mine_qiime2():
+    import qiime2
+    for step_kwargs in qiime2_steps():
+        obj_ids, create_kwargs, update_kwargs = Object._parse_kwargs(**step_kwargs)
+        step_ids = obj_ids["steps"]
+        step = Step.get_or_create(name=step_ids[0]).get() # NOTE: I don't pass create_kwargs here, so if qiime2_steps() feeds it anything detailed it'll get lost
+        if "__" in step.name:
+            plugin, cmd = step.name.split("__")
+            for rec in qiime2_default_args(plugin, cmd):
+                if type(rec["value_data"]) == qiime2.core.type.signature.__NoValueMeta:
+                    continue
+                if rec["value_data"]:
+                    Value.get_or_create(**Value._parse_kwargs(**rec))
 
 def ingest_artifact(artifact_file_or_path, analysis):
     artifactiterator = ArtifactIterator(artifact_file_or_path)
@@ -379,13 +433,25 @@ class FeatureTable(ArtifactDataScraper):
         # matrix
         coo_mat = csr_mat.tocoo()
         # We can release the h5 file at this point: we have all we need from it
-        sample_pks = dict([(idx, Sample.get_or_create(name=sample).get().pk) for idx, sample in enumerate(sample_ids)])
-        feature_pks = dict([(idx, Feature.get_or_create(name=feature).get().pk) for idx, feature in enumerate(feature_ids)])
+        samples = Sample.objects.filter(name__in=sample_ids).distinct()
+        features = Feature.objects.filter(name__in=feature_ids).distinct()
+        sample_pks = {}
+        feature_pks = {}
+        for idx, sample in enumerate(sample_ids):
+            if not samples.filter(name=sample).exists():
+                sample_pks[idx] = Sample.create(name=sample).first().pk
+                samples = samples | Sample.objects.filter(pk=sample_pks[idx])
+            else:
+                sample_pks[idx] = samples.filter(name=sample).get().pk
+        for idx, feature in enumerate(feature_ids):
+            if not features.filter(name=feature).exists():
+                feature_pks[idx] = Feature.create(name=feature).first().pk
+                features = features | Feature.objects.filter(pk=feature_pks[idx])
+            else:
+                feature_pks[idx] = features.filter(name=feature).get().pk
         row = [feature_pks[x] for x in coo_mat.row]
         col = [sample_pks[x] for x in coo_mat.col]
         coo_mat = coo_matrix((coo_mat.data, (row, col)))
-        features = Feature.objects.filter(pk__in=row)
-        samples = Sample.objects.filter(pk__in=col)
         return coo_mat, samples, features
 
 

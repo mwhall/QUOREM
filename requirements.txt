@@ -14,6 +14,13 @@ selenium == 3.141.0
 graphviz==0.13.2
 pint==0.9
 geopy==1.20.0
+django-autocomplete-light==3.5.0
+django_extensions==2.2.5
+django-polymorphic==2.1.2
+combomethod==1.0.12
+colour==0.1.5
+arrow==0.15.4
+version_parser==1.0.0
 -e git+https://github.com/Dmitri-Sintsov/djk-bootstrap4.git#egg=djk_ui
 -e git+https://github.com/Dmitri-Sintsov/django-jinja-knockout.git@v0.8.0#egg=django-jinja-knockout
 -e git+https://github.com/beiko-lab/q2-extractor.git#egg=q2_extractor

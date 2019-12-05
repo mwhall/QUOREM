@@ -1,4 +1,5 @@
 import cgi
+import colour
 
 from django.db import models
 from django.apps import apps
@@ -62,7 +63,7 @@ class Feature(Object):
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results
 
-    def get_node_attrs(self, values=True):
+    def get_node_attrs(self, values=True, highlight=False):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
         if not values:
            sep = ""
@@ -92,14 +93,22 @@ class Feature(Object):
             for annotation in annotations:
                 htm += "<tr><td colspan=\"2\">%s</td></tr>" % (cgi.escape(annotation),)
         htm += "</table>>"
-
-
+        
+        
         attrs = self.gv_node_style
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
         attrs["fontname"] = "FreeSans"
         attrs["href"] = reverse(self.base_name + "_detail",
                                 kwargs={self.base_name+"_id":self.pk})
+        if not highlight:
+            col = colour.Color(attrs["fillcolor"])
+        else:
+            black= colour.Color('black')
+            col = colour.Color(attrs["fillcolor"])
+            col = list(col.range_to(black, 10))[1]
+            attrs['penwidth'] = "3"
+        attrs['fillcolor'] = col.hex_l
         return attrs
 
     @classmethod

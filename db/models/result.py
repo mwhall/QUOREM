@@ -11,6 +11,7 @@ from django.apps import apps
 from django_jinja_knockout.widgets import DisplayText
 from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
 from db.models.object import Object
+from db.models.step import Step
 
 import graphviz as gv
 
@@ -41,6 +42,16 @@ class Result(Object):
                          flatatt({'href': reverse(self.base_name + '_detail',
                                  kwargs={self.base_name + '_id': self.pk})}),
                                  self.name + " from " + self.source_step.name))
+
+    @classmethod
+    def infer_step_upstream(self, results=None):
+        if results is None:
+            results = Result.objects.all()
+        results = results.filter(upstream__isnull=False)
+        for res in results:
+            upsteps = Step.objects.filter(pk__in=res.upstream.values("source_step"))
+            res.source_step.update(upstream=upsteps)
+
 
     @classmethod
     def get_display_form(cls):
@@ -99,7 +110,7 @@ class Result(Object):
         dot.graph_attr.update(compound='true')
         dot.graph_attr.update(rankdir="LR")
         dot.graph_attr.update(size="10,10!")
-        rn=self.get_node_attrs()
+        rn=self.get_node_attrs(highlight=True)
         rn['name']="R"
         an=self.analysis.get_node_attrs(values=False)
         an['name']="A"
@@ -122,7 +133,7 @@ class Result(Object):
             samplegraph.node(**attrs)
         if nsamples>3:
             nmore = nsamples - 3
-            attrs = apps.get_model("db", "Sample").gv_node_style
+            attrs = sample.get_node_attrs(values=False, highlight=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
             attrs['name'] = "SX"
@@ -140,7 +151,7 @@ class Result(Object):
             featuregraph.node(**attrs)
         if nfeatures>3:
             nmore = nfeatures - 3
-            attrs = apps.get_model("db", "Feature").gv_node_style
+            attrs = feature.get_node_attrs(values=False, highlight=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
             attrs['name'] = "FX"

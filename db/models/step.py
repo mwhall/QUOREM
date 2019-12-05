@@ -11,6 +11,8 @@ class Step(Object):
     plural_name = "steps"
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#d4f5ff'}
+    node_height=6
+    node_width=8
 
     has_upstream = True
 
@@ -26,8 +28,7 @@ class Step(Object):
     @classmethod
     def update_search_vector(cls):
         cls.objects.update(
-            search_vector= (SearchVector('name', weight='A') +
-                            SearchVector('description', weight='B'))
+            search_vector= (SearchVector('name', weight='A'))
         )
 
     def get_parameters(self):

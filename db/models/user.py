@@ -19,7 +19,7 @@ User.get_value_fields = get_value_fields
 
 class UserProfile(models.Model):
     #userprofile doesnt have a search vector bc it shouldn tbe searched.
-    user = models.ForeignKey(User, on_delete=models.CASCADE, unique=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, unique=True)
 
     @classmethod
     def create(cls, user):

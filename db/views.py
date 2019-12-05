@@ -388,7 +388,7 @@ class UploadList(ListSortingView):
     def get_name_links(self, obj):
         links = [format_html(
             '<a href="{}">{}</a>',
-            reverse('uploadfile_detail', kwargs={'file_id': obj.pk}),
+            reverse('uploadfile_detail', kwargs={'uploadfile_id': obj.pk}),
             str(obj.upload_file)
         )]
         # is_authenticated is not callable in Django 2.0.
