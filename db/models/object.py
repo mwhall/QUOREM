@@ -9,10 +9,6 @@ from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
 from django.apps import apps
 
-from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
-from django_jinja_knockout.views import InlineDetailView
-from django_jinja_knockout.widgets import DisplayText
-
 #for searching
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
@@ -276,6 +272,9 @@ class Object(models.Model):
 
     @classmethod
     def get_display_form(cls):
+        # Causes issues if these are above before a DB exists
+        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
+        from django_jinja_knockout.widgets import DisplayText
         class DisplayForm(BootstrapModelForm,
                           metaclass=DisplayModelMetaclass):
             node = forms.CharField(max_length=4096, widget=DisplayText())
@@ -297,6 +296,7 @@ class Object(models.Model):
 
     @classmethod
     def get_detail_view(cls, as_view=False):
+        from django_jinja_knockout.views import InlineDetailView
         class DetailView(InlineDetailView):
             pk_url_kwarg = cls.base_name + '_id'
             form = cls.get_display_form()

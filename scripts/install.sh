@@ -16,7 +16,7 @@ then
 	exit 0
 fi
 
-conda create --name $venv python=3.7
+conda create --name $venv python=3.6
 conda activate $venv
 pip install -r requirements.txt
 echo "Sudo password required to act as postgres user"

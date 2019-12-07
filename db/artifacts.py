@@ -168,8 +168,8 @@ class ArtifactIterator:
                 for item in yf['action']['manifest']:
                     for prop, val in item.items():
                         if prop == 'name':
-                            if re.compile('.*_S0_L001_R[12]_001.fastq.gz').match(val):
-                                val = re.sub("_S0_L001_R[12]_001.fastq.gz", "", val)
+                            if re.compile('.*_S.*_L001_R[12]_001.fastq.gz').match(val):
+                                val = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
                                 yield {"result_name": uuid,
                                        "sample_name": val, 
                                        "sample_step": step_name,
@@ -218,8 +218,8 @@ class ArtifactIterator:
                     if "name" in item:
                         val = item["name"]
                         for direc, num in [("forward", 1), ("reverse", 2)]:
-                            if re.compile('.*_S0_L001_R%d_001.fastq.gz'%(num,)).match(val):
-                                sample_name = re.sub("_S0_L001_R[12]_001.fastq.gz", "", val)
+                            if re.compile('.*_S.*_L001_R%d_001.fastq.gz'%(num,)).match(val):
+                                sample_name = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
                                 yield {"sample_name": sample_name,
                                         "value_object": "sample",
                                           "value_name": "%s_filename" % (direc,),
@@ -246,7 +246,7 @@ class ArtifactIterator:
                 yield {"result_name": uuid,
                          "value_object": "result",
                              "value_name": name,
-                             "value_type": "date",
+                             "value_type": value_type,
                              "value_data": yf["execution"]["runtime"][name],
                              "data_type": data_type}
             if type(yf["environment"]["framework"]) == str:

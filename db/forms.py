@@ -14,10 +14,11 @@ from .models import (
 
 from django_jinja_knockout.forms import (
     DisplayModelMetaclass, FormWithInlineFormsets, BootstrapModelForm,
-    ko_inlineformset_factory, ko_generic_inlineformset_factory, WidgetInstancesMixin,
+    ko_inlineformset_factory, #ko_generic_inlineformset_factory, 
+    WidgetInstancesMixin,
     BootstrapModelForm
 )
-from django_jinja_knockout.widgets import ForeignKeyGridWidget, DisplayText
+from django_jinja_knockout.widgets import DisplayText
 
 from django.forms import inlineformset_factory, ModelForm
 

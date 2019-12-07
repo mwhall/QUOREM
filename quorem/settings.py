@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import hashlib
 from distutils.version import LooseVersion
 from django.utils.version import get_version
 
@@ -27,7 +28,7 @@ SECRET_KEY = '4pmq)x=1c+b8*am8ok9xc!-tt-3=_1&rjp!i^o-bvebehf8m3y'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.1.142','47.54.56.77', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Django-jinja2-knockout'd packages
 DJK_APPS = ['quorem', 'db']
@@ -37,7 +38,6 @@ DJK_APPS = ['quorem', 'db']
 INSTALLED_APPS = [
     'accounts',
     'landingpage',
-    'django_tables2',
     'dal',
     'dal_select2',
     #postgres, needed for search functionality
@@ -52,8 +52,8 @@ INSTALLED_APPS = [
     'django_extensions',
     'django_jinja',
     'django_jinja.contrib._humanize',
-    'django_jinja_knockout',
     'djk_ui',
+    'django_jinja_knockout',
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
     ##########
@@ -73,7 +73,7 @@ INSTALLED_APPS = [
     'polymorphic',
 ] + DJK_APPS
 
-DJK_MIDDLEWARE = 'quorem.middleware.ContextMiddleware'
+DJK_MIDDLEWARE = 'django_jinja_knockout.middleware.ContextMiddleware'
 
 MIDDLEWARE = [
     ###########################################CORS Stuff
@@ -86,18 +86,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-
-]
-if LooseVersion(get_version()) >= LooseVersion('1.11'):
-    MIDDLEWARE.append(DJK_MIDDLEWARE)
-else:
-    MIDDLEWARE_CLASSES = MIDDLEWARE
-    MIDDLEWARE.extend([
-        'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
-        DJK_MIDDLEWARE,
-    ])
-
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    DJK_MIDDLEWARE,
+    ]
 
 
 ROOT_URLCONF = 'quorem.urls'
@@ -111,7 +102,6 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
-    "http://oceanman.research.cs.dal.ca",
     "http://localhost:8000",
 ]
 
@@ -159,9 +149,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'circle_test',
-        'USER': 'root',
-        'PASSWORD': '',
+        'NAME': 'qdb',
+        'USER': 'quser',
+        'PASSWORD': 'abc123def4',
         'HOST': '127.0.0.1',
     }
 }
@@ -169,9 +159,10 @@ DATABASES = {
 TEST_NON_SERIALIZED_APPS = ['django.contrib.contenttypes',
                             'django.contrib.auth']
 
-AUTHENTICATION_BACKENDS = [
+AUTHENTICATION_BACKENDS = (
+    # Needed to login by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
-]
+)
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -216,6 +207,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
 STATICFILES_DIRS = []
+
+hash_obj = hashlib.md5(BASE_DIR.encode('utf-8'))
+SESSION_COOKIE_NAME = 'djk_sessionid_{}'.format(hash_obj.hexdigest())
+
+ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
+ALLAUTH_DJK_URLS = True
 
 #To allow download of files, we need to configure MEDIA_ROOT and MEDIA_URL
 #For now point them to upload. When we deploy we'll need to configure things

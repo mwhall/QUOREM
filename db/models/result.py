@@ -8,8 +8,6 @@ from django.contrib.postgres.search import SearchVector
 
 from django.apps import apps
 
-from django_jinja_knockout.widgets import DisplayText
-from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
 from db.models.object import Object
 from db.models.step import Step
 
@@ -55,6 +53,8 @@ class Result(Object):
 
     @classmethod
     def get_display_form(cls):
+        from django_jinja_knockout.widgets import DisplayText
+        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
         class DisplayForm(BootstrapModelForm,
                           metaclass=DisplayModelMetaclass):
             provenance = forms.CharField(max_length=4096, widget=DisplayText())

@@ -27,7 +27,6 @@ from django_jinja_knockout.views import (
 )
 
 
-import django_tables2 as tables
 import io
 from collections import OrderedDict, defaultdict
 
