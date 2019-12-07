@@ -48,8 +48,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sites.apps.SitesConfig',
+    'django.contrib.humanize.apps.HumanizeConfig',
     'django.contrib.staticfiles',
-    'django_extensions',
     'django_jinja',
     'django_jinja.contrib._humanize',
     'djk_ui',
@@ -57,10 +58,9 @@ INSTALLED_APPS = [
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
     ##########
-    'django.contrib.sites.apps.SitesConfig',
-    'django.contrib.humanize.apps.HumanizeConfig',
     'django_nyt.apps.DjangoNytConfig',
     'mptt',
+    'django_extensions',
     'sekizai',
     'sorl.thumbnail',
     'wiki.apps.WikiConfig',
@@ -86,7 +86,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     DJK_MIDDLEWARE,
     ]
 

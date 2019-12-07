@@ -4,7 +4,6 @@ import colour
 from django.db import models
 from django.apps import apps
 from django import forms
-from django_jinja_knockout.widgets import DisplayText
 
 #for searching
 from django.contrib.postgres.search import SearchVector
@@ -15,7 +14,6 @@ from db.models.object import Object
 from db.models.value import Value
 from django.utils.html import format_html, mark_safe
 
-from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
 
 class Feature(Object):
     base_name = "feature"
@@ -113,6 +111,8 @@ class Feature(Object):
 
     @classmethod
     def get_display_form(cls):
+        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
+        from django_jinja_knockout.widgets import DisplayText
         class DisplayForm(BootstrapModelForm,
                           metaclass=DisplayModelMetaclass):
             node = forms.CharField(max_length=4096, widget=DisplayText())

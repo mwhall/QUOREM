@@ -22,7 +22,6 @@ from django.core.paginator import(
 )
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
-        FormDetailView, FormatTitleMixin, FormViewmodelsMixin, FormWithInlineFormsetsMixin,
         ViewmodelView,
 )
 
