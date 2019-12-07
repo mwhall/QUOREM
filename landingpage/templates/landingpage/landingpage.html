@@ -3,7 +3,14 @@
   {% block content %}
 
     <div class="header-text">
-      <h2>QUOREM | Database for Computational Microbial Ecology Data</h2>
-      <p><a href="/investigation/all">View All Investigations</a></p>
+      <h2>QUOR'EM | Database for Microbial Ecology Data</h2>
+      {% if user.is_authenticated  %}
+      <p><h3> Welcome back!</h3></p>
+      <p><a href="/home">QUOR'EM Database</a></p>
+      <p><a href="/wiki">QUOR'EM Wiki</a></p>
+      {% else %}
+      <p>Already have an account on this instance? <a href="/accounts/signin">Sign in!</a></p>
+      <p>Are you a new user? <a href="/accounts/signup">Sign up here!</a></p>
+      {% endif %}
     </div>
   {% endblock %}
