@@ -1090,7 +1090,7 @@ class spreadsheet_upload(CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('uploadfile_detail_new', kwargs={'file_id': self.object.pk,
+        return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 
 class artifact_upload(CreateView):
