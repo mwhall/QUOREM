@@ -1,9 +1,0 @@
-	steps__name	steps__name	steps__name	processes__name	processes__name	processes__name	float__value	float__value	float__value
-name	min_depth	permutations	sampling_depth	min_depth	permutations	sampling_depth	min_depth	permutations	sampling_depth
-0			diversity__core_metrics			Default QIIME2 MIMB			10000.0
-1			diversity__core_metrics_phylogenetic			Default QIIME2 MIMB			10000.0
-2			feature-table__rarefy			Default QIIME2 MIMB			10000.0
-3	diversity__alpha_rarefaction			Default QIIME2 MIMB			1.0		
-4		diversity__beta_group_significance			Default QIIME2 MIMB			999.0	
-5	diversity__alpha_rarefaction						1.0		
-6		diversity__beta_group_significance						999.0	
