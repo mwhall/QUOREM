@@ -25,8 +25,6 @@ import version_parser.version as version
 import re
 from scipy.sparse import coo_matrix
 
-object_classes = Object.get_object_types()
-
 #This should be fine to live here, but may need to move if this file reloads often
 unitregistry = pint.UnitRegistry()
 pint.set_application_registry(unitregistry)
@@ -125,12 +123,12 @@ class DataSignature(models.Model):
     object_counts = JSONField()
 
     def __str__(self):
-        link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in object_classes])
-        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, self.data_types, link_str)
+        link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in Object.get_object_types()])
+        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, ", ".join([x.model_class().__name__ for x in self.data_types.all()]), link_str)
 
     @classmethod
     def create(cls, name, value_type, object_counts):
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name not in object_counts:
                 object_counts[Obj.plural_name] = 0
         signature = DataSignature(name=name, 
@@ -145,13 +143,14 @@ class DataSignature(models.Model):
         if not signatures.exists():
             signature = cls.create(name, kwargs['value_type'], object_counts)
             signatures = DataSignature.objects.filter(pk=signature.pk)
+            print(name, object_counts)
         return signatures
 
     @classmethod
     def get(cls, name, value_type, return_counts=False, **kwargs):
         object_counts = {}
         object_querysets = {}
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
                 if type(kwargs[Obj.plural_name]) == models.query.QuerySet:
                     object_counts[Obj.plural_name] = kwargs[Obj.plural_name].count()
@@ -339,7 +338,7 @@ def datum_factory(obj):
 
 #NOTE: These aren't directly importable from here... any way to get these into
 # the file's namespace?
-for Obj in object_classes:
+for Obj in Object.get_object_types():
     datum_factory(Obj)
 
 # Using definitions from Pint to power these

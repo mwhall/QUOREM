@@ -40,13 +40,16 @@ class ValueFilterView(BaseFilterView):
     # We need to override a bunch of functions to allow the filters
     # to support our complex polymorphic Value fields
     # TODO: Figure out how to wire this up completely
-    field_set = set()
-    for Obj in Object.get_object_types():
-        field_names = Obj.get_all_value_fields()
-        for value_type in field_names:
-            for name in field_names[value_type]:
-                field_set.add(name+"_"+value_type)
-    field_names = list(field_set)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field_set = set()
+        for Obj in Object.get_object_types():
+            field_names = Obj.get_all_value_fields()
+            for value_type in field_names:
+                for name in field_names[value_type]:
+                    field_set.add(name+"_"+value_type)
+        self.field_names = list(field_set)
 
     def get_field_verbose_name(self, field_name):
         # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
@@ -832,7 +835,7 @@ class artifact_upload(CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('uploadfile_detail_new', kwargs={'file_id': self.object.pk,
+        return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 ################################################################################
 ## onto testing                                                              ###
