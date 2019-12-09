@@ -11,3 +11,4 @@ quorem/__pycache__/*
 *.swp
 tests/data/qiime_data/
 upload/*
+*.log
