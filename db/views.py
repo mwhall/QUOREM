@@ -831,7 +831,7 @@ class artifact_upload(CreateView):
         self.object.upload_type = "A"
         self.object.save()
         current_app.send_task('db.tasks.react_to_file', (self.object.pk,), 
-                kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
+                kwargs={'analysis_pk': form.cleaned_data['analysis'].pk})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
