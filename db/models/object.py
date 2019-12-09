@@ -1,5 +1,6 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from textwrap import fill, wrap
+import string
 
 from django import forms
 from django.db import models
@@ -36,6 +37,10 @@ class Object(models.Model):
 
     description = "The base class for all Objects in QUOR'em"
 
+    search_fields = []
+    grid_fields = [id_field]
+    allowed_filter_fields = OrderedDict()
+
     gv_node_style = {}
     node_height = 3
     node_width = 3
@@ -50,6 +55,39 @@ class Object(models.Model):
 
     def __str__(self):
         return self.get_detail_link()
+
+    def get_str_fields(self, measures=False, objects=True):
+        field_values = defaultdict(list)
+        for val in self.values.all():
+            bn = val.base_name
+            if (not measures) and (bn == "measure"):
+                continue
+            field_name = val.name+"_"+bn
+            if objects:
+                field_values[field_name].append(val.data)
+            else:
+                field_values[field_name].append(str(val.data.get_value()))
+        return field_values
+
+    @classmethod
+    def get_all_value_fields(cls):
+        val_fields = defaultdict(set)
+        objs = cls.objects.prefetch_related("values", "values__data").values_list("values__name", "values__data__pk").distinct()
+        data_pk = [x[1] for x in objs]
+        for Val in apps.get_model("db.Value").get_value_types():
+            vals = Val.objects.filter(data__pk__in=data_pk)
+            for name in vals.values_list("name", flat=True):
+                val_fields[Val.base_name].add(name)
+        return val_fields
+
+    def get_value_fields(self):
+        field_values = defaultdict(set)
+        data_pk = self.values.values_list("data__pk", flat=True)
+        for Val in apps.get_model("db.Value").get_value_types():
+            vals = Val.objects.filter(data__pk__in=data_pk)
+            for name in vals.values_list("name", flat=True):
+                field_values[Val.base_name].add(name)
+        return field_values
 
     @classmethod
     def id_fields(cls):
@@ -309,6 +347,63 @@ class Object(models.Model):
             return DetailView.as_view()
         else:
             return DetailView
+
+    @classmethod
+    def get_list_view(cls, as_view=False):
+        from django_jinja_knockout.views import ListSortingView
+        from ..views import ValueFilterView
+        base_name = cls.base_name
+        class ListView(ListSortingView, ValueFilterView):
+            model = cls
+            allowed_sort_orders = '__all__'
+            template_name = "core/custom_cbv_list.htm"
+            grid_fields = cls.grid_fields
+            allowed_filter_fields = OrderedDict()
+
+            @classmethod
+            def reset_filter_link(clss):
+                return reverse("%s_all" % (base_name,))
+
+            @classmethod
+            def object_filter_fields(clss):
+                ff = [x for x in clss.allowed_filter_fields]
+                letters = string.ascii_uppercase[0:len(ff)]
+                return [(idx,x) for idx, x in zip(letters, ff) if (x in clss.allowed_filter_fields)]
+
+            def get_heading(self):
+                return "%s List" % (base_name.capitalize(),)
+
+            @classmethod
+            def update_list_filters(clss):
+                return cls.get_filters()
+
+            @classmethod
+            def as_view(clss, *args, **kwargs):
+                clss.allowed_filter_fields = clss.update_list_filters()
+                return super().as_view(**kwargs)
+
+            def get_display_value(self, obj, field):
+                if field == "name":
+                    return mark_safe(obj.get_detail_link())
+                return mark_safe(getattr(obj, field).get_detail_link())
+
+            def get_table_attrs(self):
+                return {
+                    'class': 'table table-bordered table-collapse display-block-condition custom-table',
+                    'id' : 'object_table',
+                }
+
+        ListView.__module__ = 'db.models.%s' % (cls.base_name,)
+        ListView.__name__ = cls.__name__
+        ListView.__qualname__ = ListView.__name__
+        if as_view:
+            return ListView.as_view()
+        else:
+            return ListView
+
+    @classmethod
+    def get_filters(cls):
+        return OrderedDict()
 
     def get_upstream_values(self):
         if not self.has_upstream:

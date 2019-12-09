@@ -511,6 +511,8 @@ class MatrixDatum(Data):
     # Generally intended to be Object subclasses, but I could see abusing this for other purposes
     rowobj = models.ForeignKey(ContentType, related_name="matrix_row", on_delete=models.CASCADE)
     colobj = models.ForeignKey(ContentType, related_name="matrix_col", on_delete=models.CASCADE)
+    def __str__(self):
+        return "COO Matrix with %d non-zero values" % (len(self.value),)
     def get_value(self):
         return coo_matrix((self.value, (self.row, self.col)))
 

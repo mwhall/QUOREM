@@ -33,7 +33,7 @@ class Value(PolymorphicModel):
     str_description = "All-purpose value/metadata class. Can be attached to anything for any reason. For clarity, use a more specific type if one is appropriate."
 
     name = models.CharField(max_length=512)
-    data = models.ForeignKey('Data', related_query_name = "values", on_delete=models.CASCADE)
+    data = models.ForeignKey('Data', related_query_name = "values", on_delete=models.CASCADE, verbose_name="Values")
     signature = models.ForeignKey('DataSignature', related_name = 'values', on_delete=models.CASCADE)
 
     search_vector = SearchVectorField(null=True)

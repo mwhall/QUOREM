@@ -2,6 +2,15 @@
 {% from 'bs_breadcrumbs.htm' import bs_breadcrumbs with context -%}
 {% from 'bs_filters.htm' import bs_filters with context -%}
 {% from 'bs_pagination.htm' import bs_pagination with context -%}
+<script type="text/javascript">
+function togglefiltertext( )
+{
+    if ( document.getElementById("togglefilters").innerHTML === "Show Filters" )
+        document.getElementById("togglefilters").innerHTML = "Hide Filters";
+    else
+        document.getElementById("togglefilters").innerHTML = "Show Filters";
+}
+</script>
 
 <div class="card">
     <div class="card-header">
@@ -11,9 +20,36 @@
         {% if caller and 'has_filters' in caller.arguments -%}
             {{ caller(has_filters=True) }}
         {% else -%}
-            {% for field in view.allowed_filter_fields -%}
+    <button id="togglefilters" class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="togglefiltertext()">Show Filters</button>
+   <a class="btn btn-primary"  href="{{ view.reset_filter_link() }}" role="button">
+    Reset Filters
+  </a>
+   </br>
+    <div class="collapse" id="collapseExample">
+<br/>
+    <div class="accordion" id="accordionFilter">
+      <div class="card card-body">
+            {% for num, field in view.object_filter_fields() -%}
+          <div class="card">
+            <div class="card-header" id="heading{{ num }}">
+          <h2 class="mb-0">
+            <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#collapse{{ num }}" aria-expanded="false" aria-controls="collapse{{ num }}">
+              {{ field }}
+          </button>
+          </h2>
+          </div>
+          </div>
+
+    <div id="collapse{{ num }}" class="collapse" aria-expanded="false" aria-labelledby="heading{{ num }}" data-parent="#accordionFilter">
+      <div class="card-body">
                 {{ bs_breadcrumbs(*view.get_filter_args(field)) }}
+      </div>
+    </div>
             {% endfor -%}
+</div>
+</div>
+</div>
+<br/>
         {% endif -%}
         {% if object_list -%}
             <table {{ tpl.json_flatatt(view.get_table_attrs()) }}>

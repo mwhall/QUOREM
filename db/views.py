@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models, utils
+from django.db.models import F
 from django.http import Http404
 from django.http import HttpResponseRedirect
 from django.contrib.contenttypes.models import ContentType
@@ -30,10 +31,10 @@ import io
 from collections import OrderedDict, defaultdict
 
 from .formatters import guess_filetype
-
+import string
 from .models import *
 from .models.object import load_mixed_objects #NOTE: Does this need to be in .models.object?
-
+from django_jinja_knockout.views import BaseFilterView
 from .forms import *
 """
  (
@@ -66,6 +67,35 @@ from django.db.models import F, Q
 from django.db.models.functions import Cast
 from django.views.generic.edit import CreateView, FormView
 from django.views.generic import TemplateView
+
+
+class ValueFilterView(BaseFilterView):
+    # This is from django_jinja_knockout.views.base
+    # We need to override a bunch of functions to allow the filters
+    # to support our complex polymorphic Value fields
+    print("VALUE FILTER VIEW")
+    field_set = set()
+    for Obj in Object.get_object_types():
+        field_names = Obj.get_all_value_fields()
+        for value_type in field_names:
+            for name in field_names[value_type]:
+                field_set.add(name+"_"+value_type)
+    field_names = list(field_set)
+
+    def get_field_verbose_name(self, field_name):
+        # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
+        if field_name in self.field_names:
+            return field_name
+        return super().get_field_verbose_name(field_name)
+
+    def get_related_fields(self, query_fields=None):
+        if query_fields is None:
+            query_fields = self.get_all_fieldnames() + self.field_names
+        return list(set(self.get_grid_fields_attnames()) - set(query_fields))
+
+    def get_all_fieldnames(self):
+        return super().get_all_fieldnames() + self.field_names
+
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
