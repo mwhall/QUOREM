@@ -1,1 +1,0 @@
-Title: Django Model Schema
