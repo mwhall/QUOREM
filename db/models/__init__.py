@@ -9,3 +9,4 @@ from .file import UploadFile, LogFile
 from .user import User, UserProfile, UserMail, UploadMessage
 from .value import *
 from .data_types import *
+from .object import load_mixed_objects

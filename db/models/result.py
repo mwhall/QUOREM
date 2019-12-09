@@ -61,9 +61,6 @@ class Result(Object):
                             ('analysis', {'type': 'choices',
                                              'choices': cls.objects.values_list("analysis__pk", "analysis__name").distinct(),
                                              'active_choices': []}),
-                            ('qiime2_version', {'type': 'choices',
-                                             'choices': apps.get_model('db.VersionDatum').objects.prefetch_related("values").filter(values__name="qiime2").values_list("pk","value").distinct(),
-                                             'active_choices': []})
                                             ])
 
     @classmethod
