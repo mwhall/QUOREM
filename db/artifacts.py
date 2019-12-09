@@ -186,11 +186,12 @@ class ArtifactIterator:
         # Yields single records of artifact contents that are QUOR'em Values
         for uuid, yf in self.iter_metadatayaml():
             for x in ["type", "format"]:
-                yield {"result_name": yf['uuid'],
-                       "value_name": "qiime2_%s" % (x,),
-                       "value_type": "value",
-                       "value_data": yf[x],
-                       "value_object": "result"}
+                if yf[x] is not None:
+                    yield {"result_name": yf['uuid'],
+                           "value_name": "qiime2_%s" % (x,),
+                           "value_type": "value",
+                           "value_data": yf[x],
+                           "value_object": "result"}
         for uuid, yf in self.iter_actionyaml():
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] + \
@@ -212,6 +213,7 @@ class ArtifactIterator:
                            "value_type": "value",
                            "value_data": yf["action"]["alias-of"],
                            "data_type": "auto"}
+
             elif yf['action']['type'] == 'import':
                 step_name = "qiime2_import"
                 for item in yf['action']['manifest']:
