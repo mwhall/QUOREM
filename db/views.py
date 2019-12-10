@@ -1,71 +1,72 @@
+from collections import OrderedDict, defaultdict
+import string
+
 from django.shortcuts import render, redirect
 from django.views import View
-from django.views.generic import ListView
 from django.views.generic.edit import CreateView
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models, utils
 from django.http import Http404
 from django.http import HttpResponseRedirect
-from django.contrib.contenttypes.models import ContentType
-
-from django.contrib.auth import get_user_model
-
 from django.core.paginator import(
     Paginator,
     EmptyPage,
     PageNotAnInteger,
 )
+from django.db.models import F, Q
+from django.views.generic.edit import FormView
+###Stuff for searching
+from django.contrib.postgres.search import (
+    SearchQuery, SearchRank, SearchVector
+)
+
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
-        ViewmodelView,
+        ViewmodelView, BaseFilterView
 )
-
-
-import io
-from collections import OrderedDict, defaultdict
-
-from .formatters import guess_filetype
-
-from .models import *
-from .models.object import load_mixed_objects #NOTE: Does this need to be in .models.object?
-
-from .forms import *
-"""
- (
-    InvestigationDisplayForm, InvestigationForm,
-    ProcessForm, ProcessDisplayForm,
-    ResultDisplayForm,
-    AnalysisDisplayForm, AnalysisForm,
-    SampleDisplayForm, SampleForm,
-    FeatureDisplayForm, FeatureForm,
-    StepDisplayForm, StepForm,
-    UploadForm, UserWithInlineUploads, UploadFileDisplayForm,
-    FileDisplayWithInlineErrors,
-    SpreadsheetUploadForm, ArtifactUploadForm,
-    AggregatePlotForm, AggregatePlotInvestigation, TrendPlotForm, ValueTableForm
-)
-"""
-from .utils import barchart_html, trendchart_html, value_table_html
 
 import pandas as pd
 import numpy as np
-import zipfile
-import arrow
 from celery import current_app
 
-###Stuff for searching
-from django.contrib.postgres.search import(
-    SearchQuery, SearchRank, SearchVector)
+from .models import *
+from .forms import *
+from .utils import barchart_html, trendchart_html, value_table_html
 
-from django.db.models import F, Q
-from django.db.models.functions import Cast
-from django.views.generic.edit import CreateView, FormView
-from django.views.generic import TemplateView
+def value_filter_view_factory(object_class):
+
+    class ValueFilterView(BaseFilterView):
+        # This is from django_jinja_knockout.views.base
+        # We need to override a bunch of functions to allow the filters
+        # to support our complex polymorphic Value fields
+        # TODO: Figure out how to wire this up completely
+        field_set = set()
+        field_names = object_class.get_all_value_fields()
+        for value_type in field_names:
+           for name in field_names[value_type]:
+               field_set.add(name+"_"+value_type)
+        field_names = list(field_set)
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        def get_field_verbose_name(self, field_name):
+            # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
+            if field_name in self.field_names:
+                return field_name
+            return super().get_field_verbose_name(field_name)
+
+        def get_related_fields(self, query_fields=None):
+            if query_fields is None:
+                query_fields = self.get_all_fieldnames() + self.field_names
+            return list(set(self.get_grid_fields_attnames()) - set(query_fields))
+
+        def get_all_fieldnames(self):
+            return super().get_all_fieldnames() + self.field_names
+
+    return ValueFilterView
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
@@ -82,7 +83,6 @@ class HomePage(BsTabsMixin, ViewmodelView):
         context['obj_list'] = self.ob_list
         return context
 
-
 ## LIST VIEWS ##################################################################
 #  These list *all* the objects of a given type                               ##
 #  Things that are easily controlled here:                                    ##
@@ -94,294 +94,49 @@ class HomePage(BsTabsMixin, ViewmodelView):
 #  to make the tables less garish and twitchy                                 ##
 #                                                                             ##
 #  Pages here:                                                                ##
-#    - Investigation (/investigation/all)                                     ##
-#    - Sample (/sample/all)                                                   ##
-#    - Feature (/feature/all)                                                 ##
-#    - Analysis (/analysis/all)                                               ##
-#    - Step (/step/all)                                                       ##
-#    - Process (/process/all)                                                 ##
-#    - Result (/result/all)                                                   ##
 #    - Upload (/upload/all)                                                   ##
 #                                                                             ##
 ################################################################################
-
-class InvestigationList(ListSortingView):
-    model = Investigation
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'institution', 'description']
-
-    def get_heading(self):
-        return "Investigation List"
-
-    def edit_investigation(self, obj):
-        return format_html(
-           ' (<a href="{}"><span class="iconui iconui-edit"></span></a>) ',
-           reverse('investigation_update', kwargs={'investigation_id': obj.pk}))
-
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('investigation_detail', kwargs={'investigation_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(self.edit_investigation(obj))
-        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        elif field == 'categories':
-            cats = [x.name for x in obj.categories.all()]
-            return mark_safe(', '.join(cats))
-        else:
-            return super().get_display_value(obj, field)
-
-    def get_bs_form_opts(self):
-        return {
-            'title': "All Investigations",
-            'view_title': "All Investigations",
-            'submit_text': "Save Investigation",
-        }
-
-class SampleList(ListSortingView):
-    model = Sample
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'investigations']
-
-    def get_heading(self):
-        return "Sample List"
-
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('sample_detail', kwargs={'sample_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('sample_update', kwargs={'sample_id': obj.pk})
-            ))
-        return links
-
-    def get_investigation_links(self, obj):
-        links = [x.get_detail_link() \
-          for x in obj.investigations.all() ]
-        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        elif field == 'investigations':
-            links = self.get_investigation_links(obj)
-            return mark_safe(', '.join(links))
-        else:
-            return super().get_display_value(obj, field)
-
-class FeatureList(ListSortingView):
-    model = Feature
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'annotations']
-
-    def get_heading(self):
-        return "Feature List"
-
-    def get_name_links(self, obj):
-        return obj.get_detail_link()
-
-    def get_display_value(self, obj, field):
-        if field=='name':
-            return self.get_name_links(obj)
-        elif field=='annotations':
-            return "\n".join(StrDatum.objects.filter(pk__in=obj.annotations.values("data")).values_list("value", flat=True))
-
-class AnalysisList(ListSortingView):
-    model = Analysis
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    def __init__(self, *args, **kwargs):
-        self.allowed_filter_fields = OrderedDict([
-                ('process',
-                {
-                    'type': 'choices',
-                    'choices': [(x['pk'], x['name']) for x in Process.objects.all().values("pk","name").distinct().order_by("name")],
-                # BROKEN. There is a Date filter in DJK but it doesn't seem to work
-                # with our field? And using a Choices filter raises that a Datetime
-                # isn't serializable, and I don't know how else to get equality to
-                # filter properly
-                #('date',
-                #{'type': None
-                # 'choices': [(str(x['date']),str(x['date'])) \
-                #              for x in Analysis.objects.all().values("date").distinct().order_by("date")]}),
-                })])
-        super(AnalysisList, self).__init__(*args, **kwargs)
-    grid_fields = ['name', 'process']
-
-    def get_heading(self):
-        return "Analysis List"
-
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            return obj.get_detail_link()
-        elif field == 'date':
-            return str(arrow.get(obj.date).format("DD/MM/YYYY"))
-        elif field == 'process':
-            return obj.process.get_detail_link()
-
-class StepList(ListSortingView):
-    model = Step
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'values']
-    def get_heading(self):
-        return "Step List"
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('step_detail', kwargs={'step_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('step_update', kwargs={'step_id': obj.pk})
-            ))
-        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        elif field == 'values':
-            default_params = [x.name + ": " + str(x.data.value) \
-                               for x in obj.values.annotate(stepcount=models.Count("steps")).filter(stepcount=1).filter(processes__isnull=True, samples__isnull=True, analyses__isnull=True, results__isnull=True) ]
-            return mark_safe('</br>'.join(default_params))
-        else:
-            return super().get_display_value(obj, field)
-
-class ProcessList(ListSortingView):
-    model = Process
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name']
-
-    def get_heading(self):
-        return "Process List"
-
-    def get_name_links(self, obj):
-        links = [format_html(
-            '<a href="{}">{}</a>',
-            reverse('process_detail', kwargs={'process_id': obj.pk}),
-            obj.name
-        )]
-        # is_authenticated is not callable in Django 2.0.
-        if self.request.user.is_authenticated:
-            links.append(format_html(
-                ' (<a href="{}"><span class="iconui iconui-edit"></span></a>)',
-                reverse('process_update', kwargs={'process_id': obj.pk})
-            ))
-        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'name':
-            links = self.get_name_links(obj)
-            return mark_safe(''.join(links))
-        else:
-            return super().get_display_value(obj, field)
-
-def get_unique_steps():
-    try:
-        return [(x['pk'], x['name']) for x in Step.objects.all().values("pk","name").distinct().order_by("name")]
-    except utils.ProgrammingError:
-        return []
-
-class ResultList(ListSortingView):
-    model = Result
-    allowed_sort_orders = '__all__'
-    template_name = "core/custom_cbv_list.htm"
-    grid_fields = ['name', 'analysis',  'source_step', 'values']
-    allowed_filter_fields = OrderedDict([
-           ('source_step',
-           {
-               'type': 'choices',
-               'choices': get_unique_steps(),
-               # Do not display 'All' choice which resets the filter:
-               # List of choices that are active by default:
-               'active_choices': [],
-               # Do not allow to select multiple choices:
-           })])
-
-    def get_heading(self):
-        return "Result List"
-
-#    def get_file_links(self, obj):
-#        links = []
-#        if obj.file is not None:
-#            links = [format_html(
-#                '<a href="{}">{}</a>',
-#                reverse('file_detail', kwargs={'file_id': obj.file.pk}),
-#                obj.file.upload_file
-#            )]
-#        #can anonymous users download files???? For now, yes...
-#        #though the website 404s if not logged in.
-#        #Only succrss files can be downloaded.
-#            if obj.file.upload_status == 'S':
-#                links.append(format_html(
-#                    ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="Download"><span class="iconui iconui-download"></span></a>)',
-#                    #reverse('file_detail', kwargs={'file_id': obj.file.pk})
-#                    "/" + obj.file.upload_file.url
-#                ))
-#                links.append(format_html(
-#                ' (<a href="{}" target="_blank" data-toggle="tooltip" data-placement="top" title="View in Q2View"><span class="iconui iconui-eye-open"></span></a>)',
-#                "https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/" + obj.file.upload_file.url
-#                ))
-#        return links
-
-    def get_display_value(self, obj, field):
-        if field == 'file':
-            links = self.get_file_links(obj)
-            return mark_safe(''.join(links))
-            #return self.get_file_name(obj)
-        elif field == 'values':
-            values = mark_safe(", ".join(np.unique([x.data.get_value().get_detail_link() for x in obj.values.instance_of(File)])))
-            return values
-        elif field == 'samples':
-            samples = mark_safe(', '.join(np.unique([x.get_detail_link() for x in obj.samples.all()])))
-            return samples
-        elif field == 'features':
-            feats = ', '.join(np.unique([x.name for x in obj.features.all()]))
-            return feats
-        elif field == 'source_step':
-            if obj.source_step:
-                return obj.source_step.get_detail_link()
-        elif field == 'name':
-            return mark_safe(obj.get_detail_link())
-        else:
-            return mark_safe(super().get_display_value(obj, field))
-
-    def get_table_attrs(self):
-        return {
-            'class': 'table table-bordered table-collapse display-block-condition custom-table',
-            'id' : 'result_table',
-        }
 
 class UploadList(ListSortingView):
     model = UploadFile
     allowed_sort_orders = '__all__'
     template_name = 'core/custom_cbv_list.htm'
-    grid_fields = ['upload_file', 'upload_status', 'userprofile']
+    grid_fields = ['upload_file', 'upload_type', 'upload_status', 'userprofile']
+    allowed_filter_fields = OrderedDict()
+
+    @classmethod
+    def update_list_filters(cls):
+        return OrderedDict([
+                            ('upload_type', {'type': 'choices', 'choices': UploadFile.objects.values_list("upload_type", "upload_type").distinct(), 'active_choices': []}),
+                            ('upload_status', {'type': 'choices', 'choices': UploadFile.objects.values_list("upload_status", "upload_status").distinct(), 'active_choices': []}),
+                            ('userprofile', {'type': 'choices', 'choices': UploadFile.objects.values_list("userprofile__pk", "userprofile__user__email").distinct(), 'active_choices': []}),
+                            ])
+
+    @classmethod
+    def object_filter_fields(cls):
+        ff = [x for x in cls.allowed_filter_fields]
+        letters = string.ascii_uppercase[0:len(ff)]
+        return [(idx,x) for idx, x in zip(letters, ff) if (x in cls.allowed_filter_fields)]
 
     def get_heading(self):
         return "Upload List"
+
+    @classmethod
+    def as_view(cls, *args, **kwargs):
+       cls.allowed_filter_fields = cls.update_list_filters()
+       return super().as_view(**kwargs)
+
+#    def get_display_value(self, obj, field):
+#        if field == "name":
+#            return mark_safe(obj.get_detail_link())
+#        return mark_safe(getattr(obj, field).get_detail_link())
+
+    def get_table_attrs(self):
+        return {
+            'class': 'table table-bordered table-collapse display-block-condition custom-table',
+            'id' : 'object_table',
+        }
 
     def get_name_links(self, obj):
         links = [format_html(
@@ -405,6 +160,10 @@ class UploadList(ListSortingView):
             'view_title': "All Uploads",
             'submit_text': "Save Uploads"
         }
+
+    @classmethod
+    def reset_filter_link(cls):
+        return reverse("upload_all")
 
 ## DETAIL VIEWS ################################################################
 #  These list the details of one object of a given type                       ##
@@ -1087,11 +846,11 @@ class artifact_upload(CreateView):
         self.object.upload_type = "A"
         self.object.save()
         current_app.send_task('db.tasks.react_to_file', (self.object.pk,),
-                kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
+                kwargs={'analysis_pk': form.cleaned_data['analysis'].pk})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        return reverse('uploadfile_detail_new', kwargs={'file_id': self.object.pk,
+        return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 ################################################################################
 ## onto testing                                                              ###

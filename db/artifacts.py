@@ -90,7 +90,7 @@ def ingest_artifact(artifact_file_or_path, analysis):
     # Cache
     objects = {Obj.plural_name: {} for Obj in Object.get_object_types()}
     # Create
-    for kwargs in artifactiterator.iter_objects():
+    for kwargs in artifactiterator.iter_objects(update=False):
         obj_ids, create_kwargs, update_kwargs = Object._parse_kwargs(**kwargs)
         if "results" in create_kwargs:
             create_kwargs["results"]["analysis"] = analysis
@@ -145,7 +145,7 @@ class ArtifactIterator:
         if ads:
             self.scraper = ads(self)
 
-    def iter_objects(self):
+    def iter_objects(self, update=True):
         # Yields single records of artifact contents that describe QUOR'em Objects
         for uuid, yf in self.iter_actionyaml():
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
@@ -179,18 +179,19 @@ class ArtifactIterator:
                                        "result_sample": val}
 
         if self.scraper:
-            for record in self.scraper.iter_objects():
+            for record in self.scraper.iter_objects(update=update):
                 yield record
 
     def iter_values(self):
         # Yields single records of artifact contents that are QUOR'em Values
         for uuid, yf in self.iter_metadatayaml():
             for x in ["type", "format"]:
-                yield {"result_name": yf['uuid'],
-                       "value_name": "qiime2_%s" % (x,),
-                       "value_type": "value",
-                       "value_data": yf[x],
-                       "value_object": "result"}
+                if yf[x] is not None:
+                    yield {"result_name": yf['uuid'],
+                           "value_name": "qiime2_%s" % (x,),
+                           "value_type": "value",
+                           "value_data": yf[x],
+                           "value_object": "result"}
         for uuid, yf in self.iter_actionyaml():
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] + \
@@ -212,6 +213,7 @@ class ArtifactIterator:
                            "value_type": "value",
                            "value_data": yf["action"]["alias-of"],
                            "data_type": "auto"}
+
             elif yf['action']['type'] == 'import':
                 step_name = "qiime2_import"
                 for item in yf['action']['manifest']:
@@ -361,7 +363,7 @@ class Taxonomy(ArtifactDataScraper):
                    "value_data": conf,
                    "data_type": "float"}
 
-    def iter_objects(self):
+    def iter_objects(self, update=True):
         for feat, tax, conf in self.iter_data():
             yield {"feature_name": feat,
                    "result_name": self.uuid,
@@ -385,21 +387,24 @@ class FeatureTable(ArtifactDataScraper):
         else:
             self.value_name = "feature_table"
 
-    def iter_objects(self):
-        for feature in self.features:
-            yield {"feature_name": feature.name,
-                   "result_name": self.uuid,
-                   "result_feature": feature.name}
-        for sample in self.samples:
-            yield {"result_name": self.uuid,
-                   "sample_name": sample.name,
-                   "result_sample": sample.name}
-            record = {"result_name": self.uuid,
-                      "sample_name": sample.name}
-            features_present = self.coo_mat.getcol(sample.pk).tocoo().row
-            feature_names = self.features.values_list("name", flat=True)
-            record.update({"sample_feature.%d" % (idx,): feature for idx, feature in enumerate(feature_names)})
-            yield record
+    def iter_objects(self, update=True):
+        feature_names = self.features.values_list("name", flat=True)
+        feature_dict = dict(self.features.values_list("pk", "name"))
+        record = {"result_name": self.uuid}
+        record.update({"result_feature.%d" % (idx,): feature for idx, feature in enumerate(feature_names)})
+        record.update({"feature_name.%d" % (idx,): feature for idx, feature in enumerate(feature_names)})
+        yield record
+        sample_names = self.samples.values_list("name", flat=True)
+        record = {"result_name": self.uuid}
+        record.update({"sample_name.%d" % (idx,): sample for idx, sample in enumerate(sample_names)})
+        record.update({"result_sample.%d" % (idx,): sample for idx, sample in enumerate(sample_names)})
+        yield record
+        if update:
+            for sample in self.samples.all():
+                record = {"sample_name": sample.name}
+                features_present = self.coo_mat.getcol(sample.pk).tocoo().row
+                record.update({"sample_feature.%d" % (idx,): feature_dict[pk] for idx, pk in enumerate(features_present)})
+                yield record
 
     def iter_values(self):
         # Infer the table type if we can
@@ -433,22 +438,26 @@ class FeatureTable(ArtifactDataScraper):
         # matrix
         coo_mat = csr_mat.tocoo()
         # We can release the h5 file at this point: we have all we need from it
-        samples = Sample.objects.filter(name__in=sample_ids).distinct()
-        features = Feature.objects.filter(name__in=feature_ids).distinct()
+        samples = Sample.objects.filter(name__in=sample_ids)
+        features = Feature.objects.filter(name__in=feature_ids)
+        found_samples = dict(samples.values_list("name", "pk"))
+        found_features = dict(features.values_list("name", "pk"))
         sample_pks = {}
         feature_pks = {}
         for idx, sample in enumerate(sample_ids):
-            if not samples.filter(name=sample).exists():
-                sample_pks[idx] = Sample.create(name=sample).first().pk
-                samples = samples | Sample.objects.filter(pk=sample_pks[idx])
+            if sample not in found_samples:
+                new_samples = Sample.create(name=sample)
+                sample_pks[idx] = new_samples.first().pk
+                samples = samples | new_samples
             else:
-                sample_pks[idx] = samples.filter(name=sample).get().pk
+                sample_pks[idx] = found_samples[sample]
         for idx, feature in enumerate(feature_ids):
-            if not features.filter(name=feature).exists():
-                feature_pks[idx] = Feature.create(name=feature).first().pk
-                features = features | Feature.objects.filter(pk=feature_pks[idx])
+            if feature not in found_features:
+                new_features = Feature.create(name=feature)
+                feature_pks[idx] = new_features.first().pk
+                features = features | new_features
             else:
-                feature_pks[idx] = features.filter(name=feature).get().pk
+                feature_pks[idx] = found_features[feature]
         row = [feature_pks[x] for x in coo_mat.row]
         col = [sample_pks[x] for x in coo_mat.col]
         coo_mat = coo_matrix((coo_mat.data, (row, col)))

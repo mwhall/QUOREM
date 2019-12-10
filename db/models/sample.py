@@ -17,10 +17,12 @@ class Sample(Object):
     description = "A Sample generally represents matter that was taken from a location at some date and time, or derived from something that was"
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aee8ae'}
+    grid_fields = ["name", "source_step", "investigations"]
 
     name = models.CharField(max_length=255,unique=True)
     investigations = models.ManyToManyField('Investigation', related_name='samples', blank=True)  # fk 2
     source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
+    features = models.ManyToManyField('Feature', related_name='samples', blank=True)
     upstream = models.ManyToManyField('self', symmetrical=False, related_name='downstream', blank=True)
     # A cache of all of the upstream Samples up the chain
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)

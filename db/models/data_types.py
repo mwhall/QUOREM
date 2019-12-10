@@ -16,6 +16,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 #from .result import Result
 from .user import UserProfile
 from .object import Object
+from ..postgres import ArrayPosition, ArrayPositions, Unnest
 
 import arrow
 import pint
@@ -24,8 +25,6 @@ import datetime
 import version_parser.version as version
 import re
 from scipy.sparse import coo_matrix
-
-object_classes = Object.get_object_types()
 
 #This should be fine to live here, but may need to move if this file reloads often
 unitregistry = pint.UnitRegistry()
@@ -125,12 +124,12 @@ class DataSignature(models.Model):
     object_counts = JSONField()
 
     def __str__(self):
-        link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in object_classes])
-        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, self.data_types, link_str)
+        link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in Object.get_object_types()])
+        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, ", ".join([x.model_class().__name__ for x in self.data_types.all()]), link_str)
 
     @classmethod
     def create(cls, name, value_type, object_counts):
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name not in object_counts:
                 object_counts[Obj.plural_name] = 0
         signature = DataSignature(name=name, 
@@ -151,7 +150,7 @@ class DataSignature(models.Model):
     def get(cls, name, value_type, return_counts=False, **kwargs):
         object_counts = {}
         object_querysets = {}
-        for Obj in object_classes:
+        for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
                 if type(kwargs[Obj.plural_name]) == models.query.QuerySet:
                     object_counts[Obj.plural_name] = kwargs[Obj.plural_name].count()
@@ -204,6 +203,9 @@ class Data(PolymorphicModel):
                 data_subclasses = all_subclasses(sc, data_subclasses)
             return data_subclasses
         return all_subclasses(Data, data_subclasses)
+
+    def __str__(self):
+        return str(self.value)
 
     @classmethod
     def cast(cls, value):
@@ -339,7 +341,7 @@ def datum_factory(obj):
 
 #NOTE: These aren't directly importable from here... any way to get these into
 # the file's namespace?
-for Obj in object_classes:
+for Obj in Object.get_object_types():
     datum_factory(Obj)
 
 # Using definitions from Pint to power these
@@ -511,8 +513,21 @@ class MatrixDatum(Data):
     # Generally intended to be Object subclasses, but I could see abusing this for other purposes
     rowobj = models.ForeignKey(ContentType, related_name="matrix_row", on_delete=models.CASCADE)
     colobj = models.ForeignKey(ContentType, related_name="matrix_col", on_delete=models.CASCADE)
+    def __str__(self):
+        return "COO Matrix with %d non-zero values" % (len(self.value),)
     def get_value(self):
         return coo_matrix((self.value, (self.row, self.col)))
+    def register_observations(self):
+        assert colobj == ContentType.objects.get_by_natural_key('db.Sample')
+        # Grab all unique pks in col
+        samples = MatrixDatum.objects.filter(pk=self.pk).annotate(samples=Unnest('col', distinct=True)).values_list("samples",flat=True)
+        for sample_pk in samples:
+            # Grab the positions in the matrix where it's the column value for this pk
+            pos = MatrixDatum.objects.filter(pk=self.pk).annotate(pos=ArrayPositions("col",sample_pk)).get().pos
+            # Grab the feature pks by grabbing those indices
+            feats = MatrixDatum.objects.filter(pk=self.pk).values_list(*["row__%d" % (p,) for p in pos]).get()
+            # Add the features to the Sample
+            Sample.objects.get(pk=sample_pk).features.add(*Feature.objects.filter(pk__in=feats))
 
 #class BitStringDatum(Data):
 #    type_name = "bitstring"
