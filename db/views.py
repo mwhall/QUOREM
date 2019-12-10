@@ -744,36 +744,23 @@ def search(request):
         'otype': selected_type,
     }
 
-    #Find value ranges for relevant queries.
+    #present fitler options for each initial object type.
+    if selected['otype']:
+        q_string = {'sample' : 'samples__isnull',
+                    'feature': 'features__isnull',
+                    'result': 'results__isnull',
+                    'step': 'steps__isnull',
+                    'analysis': 'analyses__isnull',
+                    'process': 'processes__isnull'}[selected['otype']]
 
-    ###########################################################################
-    ### TODO: With new db, this if/else can be replaced with generic statements.
+        metadata = Value.objects.filter(**{q_string: False}).order_by('name').distinct('name')
 
-    if selected['otype'] == 'sample':
-        metadata = Value.objects.filter(samples__isnull=False).order_by('name').distinct('name')
         if meta:
-            vals = Value.objects.filter(samples__isnull=False).filter(name=meta)
-            meta_type = vals[0].content_type.name
-            filt = q_map[meta_type]
-            vals = vals.order_by(filt).distinct()
-            facets = [v.data.value for v in vals]
-
-    elif selected['otype'] == 'step':
-        metadata = Value.objects.filter(steps__isnull=False).order_by('name').distinct('name')
-
-    elif selected['otype'] == 'feature':
-        metadata = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
-
-    elif selected['otype'] == 'result':
-        metadata = Value.objects.filter(results__isnull=False).order_by('name').distinct('name')
-
-    #Those 4 are all that make sense right now. later, allow selection of
-    #analysis, investigation, process as an "query in" option
-
+            vals = Value.objects.filter(**{q_string: False}).filter(name=meta)
+            meta_type = [ContentType.objects.get_for_id(x).model_class() for x in DataSignature.objects.filter(name=meta).values_list('data_types', flat=True).distinct()][0]
+# need some logic to rpesent range filters for aplicable dtypes
     else:
         metadata = None
-    #/TODO
-    ###########################################################################
 
     #remove empty keys if there are any
     selected = {
@@ -1109,7 +1096,7 @@ class artifact_upload(CreateView):
         self.object.userprofile = userprofile
         self.object.upload_type = "A"
         self.object.save()
-        current_app.send_task('db.tasks.react_to_file', (self.object.pk,), 
+        current_app.send_task('db.tasks.react_to_file', (self.object.pk,),
                 kwargs={'analysis_pk': form.fields['analysis']._queryset[0].pk})
         return HttpResponseRedirect(self.get_success_url())
 
