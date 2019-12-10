@@ -646,12 +646,7 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            if selected_type == 'step':
-                qs = qs.filter(values__name=meta)
-
-            #this works with sample, feature, result. step needs another
-            else:
-                qs = qs.filter(values__name=meta) #only works with samples
+            qs = qs.filter(values__name=meta) #only works with samples
 
             if min_selected and max_selected:
                 vals = Value.objects.filter(name=meta)
@@ -663,9 +658,6 @@ def search(request):
             if str_facets:
                 print("string facets was true")
                 qs = qs.filter(values__str__value__in=str_facets)
-
-        #We need to be able to accomodate different choices for meta.
-        #Not every filtered object will have 'values'
 
         qs = qs.distinct()
         if q:
@@ -768,9 +760,7 @@ def search(request):
         for key, value in selected.items()
         if value
     }
-    if facets:
-        print(meta_type)
-        print(facets)
+
     return render(request, 'search/search_results.htm',{
         'q':q,
         'title':title,

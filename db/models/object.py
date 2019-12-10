@@ -21,6 +21,8 @@ import colour
 
 from quorem.wiki import refresh_automated_report
 
+from django_pandas.managers import DataFrameManager
+
 User = get_user_model()
 
 ##################################
@@ -41,6 +43,8 @@ class Object(models.Model):
     node_width = 3
 
     search_vector = SearchVectorField(blank=True,null=True)
+
+    objects = DataFrameManager()
 
     class Meta:
         abstract = True
@@ -74,7 +78,7 @@ class Object(models.Model):
                 if field.is_relation and \
                    (field.related_model != Obj) and \
                    (field.related_model in object_list):
-                    headings.add(("%s_%s" % (Obj.base_name, field.related_model.base_name), 
+                    headings.add(("%s_%s" % (Obj.base_name, field.related_model.base_name),
                                              not (hasattr(field, "blank") and field.blank) and field.concrete))
         return list(headings)
 
@@ -106,11 +110,11 @@ class Object(models.Model):
         create_kwargs = {Obj.plural_name: {} for Obj in object_types}
         update_kwargs = {Obj.plural_name: {} for Obj in object_types}
         # Rough save order for getting existence straightened out #TODO: Introspect this through related fields
-        object_order = [apps.get_model("db.Investigation"), 
-                        apps.get_model("db.Step"), 
-                        apps.get_model("db.Sample"), 
+        object_order = [apps.get_model("db.Investigation"),
+                        apps.get_model("db.Step"),
+                        apps.get_model("db.Sample"),
                         apps.get_model("db.Feature"),
-                        apps.get_model("db.Process"), 
+                        apps.get_model("db.Process"),
                         apps.get_model("db.Analysis"),
                         apps.get_model("db.Result")]
         object_headings = [y for x in [x.column_headings() for x in object_order] for y in x]
@@ -416,7 +420,7 @@ class Object(models.Model):
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
         attrs["fontname"] = "FreeSans"
-        attrs["href"] = reverse(self.base_name + "_detail", 
+        attrs["href"] = reverse(self.base_name + "_detail",
                                 kwargs={self.base_name+"_id":self.pk})
         if not highlight:
             col = colour.Color(attrs["fillcolor"])
@@ -486,4 +490,3 @@ def load_mixed_objects(dicts,model_keys):
         to_return.append(item)
 
     return to_return
-

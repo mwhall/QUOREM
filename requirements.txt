@@ -21,5 +21,7 @@ colour==0.1.5
 arrow==0.15.4
 version_parser==1.0.0
 django-jinja-knockout==0.8.0
+rest-pandas==1.1.0
+django-pandas==0.6.1
 -e git+https://github.com/Dmitri-Sintsov/djk-bootstrap4.git#egg=djk_ui
 -e git+https://github.com/django-wiki/django-wiki.git#egg=django-wiki
