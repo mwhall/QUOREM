@@ -4,6 +4,8 @@ from django.apps import apps
 #for searching
 from django.contrib.postgres.search import SearchVector
 
+from collections import OrderedDict
+
 from .object import Object
 
 class Investigation(Object):
@@ -12,18 +14,11 @@ class Investigation(Object):
 
     description = "An Investigation represents a group of Samples"
 
-    name = models.CharField(max_length=255, unique=True)
-
+    grid_fields = ["name", "samples"]
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aeaee8'}
 
+    name = models.CharField(max_length=255, unique=True)
     values = models.ManyToManyField('Value', related_name="investigations", blank=True)
-
-    @classmethod
-    def update_search_vector(cls):
-        sv =( SearchVector('name', weight='A'))
-        cls.objects.update(search_vector = sv)
-#        refresh_automated_report("investigation")
-#        refresh_automated_report("investigation", pk=self.pk)
 
     def related_samples(self, upstream=False):
         # SQL Depth: 1

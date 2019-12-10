@@ -42,7 +42,7 @@ class Value(PolymorphicModel):
     required_objects = []
 
     def __str__(self):
-        return self.base_name.capitalize() + ": " + self.name
+        return "(" + self.base_name.capitalize() + ") " + self.name + ": " + str(self.data)
 
     @combomethod
     def info(receiver):

@@ -16,6 +16,7 @@ from django.contrib.postgres.fields import ArrayField, JSONField
 #from .result import Result
 from .user import UserProfile
 from .object import Object
+from ..postgres import ArrayPosition, ArrayPositions, Unnest
 
 import arrow
 import pint
@@ -143,7 +144,6 @@ class DataSignature(models.Model):
         if not signatures.exists():
             signature = cls.create(name, kwargs['value_type'], object_counts)
             signatures = DataSignature.objects.filter(pk=signature.pk)
-            print(name, object_counts)
         return signatures
 
     @classmethod
@@ -203,6 +203,9 @@ class Data(PolymorphicModel):
                 data_subclasses = all_subclasses(sc, data_subclasses)
             return data_subclasses
         return all_subclasses(Data, data_subclasses)
+
+    def __str__(self):
+        return str(self.value)
 
     @classmethod
     def cast(cls, value):
@@ -514,6 +517,17 @@ class MatrixDatum(Data):
         return "COO Matrix with %d non-zero values" % (len(self.value),)
     def get_value(self):
         return coo_matrix((self.value, (self.row, self.col)))
+    def register_observations(self):
+        assert colobj == ContentType.objects.get_by_natural_key('db.Sample')
+        # Grab all unique pks in col
+        samples = MatrixDatum.objects.filter(pk=self.pk).annotate(samples=Unnest('col', distinct=True)).values_list("samples",flat=True)
+        for sample_pk in samples:
+            # Grab the positions in the matrix where it's the column value for this pk
+            pos = MatrixDatum.objects.filter(pk=self.pk).annotate(pos=ArrayPositions("col",sample_pk)).get().pos
+            # Grab the feature pks by grabbing those indices
+            feats = MatrixDatum.objects.filter(pk=self.pk).values_list(*["row__%d" % (p,) for p in pos]).get()
+            # Add the features to the Sample
+            Sample.objects.get(pk=sample_pk).features.add(*Feature.objects.filter(pk__in=feats))
 
 #class BitStringDatum(Data):
 #    type_name = "bitstring"

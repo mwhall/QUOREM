@@ -26,6 +26,7 @@ class Result(Object):
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffeea8'}
 
     list_display = ('source_step', 'processes', 'samples', 'values')
+
     name = models.CharField(max_length=255, unique=True) #For QIIME2 results, this can still be the UUID
     analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
     # This process result is from this step
@@ -61,7 +62,10 @@ class Result(Object):
                             ('analysis', {'type': 'choices',
                                              'choices': cls.objects.values_list("analysis__pk", "analysis__name").distinct(),
                                              'active_choices': []}),
-                                            ])
+#                            ('qiime2_version', {'type': 'choices',
+#                                             'choices': apps.get_model("db.VersionDatum").objects.filter(values__name="qiime2", values__results__isnull=False).values_list("pk", "value").distinct(),
+#                                             'active_choices': []}),
+                                           ])
 
     @classmethod
     def get_display_form(cls):

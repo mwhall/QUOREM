@@ -1,5 +1,6 @@
 import cgi
 import colour
+from collections import OrderedDict
 
 from django.db import models
 from django.apps import apps
@@ -22,11 +23,11 @@ class Feature(Object):
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ff5497'}
     node_height = 10
     node_width = 12
+    grid_fields = ["name", "samples", "annotations"]
 
     description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
 
     name = models.CharField(max_length=255, verbose_name="Name")
-    samples = models.ManyToManyField('Sample', related_name='features', blank=True)
 
     annotations = models.ManyToManyField('Value', related_name='+', blank=True)
     values = models.ManyToManyField('Value', related_name="features", blank=True)
@@ -39,12 +40,27 @@ class Feature(Object):
         )
 
     @classmethod
+    def get_display_value(cls, obj, field):
+        if field == "name":
+            return obj.get_detail_link()
+        elif field == "samples":
+            if not obj.samples.exists():
+                return "No observations recorded"
+            elif obj.samples.all().count() >= 10:
+                return mark_safe("<BR/>".join([str(x) for x in obj.samples.all()[0:10]] + ["... %d more" % (obj.samples.all().count()-10,)]))
+            else:
+                return mark_safe("<BR/>".join([str(x) for x in obj.samples.all()]))
+        elif field=="annotations":
+            return mark_safe("<BR/>".join([str(x) for x in obj.annotations.all()]))
+
+    @classmethod
     def add_to_annotations(cls, name, value_type=None, data_type=None):
         if value_type is None:
             value_type = Value # This will add all subclasses of Values too, I think
         else:
             value_type = Value.get_value_types(type_name=value_type)
-        for feat in cls.objects.all():
+        features = cls.objects.prefetch_related("values").filter(values__name=name)
+        for feat in features:
             feat.annotations.add(*feat.values.instance_of(value_type).filter(name=name))
 
     def related_samples(self, upstream=False):

@@ -35,35 +35,38 @@ from .models import *
 from .forms import *
 from .utils import barchart_html, trendchart_html, value_table_html
 
-class ValueFilterView(BaseFilterView):
-    # This is from django_jinja_knockout.views.base
-    # We need to override a bunch of functions to allow the filters
-    # to support our complex polymorphic Value fields
-    # TODO: Figure out how to wire this up completely
+def value_filter_view_factory(object_class):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    class ValueFilterView(BaseFilterView):
+        # This is from django_jinja_knockout.views.base
+        # We need to override a bunch of functions to allow the filters
+        # to support our complex polymorphic Value fields
+        # TODO: Figure out how to wire this up completely
         field_set = set()
-        for Obj in Object.get_object_types():
-            field_names = Obj.get_all_value_fields()
-            for value_type in field_names:
-                for name in field_names[value_type]:
-                    field_set.add(name+"_"+value_type)
-        self.field_names = list(field_set)
+        field_names = object_class.get_all_value_fields()
+        for value_type in field_names:
+           for name in field_names[value_type]:
+               field_set.add(name+"_"+value_type)
+        field_names = list(field_set)
+   
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+    
+        def get_field_verbose_name(self, field_name):
+            # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
+            if field_name in self.field_names:
+                return field_name
+            return super().get_field_verbose_name(field_name)
+    
+        def get_related_fields(self, query_fields=None):
+            if query_fields is None:
+                query_fields = self.get_all_fieldnames() + self.field_names
+            return list(set(self.get_grid_fields_attnames()) - set(query_fields))
+    
+        def get_all_fieldnames(self):
+            return super().get_all_fieldnames() + self.field_names
 
-    def get_field_verbose_name(self, field_name):
-        # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
-        if field_name in self.field_names:
-            return field_name
-        return super().get_field_verbose_name(field_name)
-
-    def get_related_fields(self, query_fields=None):
-        if query_fields is None:
-            query_fields = self.get_all_fieldnames() + self.field_names
-        return list(set(self.get_grid_fields_attnames()) - set(query_fields))
-
-    def get_all_fieldnames(self):
-        return super().get_all_fieldnames() + self.field_names
+    return ValueFilterView
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
@@ -99,10 +102,41 @@ class UploadList(ListSortingView):
     model = UploadFile
     allowed_sort_orders = '__all__'
     template_name = 'core/custom_cbv_list.htm'
-    grid_fields = ['upload_file', 'upload_status', 'userprofile']
+    grid_fields = ['upload_file', 'upload_type', 'upload_status', 'userprofile']
+    allowed_filter_fields = OrderedDict()
+
+    @classmethod
+    def update_list_filters(cls):
+        return OrderedDict([
+                            ('upload_type', {'type': 'choices', 'choices': UploadFile.objects.values_list("upload_type", "upload_type").distinct(), 'active_choices': []}),
+                            ('upload_status', {'type': 'choices', 'choices': UploadFile.objects.values_list("upload_status", "upload_status").distinct(), 'active_choices': []}),
+                            ('userprofile', {'type': 'choices', 'choices': UploadFile.objects.values_list("userprofile__pk", "userprofile__user__email").distinct(), 'active_choices': []}),
+                            ])
+
+    @classmethod
+    def object_filter_fields(cls):
+        ff = [x for x in cls.allowed_filter_fields]
+        letters = string.ascii_uppercase[0:len(ff)]
+        return [(idx,x) for idx, x in zip(letters, ff) if (x in cls.allowed_filter_fields)]
 
     def get_heading(self):
         return "Upload List"
+
+    @classmethod
+    def as_view(cls, *args, **kwargs):
+       cls.allowed_filter_fields = cls.update_list_filters()
+       return super().as_view(**kwargs)
+
+#    def get_display_value(self, obj, field):
+#        if field == "name":
+#            return mark_safe(obj.get_detail_link())
+#        return mark_safe(getattr(obj, field).get_detail_link())
+
+    def get_table_attrs(self):
+        return {
+            'class': 'table table-bordered table-collapse display-block-condition custom-table',
+            'id' : 'object_table',
+        }
 
     def get_name_links(self, obj):
         links = [format_html(
@@ -126,6 +160,10 @@ class UploadList(ListSortingView):
             'view_title': "All Uploads",
             'submit_text': "Save Uploads"
         }
+
+    @classmethod
+    def reset_filter_link(cls):
+        return reverse("upload_all")
 
 ## DETAIL VIEWS ################################################################
 #  These list the details of one object of a given type                       ##

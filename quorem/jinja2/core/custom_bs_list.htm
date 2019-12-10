@@ -20,6 +20,7 @@ function togglefiltertext( )
         {% if caller and 'has_filters' in caller.arguments -%}
             {{ caller(has_filters=True) }}
         {% else -%}
+	{% if view.allowed_filter_fields -%}
     <button id="togglefilters" class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="togglefiltertext()">Show Filters</button>
    <a class="btn btn-primary"  href="{{ view.reset_filter_link() }}" role="button">
     Reset Filters
@@ -50,6 +51,8 @@ function togglefiltertext( )
 </div>
 </div>
 <br/>
+{% else -%}
+{% endif -%}
         {% endif -%}
         {% if object_list -%}
             <table {{ tpl.json_flatatt(view.get_table_attrs()) }}>

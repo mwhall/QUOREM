@@ -48,7 +48,7 @@ urlpatterns += [
     path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
     path('upload/artifact', artifact_upload.as_view(), name='upload_artifact'),
     #Upload list.
-    re_path('upload/all', UploadList.as_view(), name='upload_all',
+    re_path(r'upload/all/$', UploadList.as_view(), name='upload_all',
         kwargs={'view_title':"All Uploads"}),
     re_path(r'upload/(?P<uploadfile_id>\d+)/$', UploadFileDetail.as_view(),
             name='uploadfile_detail',

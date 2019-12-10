@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.forms.utils import flatatt
 from django.utils.html import format_html, mark_safe
 from django.apps import apps
-
+from django.contrib.contenttypes.models import ContentType
 #for searching
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
@@ -72,12 +72,9 @@ class Object(models.Model):
     @classmethod
     def get_all_value_fields(cls):
         val_fields = defaultdict(set)
-        objs = cls.objects.prefetch_related("values", "values__data").values_list("values__name", "values__data__pk").distinct()
-        data_pk = [x[1] for x in objs]
-        for Val in apps.get_model("db.Value").get_value_types():
-            vals = Val.objects.filter(data__pk__in=data_pk)
-            for name in vals.values_list("name", flat=True):
-                val_fields[Val.base_name].add(name)
+        objs = apps.get_model("db.DataSignature").objects.filter(object_counts__results__gt=0).values_list("value_type","name").distinct()
+        for vpk, name in objs:
+            val_fields[ContentType.objects.get_for_id(vpk).model_class().base_name].add(name)
         return val_fields
 
     def get_value_fields(self):
@@ -154,6 +151,7 @@ class Object(models.Model):
         object_headings = [y for x in [x.column_headings() for x in object_order] for y in x]
         for column_heading, required in object_headings:
             keys = [x for x in kwargs if x.startswith(column_heading)]
+            vals = [kwargs[x] for x in kwargs if x.startswith(column_heading)]
             base_type = Object.get_object_types(type_name=column_heading.split("_")[0])
             field, m2m = base_type.heading_to_field(column_heading, m2m=True)
             if field:
@@ -163,21 +161,18 @@ class Object(models.Model):
                     continue
                 if field == base_type.id_field:
                     for k in keys:
-                        object_ids[base_type.plural_name].append(kwargs[k])
+                        object_ids[base_type.plural_name] = vals
                 else:
-                    for k in keys:
-                        if base_type.relational_field(field):
-                            data = base_type._meta.get_field(field).related_model.get(name=kwargs[k])
-                            if not data.exists():
-                                continue #Skip it. TODO: indicate it's not found somehow, so we don't have to iterate twice (once for create, once for update) and can just add it later
-                            if not m2m:
-                                data = data.first()
-                        else:
-                            data = kwargs[k]
-                        if required and (field != "upstream"):
-                            create_kwargs[base_type.plural_name][field] = data
-                        if not required or (field == base_type.id_field) or (field=="upstream"):
-                            update_kwargs[base_type.plural_name][field] = data
+                    if base_type.relational_field(field):
+                        data = base_type._meta.get_field(field).related_model.objects.filter(name__in=vals)
+                        if not data.exists():
+                            continue #Skip it. TODO: indicate it's not found somehow, so we don't have to iterate twice (once for create, once for update) and can just add it later
+                        if not m2m:
+                            data = data.first()
+                    if required and (field != "upstream"):
+                        create_kwargs[base_type.plural_name][field] = data
+                    if not required or (field == base_type.id_field) or (field=="upstream"):
+                        update_kwargs[base_type.plural_name][field] = data
         object_ids = {x: object_ids[x] for x in object_ids if object_ids[x]}
         create_kwargs = {x: create_kwargs[x] for x in create_kwargs if create_kwargs[x] != {}}
         update_kwargs = {x: update_kwargs[x] for x in update_kwargs if update_kwargs[x] != {}}
@@ -350,12 +345,12 @@ class Object(models.Model):
 
     @classmethod
     def get_list_view(cls, as_view=False):
-        from django_jinja_knockout.views import ListSortingView
-        from ..views import ValueFilterView
+        from django_jinja_knockout.views import ListSortingView, FoldingPaginationMixin
+        from ..views import value_filter_view_factory
         base_name = cls.base_name
-        class ListView(ListSortingView, ValueFilterView):
+        ValueFilterView = value_filter_view_factory(cls)
+        class ObjectListView(ListSortingView, ValueFilterView, FoldingPaginationMixin):
             model = cls
-            allowed_sort_orders = '__all__'
             template_name = "core/custom_cbv_list.htm"
             grid_fields = cls.grid_fields
             allowed_filter_fields = OrderedDict()
@@ -383,9 +378,35 @@ class Object(models.Model):
                 return super().as_view(**kwargs)
 
             def get_display_value(self, obj, field):
-                if field == "name":
+                if hasattr(cls, 'get_display_value'):
+                    return cls.get_display_value(obj, field)
+                field = cls._meta.get_field(field)
+                if field.name == "name":
                     return mark_safe(obj.get_detail_link())
-                return mark_safe(getattr(obj, field).get_detail_link())
+                if field.is_relation and field.many_to_many:
+                    return getattr(obj, field.name).count()
+                elif field.is_relation:
+                    return mark_safe(getattr(obj, field.name).get_detail_link())
+                else:
+                    return getattr(obj, field.name)
+
+            def get_sort_order_link(self, sort_order, kwargs=None, query: dict = None, text=None, viewname=None):
+                if text is None:
+                    text = sort_order
+                return super().get_sort_order_link(sort_order, kwargs, query, text, viewname)
+
+            def get_cell_attrs(self, obj, column, row_idx, col_idx):
+                attrs = {}
+                if len(self.cycler) > 0:
+                    idx = row_idx if self.cycler_direction == 1 else col_idx
+                    attrs['class'] = self.cycler[idx % len(self.cycler)]
+                if self.data_caption:
+                    if isinstance(column, list):
+                        verbose_name = ' / '.join([field for field in column])
+                    else:
+                        verbose_name = column
+                    attrs['data-caption'] = verbose_name
+                return attrs
 
             def get_table_attrs(self):
                 return {
@@ -393,13 +414,13 @@ class Object(models.Model):
                     'id' : 'object_table',
                 }
 
-        ListView.__module__ = 'db.models.%s' % (cls.base_name,)
-        ListView.__name__ = cls.__name__
-        ListView.__qualname__ = ListView.__name__
+        ObjectListView.__module__ = 'db.models.%s' % (cls.base_name,)
+        ObjectListView.__name__ = cls.__name__
+        ObjectListView.__qualname__ = ObjectListView.__name__
         if as_view:
-            return ListView.as_view()
+            return ObjectListView.as_view()
         else:
-            return ListView
+            return ObjectListView
 
     @classmethod
     def get_filters(cls):
