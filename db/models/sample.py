@@ -6,6 +6,8 @@ from django.contrib.postgres.search import SearchVector
 
 from .object import Object
 
+from django_pandas.managers import DataFrameManager
+
 class Sample(Object):
     base_name = "sample"
     plural_name = "samples"
@@ -53,4 +55,3 @@ class Sample(Object):
         if upstream:
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results.distinct()
-
