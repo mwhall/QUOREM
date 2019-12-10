@@ -348,8 +348,8 @@ class Object(models.Model):
         from django_jinja_knockout.views import ListSortingView, FoldingPaginationMixin
         from ..views import value_filter_view_factory
         base_name = cls.base_name
-        ValueFilterView = value_filter_view_factory(cls)
-        class ObjectListView(ListSortingView, ValueFilterView, FoldingPaginationMixin):
+        VFilterView = value_filter_view_factory(cls)
+        class ObjectListView(ListSortingView, VFilterView, FoldingPaginationMixin):
             model = cls
             template_name = "core/custom_cbv_list.htm"
             grid_fields = cls.grid_fields

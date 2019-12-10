@@ -28,7 +28,7 @@
           <h5 class="mb-1">Feature {{ item.obj.name|highlight(q) }}</h5>
         </div>
       {% if item.obj.samples.count() %}
-      <p class="mb-1">Observed in {{ item.obj.samples.count()|highlight(q) }} Samples</p>
+      <p class="mb-1">Observed in {{ str(item.obj.samples.count())|highlight(q) }} Samples</p>
       {% endif %}
       <p class="mb-1">A later iteration will include more information here.</p>
       </a>   {% elif item.otype == 'process' %}
