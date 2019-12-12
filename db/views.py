@@ -42,14 +42,14 @@ def value_filter_view_factory(object_class):
         # We need to override a bunch of functions to allow the filters
         # to support our complex polymorphic Value fields
         # TODO: Figure out how to wire this up completely
-        field_set = set()
-        field_names = object_class.get_all_value_fields()
-        for value_type in field_names:
-           for name in field_names[value_type]:
-               field_set.add(name+"_"+value_type)
-        field_names = list(field_set)
 
         def __init__(self, *args, **kwargs):
+            field_set = set()
+            field_names = object_class.get_all_value_fields()
+            for value_type in field_names:
+                for name in field_names[value_type]:
+                    field_set.add(name+"_"+value_type)
+            self.field_names = list(field_set)
             super().__init__(*args, **kwargs)
 
         def get_field_verbose_name(self, field_name):

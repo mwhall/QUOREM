@@ -8,10 +8,10 @@ from .models import (
     Process, Step, Analysis,
     Result,
     Sample, Feature,
-    Value,
+    Value, Parameter, Matrix,
     UploadFile, UserProfile, UploadMessage
 )
-
+from .models.object import Object
 from django_jinja_knockout.forms import (
     DisplayModelMetaclass, FormWithInlineFormsets, BootstrapModelForm,
     ko_inlineformset_factory, #ko_generic_inlineformset_factory, 
@@ -159,13 +159,12 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 #### Investigation Forms
 
 class InvestigationForm(BootstrapModelForm):
+    value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()], 
+                                   required=False, 
+                                   widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
     class Meta:
         model = Investigation
-        exclude = ['search_vector']
-        attrs = {'data-minimum-input-length':3,
-                 'data-placeholder': 'Type to search...'}
-        widgets = {'values': autocomplete.ModelSelect2Multiple(url='value-autocomplete',
-                                                               attrs=attrs)}
+        exclude = ['search_vector', 'values']
 
 class InvestigationDisplayForm(BootstrapModelForm,
                                metaclass=DisplayModelMetaclass):
@@ -187,34 +186,6 @@ def get_step_link(form, value):
         return format_html('<a{}>{}</a>', flatatt({'href': reverse('step_detail', kwargs={'step_id': value})}), name)
     else:
         return Step.objects.get(name=value).get_detail_link()
-
-
-class SampleDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    measures = forms.CharField(max_length=4096, label="Measures", widget=DisplayText())
-    metadata = forms.CharField(max_length=4096, label="Metadata", widget=DisplayText())
-    class Meta:
-        #def get_name(self, value):
-        #    return format_html('<a{}>{}</a>', flatatt({'href': reverse('sample_detail', kwargs={'sample_id': self.instance.pk})}), self.instance.name)
-        def get_investigations(self, value):
-            return ",".join([x.get_detail_link() for x in self.instance.investigations.all()])
-        def get_analysis_link(self, value):
-            if (value is None) or (value is ""):
-                return ""
-            return Analysis.objects.get(name=value).get_detail_link()
-
-        model = Sample
-        exclude = ['search_vector', 'values']
-        #widgets = {'name': DisplayText(get_text_method=get_name),
-        widgets={'investigations': DisplayText(get_text_method=get_investigations),
-                'source_step': DisplayText(get_text_method=get_step_link),
-                'analysis': DisplayText(get_text_method=get_analysis_link)}
-    def __init__(self, *args, **kwargs):
-        if kwargs.get('instance'):
-            initial=kwargs.setdefault('initial',{})
-            initial['measures'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="measure") ]))
-            initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="metadata") ]))
-        super(SampleDisplayForm, self).__init__(*args, **kwargs)
-
 
 class FeatureForm(BootstrapModelForm):
     class Meta:

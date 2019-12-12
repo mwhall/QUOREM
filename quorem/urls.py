@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
 from db.views import *
-from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete
+from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete, object_relation_view_factory, ObjectAutocomplete
 
 from db.models.object import Object
 
@@ -131,6 +131,9 @@ urlpatterns += [
     re_path(r'^category-autocomplete/$',
             CategoryAutocomplete.as_view(),
             name='category-autocomplete'),
+    re_path(r'^object-autocomplete/$',
+            ObjectAutocomplete.as_view(),
+            name='object-autocomplete'),
     ##onto test
     path('ontology/viewer/', onto_view, name='onto_view'),
     path('ajax/load-onto/', onto_json, name='onto_json'),
@@ -142,6 +145,13 @@ urlpatterns += [
     path('ajax/value-names/', ajax_value_table_view, name='ajax_value_names'),
     path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+for ObjA in Object.get_object_types():
+    for ObjB in Object.get_object_types():
+        urlpatterns.append(
+                path('object-autocomplete/%s/%s/'%(ObjA.base_name, ObjB.base_name),
+                     object_relation_view_factory(ObjA.base_name, ObjB.base_name).as_view(), 
+                     name="%sTo%s-autocomplete"%(ObjA.base_name, ObjB.base_name)))
 
 js_info_dict = {
             'domain': 'djangojs',
