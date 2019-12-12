@@ -34,8 +34,8 @@
 <!-- If a facet is not selected, render options. -->
         {% for k in metadata %}
           <li class="list-group-item">
-            <a href="{{ {'meta': k.name}|add_facet() }}" class="metadata">
-              {{ k.name }}
+            <a href="{{ {'meta': k.signature.get().name}|add_facet() }}" class="metadata">
+              {{ k.signature.get().name }}
             </a>
           </li>
         {% endfor %}

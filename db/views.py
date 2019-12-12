@@ -405,11 +405,11 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(values__name=meta) #only works with samples
+            qs = qs.filter(values__signature__=meta) #only works with samples
 
             if min_selected and max_selected:
-                vals = Value.objects.filter(name=meta)
-                filt = q_map[vals[0].name]
+                vals = Value.objects.filter(signature__name=meta)
+                filt = q_map[vals[0].signature.name]
                 filt_lte = filt + "__lte"
                 filt_gte = filt + "__gte"
                 vals = vals.filter(**{filt_lte: max_selected, filt_gte: min_selected})
@@ -504,10 +504,10 @@ def search(request):
                     'analysis': 'analyses__isnull',
                     'process': 'processes__isnull'}[selected['otype']]
 
-        metadata = Value.objects.filter(**{q_string: False}).order_by('name').distinct('name')
+        metadata = Value.objects.filter(**{q_string: False}).order_by('signature').distinct('signature')
 
         if meta:
-            vals = Value.objects.filter(**{q_string: False}).filter(name=meta)
+            vals = Value.objects.filter(**{q_string: False}).filter(signature__name=meta)
             meta_type = [ContentType.objects.get_for_id(x).model_class() for x in DataSignature.objects.filter(name=meta).values_list('data_types', flat=True).distinct()][0]
 # need some logic to rpesent range filters for aplicable dtypes
     else:
