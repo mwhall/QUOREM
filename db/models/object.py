@@ -49,7 +49,7 @@ class Object(models.Model):
 
     search_vector = SearchVectorField(blank=True,null=True)
 
-    #objects = DataFrameManager()
+    objects = DataFrameManager()
     content_type_id_to_name = {}
 
     class Meta:

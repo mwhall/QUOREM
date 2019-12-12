@@ -25,11 +25,13 @@ from .result import Result
 from .analysis import Analysis
 from .process import Process
 
+from django_pandas.managers import DataFrameQuerySet
+
 class Value(PolymorphicModel):
     base_name = "value"
     plural_name = "values"
 
-    # `description` collides with a reverse accessor whose name can't be changed easily through django-polymorphic 
+    # `description` collides with a reverse accessor whose name can't be changed easily through django-polymorphic
     str_description = "All-purpose value/metadata class. Can be attached to anything for any reason. For clarity, use a more specific type if one is appropriate."
 
     search_vector = SearchVectorField(null=True)
@@ -71,9 +73,9 @@ class Value(PolymorphicModel):
 
     @classmethod
     def column_headings(cls):
-        return [("value_type", True), 
-                ("value_object", True), 
-                ("value_name", True), 
+        return [("value_type", True),
+                ("value_object", True),
+                ("value_name", True),
                 ("value_data", True),
                 ("data_type", False)] + \
                [("n_" + Obj.plural_name, False) for Obj in Object.get_object_types()]
@@ -110,7 +112,7 @@ class Value(PolymorphicModel):
         vobj_keys = [x for x in kwargs if x.startswith("value_object")]
         for vobj_key in vobj_keys:
             vobj = Object.get_object_types(type_name=kwargs[vobj_key])
-            if (vobj.plural_name in kwargs) and (type(kwargs[vobj.plural_name]) == models.query.QuerySet):
+            if (vobj.plural_name in kwargs) and (type(kwargs[vobj.plural_name]) in [models.query.QuerySet, DataFrameQuerySet]):
                 continue # We already have it in QS format
             qsdata = defaultdict(list)
             for arg in kwargs:
@@ -177,7 +179,7 @@ class Value(PolymorphicModel):
                 raise ValueError("Missing required links to %s for value %s" % (obj, name))
         for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
-                if type(kwargs[Obj.plural_name]) != models.query.QuerySet:
+                if type(kwargs[Obj.plural_name]) not in  [models.query.QuerySet, DataFrameQuerySet]:
                     raise ValueError("Object arguments to Value.create() methods must be QuerySets, or left out of the arguments")
         linked_objects = [Obj.plural_name for Obj in Object.get_object_types() if Obj.plural_name in kwargs]
         for obj in linked_objects:
@@ -217,7 +219,7 @@ class Value(PolymorphicModel):
                 for obj in kwargs[Obj.plural_name]:
                     obj.values.add(value)
         return value
-    
+
     def get_links(self, return_querysets=False):
         #Since this is the back side of these relationships, this should be quickest?
         linked_objects = []
@@ -409,7 +411,7 @@ class Reference(Value):
     base_name = "reference"
     plural_name = "references"
 
-    str_description = "Reference values point at something, such as an academic work (Bibtex reference, text reference), or a web link" 
+    str_description = "Reference values point at something, such as an academic work (Bibtex reference, text reference), or a web link"
 
 class WikiLink(Value):
     # Stores links that are specifically to the Wiki, especially automated reports
@@ -464,7 +466,7 @@ class Matrix(Value):
 
 class Partition(Value):
     # A datatype that stores a bitstring bloomfilter that defines a complete partition of
-    # all objects linked to it (that is, for all pairwise combinations of 
+    # all objects linked to it (that is, for all pairwise combinations of
     # Objects O linked to Partition P, each object has exactly one label)
     # This is critical Ananke integration groundwork
     base_name = "partition"
