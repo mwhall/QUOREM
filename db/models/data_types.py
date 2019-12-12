@@ -117,6 +117,7 @@ class DataSignature(models.Model):
     description = models.TextField(blank=True) #This seems useful to have... can store the interpretation for data with this signature
     value_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     data_types = models.ManyToManyField(ContentType, related_name="+")
+    values = models.ManyToManyField("Value", related_name="signature")
     # 0: None of these linked to these values
     # Positive integer: This many, exactly, are linked to these values
     # -1: Any number of these objects may be attached (including 0) NOTE: Currently unused case?
@@ -183,6 +184,8 @@ class Data(PolymorphicModel):
     native_type = None
     cast_function = lambda x: x
     db_cast_function = lambda x: x
+
+    values = models.ManyToManyField("Value", related_name="data")
 
     @classmethod
     def get_data_types(cls, data=None, type_name=None, **kwargs):

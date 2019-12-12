@@ -41,13 +41,9 @@ class Step(Object):
             return ",".join([str(x) for x in obj.processes.all()]) if obj.processes.exists() else "Not used in any Process"
 
     def get_parameters(self):
-        # Get the parameters for this Result, with respect to its source step
-        parameters = {}
-        for value in self.values.instance_of(apps.get_model("db.Parameter")).filter(
-                                             results__isnull=True,
-                                             analyses__isnull=True,
-                                             processes__isnull=True):
-            parameters[value.name] = value.data.get_value()
+        parameters = dict(self.values.prefetch_related("signature", "data").filter(results__isnull=True, analyses__isnull=True, processes__isnull=True).instance_of(apps.get_model("db.Parameter")).values_list("signature__name", "data__pk"))
+        data = apps.get_model("db.Data").objects.filter(pk__in=parameters.values())
+        parameters = {x: data.get(pk=y).get_value() for x,y in parameters.items()}
         return parameters
 
     def related_samples(self, upstream=False):

@@ -32,17 +32,13 @@ class Value(PolymorphicModel):
     # `description` collides with a reverse accessor whose name can't be changed easily through django-polymorphic 
     str_description = "All-purpose value/metadata class. Can be attached to anything for any reason. For clarity, use a more specific type if one is appropriate."
 
-    name = models.CharField(max_length=512)
-    data = models.ForeignKey('Data', related_query_name = "values", on_delete=models.CASCADE, verbose_name="Values")
-    signature = models.ForeignKey('DataSignature', related_name = 'values', on_delete=models.CASCADE)
-
     search_vector = SearchVectorField(null=True)
 
     linkable_objects = ["steps", "processes", "investigations", "analyses", "results", "samples", "features"]
     required_objects = []
 
     def __str__(self):
-        return "(" + self.base_name.capitalize() + ") " + self.name + ": " + str(self.data)
+        return "(" + self.base_name.capitalize() + ") " + self.signature.get().name + ": " + str(self.data.get())
 
     @combomethod
     def info(receiver):
@@ -130,7 +126,7 @@ class Value(PolymorphicModel):
     @classmethod
     def get_value_types(cls, name=None, data=None, type_name=None, data_types=False, **kwargs):
         if (name is None) and (type_name) is None:
-            return cls.__subclasses__()
+            return cls.__subclasses__() + [Value]
         elif type_name is not None:
             if type_name.lower() == "value":
                 return Value
@@ -209,8 +205,10 @@ class Value(PolymorphicModel):
             data_type = Data.infer_type(data)
             add_dtype_to_signature = True
         data = data_type.get_or_create(data)
-        value = kwargs["value_type"](name = name, data = data, signature = signature)
+        value = kwargs["value_type"]()
         value.save()
+        signature.values.add(value)
+        data.values.add(value)
         if add_dtype_to_signature:
             ct = ContentType.objects.get_for_model(data_type)
             signature.data_types.add(ct)
@@ -259,7 +257,7 @@ class Value(PolymorphicModel):
                 return kwargs["value_type"].objects.none()
             elif signatures.count() > 1:
                 raise ValueError("Multiple Signatures possible for this input. Specify the number of Objects explicitly with a 'n_object' kwarg")
-        return kwargs["value_type"].objects.filter(pk__in=signatures.select_related("values").values("values"), **object_querysets)
+        return kwargs["value_type"].objects.filter(pk__in=signatures.values("values"), **object_querysets)
 
 class Parameter(Value):
     base_name = "parameter"
@@ -302,11 +300,11 @@ class Parameter(Value):
                     pargs = {x + "__isnull": True for x in object_list if (x != objs) and (other_obj.plural_name != x)}
                     if other_obj.plural_name != "steps":
                         pargs[other_obj.plural_name] = other_obj
-                    param = other_obj.values.instance_of(Parameter).filter(name=name, steps=step, **pargs)
+                    param = other_obj.values.instance_of(Parameter).prefetch_related("signature__name").filter(signature__name=name, steps=step, **pargs)
                     if param.exists():
                         return param
                 return Parameter.objects.none()
-        return step.values.instance_of(Parameter).filter(name=name, results__isnull=True,
+        return step.values.instance_of(Parameter).prefetch_related("signature__name").filter(signature__name=name, results__isnull=True,
                                                                     processes__isnull=True,
                                                                     analyses__isnull=True)
 
@@ -335,7 +333,7 @@ class Parameter(Value):
             return cls.objects.filter(pk=val.pk)
 
     def is_default(self, obj):
-        return not obj.values.filter(name=self.name).exists()
+        return not obj.values.prefetch_related("signature__name").filter(signature__name=self.name).exists()
 
     def is_override(self, obj):
         return not self.is_default(obj)

@@ -47,6 +47,8 @@ class Object(models.Model):
 
     search_vector = SearchVectorField(blank=True,null=True)
 
+    content_type_id_to_name = {}
+    
     class Meta:
         abstract = True
         indexes = [
@@ -55,6 +57,13 @@ class Object(models.Model):
 
     def __str__(self):
         return self.get_detail_link()
+
+    @classmethod
+    def _update_content_type_cache(cls):
+        cls.content_type_id_to_name = dict(ContentType.objects.values_list("id","model"))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def get_str_fields(self, measures=False, objects=True):
         field_values = defaultdict(list)
@@ -177,6 +186,25 @@ class Object(models.Model):
         create_kwargs = {x: create_kwargs[x] for x in create_kwargs if create_kwargs[x] != {}}
         update_kwargs = {x: update_kwargs[x] for x in update_kwargs if update_kwargs[x] != {}}
         return object_ids, create_kwargs, update_kwargs
+
+    @combomethod
+    def get_value_counts(receiver, queryset=None):
+        if type(receiver) == models.base.ModelBase:
+            manager = receiver.objects
+            if queryset == None:
+                queryset = manager.all()
+        else:
+            manager = receiver._meta.model.objects
+            if queryset == None:
+                queryset = manager.filter(pk=receiver.pk)
+        val_counts = queryset.annotate(vtype_count=models.Count("values__polymorphic_ctype_id")).values_list("pk","values__polymorphic_ctype_id","vtype_count")
+        type_counts = defaultdict(dict)
+        if not receiver.content_type_id_to_name:
+            receiver._update_content_type_cache()
+        for pk, cid, count in val_counts:
+            if cid:
+                type_counts[pk][receiver.content_type_id_to_name[cid]] = count
+        return type_counts
 
     @combomethod
     def info(receiver):
@@ -321,7 +349,7 @@ class Object(models.Model):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     initial=kwargs.setdefault('initial',{})
-                    initial['node'] = mark_safe(kwargs['instance'].get_node(values=True).pipe().decode().replace("\n",""))
+                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
                     if cls.has_upstream:
                         initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
@@ -497,36 +525,29 @@ class Object(models.Model):
                                  kwargs=kwargs)}),
                                  name))
 
-    def get_node_attrs(self, values=True, highlight=False):
+    def get_node_attrs(self, show_values=True, highlight=False, value_counts=None):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
-        if not values:
+        if not show_values:
            sep = ""
         else:
            sep = "border=\"1\" sides=\"b\""
         htm += "<tr><td colspan=\"2\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
-        if values:
-            val_types = apps.get_model("db.Value").get_value_types()
-            val_counts = []
-            total = 0
-            for vtype in val_types:
-                count = self.values.instance_of(vtype).count()
-                val_counts.append((vtype.base_name.capitalize(), count))
-                total += count
-            if len(val_counts) > 0:
-                htm += "<tr><td><i>Type</i></td><td><i>Count</i></td></tr>"
-                for vtype, count in val_counts:
-                    if count == 0:
-                        continue
-                    htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype,)
-                    htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
-                valuecount = self.values.count() - total
-                htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % ("Value",)
-                htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (valuecount,)
-            descriptions = self.values.instance_of(apps.get_model("db.Description"))
-            if descriptions.exists():
+        if show_values and value_counts is None:
+            val_counts = self.get_value_counts()[self.pk]
+        elif show_values and value_counts:
+            val_counts = value_counts
+        else:
+            val_counts = {}
+        if val_counts:
+            htm += "<tr><td><i>Type</i></td><td><i>Count</i></td></tr>"
+            for vtype, count in val_counts.items():
+                htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype.capitalize(),)
+                htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
+            if ('description' in val_counts) and (val_counts['description'] >= 0):
+                descriptions = self.values.instance_of(apps.get_model("db.Description"))
                 htm+="<tr><td colspan=\"2\">Description</td></tr>"
-            for descrip in descriptions:
-                htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % ("<BR/>".join(wrap(descrip.data.get_value(), width=70)),)
+                for descrip in descriptions:
+                    htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % ("<BR/>".join(wrap(descrip.data.get().get_value(), width=70)),)
         htm += "</table>>"
         attrs = self.gv_node_style.copy()
         attrs["name"] = str(self.pk)
@@ -544,34 +565,36 @@ class Object(models.Model):
         attrs['fillcolor'] = col.hex_l
         return attrs
 
-    def get_node(self, values=True, highlight=False, format='svg'):
+    def get_node(self, show_values=True, highlight=False, format='svg'):
         dot = gv.Digraph("nodegraph_%s_%d" % (self.base_name, self.pk), format=format)
         dot.attr(size="%d,%d!" % (self.node_height, self.node_width))
-        dot.node(**self.get_node_attrs(values=values))
+        dot.node(**self.get_node_attrs(show_values=show_values))
         return dot
 
-    def get_stream_graph(self, values=False, format='svg'):
+    def get_stream_graph(self, show_values=False, format='svg'):
         dot = gv.Digraph("streamgraph_%s_%d" % (self.base_name, self.pk), format=format)
         origin = self
-        dot.node(**origin.get_node_attrs(values=values, highlight=True))
+        dot.node(**origin.get_node_attrs(show_values=show_values, highlight=True))
         edges = set()
-        for us in origin.upstream.all():
-            edges.add((str(us.pk), str(origin.pk)))
-        for ds in origin.downstream.all():
-            edges.add((str(origin.pk), str(ds.pk)))
+        for us_pk in origin.upstream.values_list("pk", flat=True):
+            edges.add((str(us_pk), str(origin.pk)))
+        for ds_pk in origin.downstream.values_list("pk", flat=True):
+            edges.add((str(origin.pk), str(ds_pk)))
         upstream = origin.all_upstream.prefetch_related("upstream", "downstream")
         downstream = origin.all_downstream.prefetch_related("upstream", "downstream")
         both = upstream | downstream
         nnodes = len(both)+1
+        value_counts = self.get_value_counts(queryset=both)
+        all_pks = both.values_list("pk",flat=True)
         for obj in both:
-            attrs = obj.get_node_attrs(values=values)
+            attrs = obj.get_node_attrs(show_values=show_values, value_counts=value_counts[obj.pk])
             dot.node(**attrs)
-            for us in obj.upstream.all():
-                if us in both:
-                    edges.add((str(us.pk), str(obj.pk)))
-            for ds in obj.downstream.all():
-                if ds in both:
-                    edges.add((str(obj.pk), str(ds.pk)))
+            for us_pk in obj.upstream.values_list("pk", flat=True):
+                if us_pk in all_pks:
+                    edges.add((str(us_pk), str(obj.pk)))
+            for ds_pk in obj.downstream.values_list("pk", flat=True):
+                if ds_pk in all_pks:
+                    edges.add((str(obj.pk), str(ds_pk)))
         dot.edges(list(edges))
         dim = max(10,int(nnodes/2.0))
         dim = min(dim, 14)

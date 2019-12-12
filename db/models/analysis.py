@@ -30,7 +30,7 @@ class Analysis(Object):
             search_vector= (SearchVector('location', weight='A'))
         )
 
-    def get_parameters(self, steps=[]):
+    def get_parameters(self, steps=[]): #TODO: REFACTOR
         # Get the parameters for this Analysis and all its steps
         # including the extra ones
         parameters = defaultdict(dict)
@@ -39,6 +39,7 @@ class Analysis(Object):
         else:
             steps = [self.process.steps, self.extra_steps]
         for step_queryset in steps:
+            qs = step_queryset.values
             for step in step_queryset.all():
                 for queryset in [step.values.filter(processes__isnull=True,
                                                     analyses__isnull=True,
