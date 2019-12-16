@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models, utils
 from django.http import Http404
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, FileResponse, HttpResponse
 from django.core.paginator import(
     Paginator,
     EmptyPage,
@@ -17,10 +17,16 @@ from django.core.paginator import(
 )
 from django.db.models import F, Q
 from django.views.generic.edit import FormView
+
 ###Stuff for searching
 from django.contrib.postgres.search import (
     SearchQuery, SearchRank, SearchVector
 )
+###django pandas
+from django_pandas import io as django_pd
+import tempfile
+from io import BytesIO
+
 
 from django_jinja_knockout.views import (
         BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
@@ -405,7 +411,7 @@ def search(request):
         )
         #Filter metadata ranges
         if meta:
-            qs = qs.filter(values__signature__=meta) #only works with samples
+            qs = qs.filter(values__signature__name=meta) #only works with samples
 
             if min_selected and max_selected:
                 vals = Value.objects.filter(signature__name=meta)
@@ -504,7 +510,7 @@ def search(request):
                     'analysis': 'analyses__isnull',
                     'process': 'processes__isnull'}[selected['otype']]
 
-        metadata = Value.objects.filter(**{q_string: False}).order_by('signature').distinct('signature')
+        metadata = Value.objects.filter(**{q_string: False}).order_by('signature__name').distinct('signature__name')
 
         if meta:
             vals = Value.objects.filter(**{q_string: False}).filter(signature__name=meta)
@@ -522,6 +528,7 @@ def search(request):
 
     return render(request, 'search/search_results.htm',{
         'q':q,
+        'qs': qs,
         'title':title,
         'results':results,
         'page_total': paginator.count,
@@ -641,18 +648,18 @@ class ValueTableView(FormView):
         print("form Valid!")
         req = self.request.POST
         x_selected = {}
-        y_selected = {}
+    #    y_selected = {}
         x_selected[req.get('depField')] = req.getlist('depValue')
         i = 0
-        key_name = 'indField_%s' % (i,)
+    #    key_name = 'indField_%s' % (i,)
         print(req)
-        while req.get(key_name):
-            val_name = 'indValue_%s' % (i,)
-            y_selected[req.get(key_name)] = req.getlist(val_name)
-            i += 1
-            key_name = 'indField_%s' % i
+#        while req.get(key_name):
+#            val_name = 'indValue_%s' % (i,)
+#            y_selected[req.get(key_name)] = req.getlist(val_name)
+#            i += 1
+#            key_name = 'indField_%s' % i
 
-        html = value_table_html(x_selected, y_selected)
+        html = value_table_html(x_selected)
         """
         inv = req.getlist('invField')
         html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
@@ -663,20 +670,23 @@ class ValueTableView(FormView):
 #ajax view for populating Value Names based on Selected Model
 def ajax_value_table_view(request):
     print("value name view was accessed")
-    klass_map = {'1': (Investigation, 'investigations__in'),
-                 '2': (Sample, 'samples__in'),
-                 '3': (Feature, 'features__in'),
-                 '4': (Step, 'steps__in'),
-                 '5': (Process, 'processes__in'),
-                 '6': (Analysis, 'analyses__in'),
-                 '7': (Result, 'results__in'),}
+    klass_map = {'1': (Investigation, 'investigations__isnull'),
+                 '2': (Sample, 'samples__isnull'),
+                 '3': (Feature, 'features__isnull'),
+                 '4': (Step, 'steps__isnull'),
+                 '5': (Process, 'processes__isnull'),
+                 '6': (Analysis, 'analyses__isnull'),
+                 '7': (Result, 'results__isnull'),}
+
+
     #this variable is passed to the reuqest by JS
     klass_tuple = klass_map[request.GET.get('object_klass')]
     klass = klass_tuple[0]
     q = klass_tuple[1]
     #gives a qs with the distinct names of values ass. w the selected class
-    qs = Value.objects.filter(**{q: klass.objects.all()}).distinct().values_list('name', flat=True)
-
+#    qs = Value.objects.filter(**{q: klass.objects.all()}).distinct().values_list('name', flat=True)
+    qs = Value.objects.filter(**{q: False}).order_by('signature__name').distinct('signature__name').values_list('signature__name', flat=True)
+    print("**** ", qs)
     return render(request, 'search/ajax_value_names.htm', {'qs': qs})
 
 def ajax_value_table_related_models_view(request):
@@ -702,7 +712,7 @@ def ajax_value_table_related_models_view(request):
     klass = klass_tuple[0]
     q = klass_tuple[1]
     value_names = request.GET.getlist('vals[]') #getlist?
-    vqs = Value.objects.filter(**{q:klass.objects.all()}, name__in=value_names)
+    vqs = Value.objects.filter(**{q:klass.objects.all()}, signature__name__in=value_names)
     dd = defaultdict(set)
     for val in vqs:
         links_dict = val.get_links()
@@ -900,4 +910,86 @@ class MailOpen(View):
 
 
 def testView(request):
-    return render(request, 'newlanding.htm')
+    qs = Sample.objects.all()
+    return render(request, 'test_download.htm')
+
+
+def xls_download_view(request):
+    model_map =  {'investigation': Investigation,
+                  'sample': Sample,
+                  'feature': Feature,
+                  'analysis': Analysis,
+                  'process': Process,
+                  'step': Step,
+                  'result': Result,}
+    fields = None
+    q = request.GET.get('q', '').strip() #user input from search bar
+    if not q:
+        q = request.GET.get('q2', '').strip()
+
+    ##From search form
+    selected_type = request.GET.get('otype', '')
+    meta = request.GET.get('meta', '')
+
+    #initialize vars for query
+    query = None
+    if q:
+        query = SearchQuery(q)
+
+    klass = model_map[selected_type]
+    if meta:
+        qs = klass.objects.filter(values__signature__name__in=[meta]).annotate(value_name=F('values__signature__name'))
+    else:
+        qs = klass.objects.all().annotate(value_name=F('values__signature__name'))
+
+    if fields:
+        df = django_pd.read_frame(qs, fieldnames=fields)
+    else:
+        df = django_pd.read_frame(qs)
+
+    with BytesIO() as b:
+        writer = pd.ExcelWriter(b, engine="xlsxwriter")
+        df.to_excel(writer)
+        writer.save()
+        response = HttpResponse(b.getvalue(), content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename="hello.xls"'
+        return response
+
+def csv_download_view(request):
+
+    model_map =  {'investigation': Investigation,
+                  'sample': Sample,
+                  'feature': Feature,
+                  'analysis': Analysis,
+                  'process': Process,
+                  'step': Step,
+                  'result': Result,}
+    fields = None
+    q = request.GET.get('q', '').strip() #user input from search bar
+    if not q:
+        q = request.GET.get('q2', '').strip()
+
+    ##From search form
+    selected_type = request.GET.get('otype', '')
+    meta = request.GET.get('meta', '')
+
+    #initialize vars for query
+    query = None
+    if q:
+        query = SearchQuery(q)
+
+    klass = model_map[selected_type]
+    if meta:
+        qs = klass.objects.filter(values__signature__name__in=[meta])
+    else:
+        qs = klass.objects.all()
+
+
+    if fields:
+        df = django_pd.read_frame(qs, fieldnames=fields)
+    else:
+        df = django_pd.read_frame(qs)
+    csv = df.to_csv()
+    response = HttpResponse(csv, content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="hello.csv"'
+    return response

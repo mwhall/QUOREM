@@ -2,9 +2,10 @@ import re
 from jinja2 import Markup
 from jinja2 import contextfilter
 from django.utils.http import urlencode
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from db.models import UserMail, UserProfile
 from django.contrib.auth import get_user_model
+from db.views import *
 
 def highlight(text, selection):
     if not text:
@@ -38,6 +39,11 @@ def add_type(context, type_name):
     q_dict = context.copy()
     q_dict['selected']['type'] = type_name
     return render(request, 'search/search_results.htm', q_dict)
+
+@contextfilter
+def data_download(context, url):
+    ctx = context['request'].GET.copy()
+    return url + '?' + ctx.urlencode()
 
 def format_pages(paginator, current_page, neighbors=5):
     if paginator.num_pages > 2*neighbors:
