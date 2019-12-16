@@ -14,7 +14,7 @@ from .models import (
 from .models.object import Object
 from django_jinja_knockout.forms import (
     DisplayModelMetaclass, FormWithInlineFormsets, BootstrapModelForm,
-    ko_inlineformset_factory, #ko_generic_inlineformset_factory, 
+    ko_inlineformset_factory, #ko_generic_inlineformset_factory,
     WidgetInstancesMixin,
     BootstrapModelForm
 )
@@ -159,8 +159,8 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 #### Investigation Forms
 
 class InvestigationForm(BootstrapModelForm):
-    value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()], 
-                                   required=False, 
+    value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()],
+                                   required=False,
                                    widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
     class Meta:
         model = Investigation
@@ -455,16 +455,16 @@ class ValueTableForm(forms.Form):
     depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
 
     #independant variables
-    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
-    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
+#    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
+#    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
 
     #??? how do filters get made???
     class Meta:
         fieldsets = (
             ("Select the dependant variable (rows of the table; data tuples)",
              "Select Dependant", {'fields': ('depField', 'depValue')}),
-            ("Select the independant variable (rows of the table; data tuples)",
-             "Select Independant", {'fields': ('indField_0', 'indValue_0')}),
+        #    ("Select the independant variable (rows of the table; data tuples)",
+        #     "Select Independant", {'fields': ('indField_0', 'indValue_0')}),
         )
 
     """

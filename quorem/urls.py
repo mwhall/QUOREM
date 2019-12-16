@@ -144,13 +144,18 @@ urlpatterns += [
     path('values/', ValueTableView.as_view(), name='value_table'),
     path('ajax/value-names/', ajax_value_table_view, name='ajax_value_names'),
     path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
+
+    #downloads
+    path('test/', testView, name='test'),
+    path('data-csv/', csv_download_view, name='csv_download'),
+    path('data-xls/', xls_download_view, name='xls_download'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 for ObjA in Object.get_object_types():
     for ObjB in Object.get_object_types():
         urlpatterns.append(
                 path('object-autocomplete/%s/%s/'%(ObjA.base_name, ObjB.base_name),
-                     object_relation_view_factory(ObjA.base_name, ObjB.base_name).as_view(), 
+                     object_relation_view_factory(ObjA.base_name, ObjB.base_name).as_view(),
                      name="%sTo%s-autocomplete"%(ObjA.base_name, ObjB.base_name)))
 
 js_info_dict = {

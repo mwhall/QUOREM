@@ -8,6 +8,7 @@
               data-y-name-url="{{ url('ajax_field_names_y') }}">
             {% csrf_token %}
             <!-- progressbar -->
+            <!--
             <ul id="progressbar">
                 {% for fieldset in form.fieldsets() %}
                 <li
@@ -17,6 +18,7 @@
                 >{{ fieldset.description}}</li>
                 {% endfor %}
             </ul>
+          -->
             <!-- fieldsets -->
             {% for fieldset in form.fieldsets() %}
             <fieldset>
