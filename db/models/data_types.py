@@ -13,6 +13,8 @@ from polymorphic.models import PolymorphicModel
 #import django.contrib.gis.db.models as gismodels # For very advanced GIS features
 from django.contrib.postgres.fields import ArrayField, JSONField
 
+from django_pandas.managers import DataFrameQuerySet
+
 #from .result import Result
 from .user import UserProfile
 from .object import Object
@@ -153,7 +155,7 @@ class DataSignature(models.Model):
         object_querysets = {}
         for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
-                if type(kwargs[Obj.plural_name]) == models.query.QuerySet:
+                if type(kwargs[Obj.plural_name]) in [models.query.QuerySet, DataFrameQuerySet]:
                     object_counts[Obj.plural_name] = kwargs[Obj.plural_name].count()
                     object_querysets[Obj.plural_name] = kwargs[Obj.plural_name]
                 elif type(kwargs[Obj.plural_name]) == int:
