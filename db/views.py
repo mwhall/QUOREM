@@ -980,9 +980,9 @@ def csv_download_view(request):
 
     klass = model_map[selected_type]
     if meta:
-        qs = klass.objects.filter(values__signature__name__in=[meta])
+        qs = klass.objects.filter(values__signature__name__in=[meta]).annotate(value_name=F('values__signature__name'))
     else:
-        qs = klass.objects.all()
+        qs = klass.objects.all().annotate(value_name=F('values__signature__name'))
 
 
     if fields:
