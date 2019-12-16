@@ -67,7 +67,7 @@ class Object(models.Model):
 
     def qs(self):
         return self._meta.model.objects.filter(pk=self.pk)
-
+ 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
