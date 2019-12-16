@@ -33,13 +33,6 @@ class Feature(Object):
     values = models.ManyToManyField('Value', related_name="features", blank=True)
 
     @classmethod
-    def update_search_vector(cls):
-        cls.objects.update(
-            search_vector = (SearchVector('name', weight= 'A') +
-                             SearchVector(StringAgg('annotations__str', delimiter=' '), weight='B'))
-        )
-
-    @classmethod
     def get_display_value(cls, obj, field):
         if field == "name":
             return obj.get_detail_link()
@@ -59,9 +52,9 @@ class Feature(Object):
             value_type = Value # This will add all subclasses of Values too, I think
         else:
             value_type = Value.get_value_types(type_name=value_type)
-        features = cls.objects.prefetch_related("values").filter(values__name=name)
+        features = cls.objects.prefetch_related("values", "values__signature").filter(values__signature__name=name)
         for feat in features:
-            feat.annotations.add(*feat.values.instance_of(value_type).filter(name=name))
+            feat.annotations.add(*feat.values.instance_of(value_type).prefetch_related("signature").filter(signature__name=name))
 
     def related_samples(self, upstream=False):
         #SQL Depth: 1
@@ -77,14 +70,14 @@ class Feature(Object):
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results
 
-    def get_node_attrs(self, values=True, highlight=False):
+    def get_node_attrs(self, show_values=True, highlight=False):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
-        if not values:
+        if not show_values:
            sep = ""
         else:
            sep = "border=\"1\" sides=\"b\""
         htm += "<tr><td colspan=\"2\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, str(getattr(self, self.id_field)))
-        if values:
+        if show_values:
             val_types = apps.get_model("db.Value").get_value_types()
             val_counts = []
             for vtype in val_types:
@@ -138,7 +131,7 @@ class Feature(Object):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     initial=kwargs.setdefault('initial',{})
-                    initial['node'] = mark_safe(kwargs['instance'].get_node(values=True).pipe().decode().replace("\n",""))
+                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
         return DisplayForm
     

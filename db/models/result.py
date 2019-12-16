@@ -7,6 +7,7 @@ from django.utils.html import mark_safe, format_html
 from django.urls import reverse
 #for searching
 from django.contrib.postgres.search import SearchVector
+from django.contrib.contenttypes.models import ContentType
 
 from django.apps import apps
 
@@ -14,6 +15,7 @@ from db.models.object import Object
 from db.models.step import Step
 
 import graphviz as gv
+from combomethod import combomethod
 
 class Result(Object):
     base_name = "result"
@@ -24,8 +26,6 @@ class Result(Object):
 
     grid_fields = ["name", "source_step", "analysis"]
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffeea8'}
-
-    list_display = ('source_step', 'processes', 'samples', 'values')
 
     name = models.CharField(max_length=255, unique=True) #For QIIME2 results, this can still be the UUID
     analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
@@ -44,6 +44,18 @@ class Result(Object):
                          flatatt({'href': reverse(self.base_name + '_detail',
                                  kwargs={self.base_name + '_id': self.pk})}),
                                  self.name + " from " + self.source_step.name))
+
+    def get_parameters(self, step_field="pk"):
+        Parameter = apps.get_model("db.Parameter")
+        step = self.source_step
+        res_params = dict([(x.signature.get().name, 
+                           (x, 'result')) 
+                            for x in self.values.instance_of(Parameter).filter(steps=step)])
+        anal_params = self.analysis.get_parameters(steps=step.qs())[step.pk]
+        anal_params.update(res_params)
+        if not anal_params:
+            anal_params = {}
+        return {getattr(step, step_field): anal_params}
 
     @classmethod
     def infer_step_upstream(self, results=None):
@@ -82,7 +94,7 @@ class Result(Object):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     initial=kwargs.setdefault('initial',{})
-                    initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph(values=True).pipe().decode().replace("\n",""))
+                    initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph(show_values=True).pipe().decode().replace("\n",""))
                     initial['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
         return DisplayForm
@@ -121,6 +133,14 @@ class Result(Object):
     def related_analyses(self):
         return apps.get_model("db", "Analysis").objects.filter(pk=self.analysis.pk)
 
+    def get_qiime2_command(self):
+        #First, check that the Result is a QIIME artifact
+        plugin = ""
+        cmd = ""
+        input_results = ""
+        input_parameters = ""
+
+
     def simple_provenance_graph(self):
         dot = gv.Digraph("provenance", format='svg')
         dot.graph_attr.update(compound='true')
@@ -128,11 +148,11 @@ class Result(Object):
         dot.graph_attr.update(size="10,10!")
         rn=self.get_node_attrs(highlight=True)
         rn['name']="R"
-        an=self.analysis.get_node_attrs(values=False)
+        an=self.analysis.get_node_attrs()
         an['name']="A"
-        pn=self.analysis.process.get_node_attrs(values=False)
+        pn=self.analysis.process.get_node_attrs()
         pn['name']="P"
-        sn=self.source_step.get_node_attrs(values=False)
+        sn=self.source_step.get_node_attrs()
         sn['name']="S"
         dot.node(**sn)
         dot.node(**rn)
@@ -143,13 +163,13 @@ class Result(Object):
         sample_name = None
         nsamples = len(self.samples.all())
         for sample in self.samples.all()[0:3]:
-            attrs = sample.get_node_attrs(values=False)
+            attrs = sample.get_node_attrs()
             attrs['name'] = "S%d" % (sample.pk,)
             sample_name = attrs['name']
             samplegraph.node(**attrs)
         if nsamples>3:
             nmore = nsamples - 3
-            attrs = sample.get_node_attrs(values=False, highlight=False)
+            attrs = sample.get_node_attrs(highlight=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
             attrs['name'] = "SX"
@@ -161,13 +181,13 @@ class Result(Object):
         feature_name = None
         nfeatures = len(self.features.all())
         for feature in self.features.all()[0:3]:
-            attrs = feature.get_node_attrs(values=False)
+            attrs = feature.get_node_attrs()
             attrs['name'] = "S%d" % (feature.pk,)
             feature_name = attrs['name']
             featuregraph.node(**attrs)
         if nfeatures>3:
             nmore = nfeatures - 3
-            attrs = feature.get_node_attrs(values=False, highlight=False)
+            attrs = feature.get_node_attrs(highlight=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
             attrs['name'] = "FX"

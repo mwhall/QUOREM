@@ -10,14 +10,32 @@
     <p>QUOR'em understands how your data is connected. Use this engine to create
        datatables comparing any logically possible combination of data.</p>
     <div class="aggregate-content">
-      {% if graph %}
+    {% if graph %}
+      <h1>WHAYT</h1>
       {{ graph|safe }}
-      {% else %}
+    </div>
+    <div class="col-lg-3">
+      <br>
+      <a href="#" class="btn btn-primary">Download as CSV</a>
+      <br>
+      <a href="#" class="btn btn-secondary">Download as XLS</a>
+    </div>
+    {% else %}
       {% include 'analyze/plot_trend_form.htm' %}
+    </div>
       {% endif %}
     </div>
   </div>
+
+  <div class="col-lg-3">
+    <br>
+    <a href="#" class="btn btn-primary">Download as CSV</a>
+    <br>
+    <a href="#" class="btn btn-secondary">Download as XLS</a>
+  </div>
+  {% endif %}
  </div>
+
 {% endblock %}
 {% block bottom_scripts %}
 <script src='http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js'>

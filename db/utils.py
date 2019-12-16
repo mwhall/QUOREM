@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 from plotly.io._html import to_html
-from django.db.models import Count, Avg, Q
+from django.db.models import Count, Avg, Q, F
 
 from .models import *
 
@@ -220,9 +220,10 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                                            'y_cat': y_cat,
                                            'y_val': y_val}
 
-def value_table_html(x_selected, y_selected):
+def value_table_html(x_selected, y_selected=None):
 
     #choice field values are passed around as ints, so use this map to 'decode' them
+    """
     selection_map = {'1': (Investigation, 'investigations__in', 'investigations__name'),
                      '2': (Sample, 'samples__in', 'samples__name'),
                      '3': (Feature, 'features__in', 'features__name'),
@@ -230,10 +231,18 @@ def value_table_html(x_selected, y_selected):
                      '5': (Process, 'processes__in', 'processes__name'),
                      '6': (Analysis, 'analyses__in', 'anaylses__name'),
                      '7': (Result, 'results__in', 'results__name'),}
-
+    """
+    selection_map = {'1': (Investigation, 'investigations__isnull'),
+                     '2': (Sample, 'samples__isnull', 'samples__name'),
+                     '3': (Feature, 'features__isnull'),
+                     '4': (Step, 'steps__isnull'),
+                     '5': (Process, 'processes__isnull'),
+                     '6': (Analysis, 'analyses__isnull'),
+                     '7': (Result, 'results__isnull')}
     print(x_selected)
+    """
     dep_q = {}
-    ind_q = {}
+#    ind_q = {}
     indexes = set()
     for key in x_selected:
         mapped = selection_map[key]
@@ -249,7 +258,15 @@ def value_table_html(x_selected, y_selected):
         else:
             ind_q['name__in'] = y_selected[key]
         indexes.add(mapped[2])
+"""
+    keys = list(x_selected.keys())
+    dep_tuple = selection_map[keys[0]]
+    val_names = x_selected[keys[0]]
 
-    vqs = Value.objects.filter(**dep_q).filter(**ind_q)
-    df = Value.queryset_to_table(vqs, indexes=indexes)
+    klass = dep_tuple[0]
+
+    #vqs = Value.objects.filter(**dep_q)
+    qs = klass.objects.filter(values__signature__name__in=val_names).annotate(value_namee=F('values__signature__name'))
+    df = qs.to_dataframe()
+#    df = Value.queryset_to_table(vqs, indexes=indexes
     return df.to_html(classes=['table'])

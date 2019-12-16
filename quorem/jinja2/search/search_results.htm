@@ -40,8 +40,12 @@
           </div>
           <button type="submit" class="btn btn-success">Search</button>
         </form>
+
         <!-- Display of Selected Facets -->
-        {% if selected %}
+        {% if selected and page_total %}
+        <a href="{{ url('csv_download')|data_download() }}" class='btn btn-primary'>Download Search Results as CSV</a>
+        <a href="{{ url('xls_download')|data_download() }}" class='btn btn-secondary'>Download Search Results as XLS</a>
+        {% endif %}
         <p>Filters:</p>
           {% if selected.otype %}
             <a href="{{ ['otype', 'meta', 'min_value', 'max_value', 'string_facets']|remove_facet() }}" class="btn btn-outline-primary">
@@ -62,7 +66,7 @@
               {% endif %}
             {% endif %}
           {% endif %}
-        {% endif %}
+
         <!-- Paginated Search Results -->
         {% if page_total %}
           <strong>{{ page_total }} result{{ page_total|pluralize }}</strong><br><br>

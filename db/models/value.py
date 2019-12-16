@@ -25,16 +25,14 @@ from .result import Result
 from .analysis import Analysis
 from .process import Process
 
+from django_pandas.managers import DataFrameQuerySet
+
 class Value(PolymorphicModel):
     base_name = "value"
     plural_name = "values"
 
-    # `description` collides with a reverse accessor whose name can't be changed easily through django-polymorphic 
+    # `description` collides with a reverse accessor whose name can't be changed easily through django-polymorphic
     str_description = "All-purpose value/metadata class. Can be attached to anything for any reason. For clarity, use a more specific type if one is appropriate."
-
-    name = models.CharField(max_length=512)
-    data = models.ForeignKey('Data', related_query_name = "values", on_delete=models.CASCADE, verbose_name="Values")
-    signature = models.ForeignKey('DataSignature', related_name = 'values', on_delete=models.CASCADE)
 
     search_vector = SearchVectorField(null=True)
 
@@ -42,7 +40,7 @@ class Value(PolymorphicModel):
     required_objects = []
 
     def __str__(self):
-        return "(" + self.base_name.capitalize() + ") " + self.name + ": " + str(self.data)
+        return "(" + self.base_name.capitalize() + ") " + self.signature.get().name + ": " + str(self.data.get())
 
     @combomethod
     def info(receiver):
@@ -60,6 +58,9 @@ class Value(PolymorphicModel):
             out_str += "Linked to %s Objects (%s)\n" % (sum(list(object_counts.values())), ", ".join(["%d %s" % (y,x) for x,y in object_counts.items()]))
         return out_str
 
+    def qs(self):
+        return self._meta.model.objects.filter(pk=self.pk)
+
     @classmethod
     def get_or_create(cls, name, data, signature=None, **kwargs):
         kwargs["value_type"] = cls._clean_value_type(**kwargs)
@@ -75,9 +76,9 @@ class Value(PolymorphicModel):
 
     @classmethod
     def column_headings(cls):
-        return [("value_type", True), 
-                ("value_object", True), 
-                ("value_name", True), 
+        return [("value_type", True),
+                ("value_object", True),
+                ("value_name", True),
                 ("value_data", True),
                 ("data_type", False)] + \
                [("n_" + Obj.plural_name, False) for Obj in Object.get_object_types()]
@@ -114,7 +115,7 @@ class Value(PolymorphicModel):
         vobj_keys = [x for x in kwargs if x.startswith("value_object")]
         for vobj_key in vobj_keys:
             vobj = Object.get_object_types(type_name=kwargs[vobj_key])
-            if (vobj.plural_name in kwargs) and (type(kwargs[vobj.plural_name]) == models.query.QuerySet):
+            if (vobj.plural_name in kwargs) and (type(kwargs[vobj.plural_name]) in [models.query.QuerySet, DataFrameQuerySet]):
                 continue # We already have it in QS format
             qsdata = defaultdict(list)
             for arg in kwargs:
@@ -130,7 +131,7 @@ class Value(PolymorphicModel):
     @classmethod
     def get_value_types(cls, name=None, data=None, type_name=None, data_types=False, **kwargs):
         if (name is None) and (type_name) is None:
-            return cls.__subclasses__()
+            return cls.__subclasses__() + [Value]
         elif type_name is not None:
             if type_name.lower() == "value":
                 return Value
@@ -181,7 +182,7 @@ class Value(PolymorphicModel):
                 raise ValueError("Missing required links to %s for value %s" % (obj, name))
         for Obj in Object.get_object_types():
             if Obj.plural_name in kwargs:
-                if type(kwargs[Obj.plural_name]) != models.query.QuerySet:
+                if type(kwargs[Obj.plural_name]) not in  [models.query.QuerySet, DataFrameQuerySet]:
                     raise ValueError("Object arguments to Value.create() methods must be QuerySets, or left out of the arguments")
         linked_objects = [Obj.plural_name for Obj in Object.get_object_types() if Obj.plural_name in kwargs]
         for obj in linked_objects:
@@ -209,8 +210,10 @@ class Value(PolymorphicModel):
             data_type = Data.infer_type(data)
             add_dtype_to_signature = True
         data = data_type.get_or_create(data)
-        value = kwargs["value_type"](name = name, data = data, signature = signature)
+        value = kwargs["value_type"]()
         value.save()
+        signature.values.add(value)
+        data.values.add(value)
         if add_dtype_to_signature:
             ct = ContentType.objects.get_for_model(data_type)
             signature.data_types.add(ct)
@@ -219,7 +222,7 @@ class Value(PolymorphicModel):
                 for obj in kwargs[Obj.plural_name]:
                     obj.values.add(value)
         return value
-    
+
     def get_links(self, return_querysets=False):
         #Since this is the back side of these relationships, this should be quickest?
         linked_objects = []
@@ -259,7 +262,7 @@ class Value(PolymorphicModel):
                 return kwargs["value_type"].objects.none()
             elif signatures.count() > 1:
                 raise ValueError("Multiple Signatures possible for this input. Specify the number of Objects explicitly with a 'n_object' kwarg")
-        return kwargs["value_type"].objects.filter(pk__in=signatures.select_related("values").values("values"), **object_querysets)
+        return kwargs["value_type"].objects.filter(pk__in=signatures.values("values"), **object_querysets)
 
 class Parameter(Value):
     base_name = "parameter"
@@ -286,56 +289,62 @@ class Parameter(Value):
             steps = kwargs["steps"]
             assert steps.count() == 1, "Only one Step can be linked to a Parameter"
             step = steps.first()
-        object_list = ["results", "analyses", "processes", "steps"]
+        parameters = step.values.instance_of(cls).filter(signature__name=name)
+        object_list = ["results", "analyses", "processes"]
+        assert sum([x in kwargs for x in object_list]) <= 1, "Only one of 'results', 'analyses', or 'processes' allowed in Parameter.get()"
         for objs in object_list:
             if (objs in kwargs) and kwargs[objs].exists():
-                obj = kwargs[objs].first()
-                if objs == "results":
-                    check_list = [obj, obj.analysis, obj.analysis.process, step]
-                elif objs == "analyses":
-                    check_list = [obj, obj.process, step]
-                elif objs == "processes":
-                    check_list = [obj, step]
-                elif objs == "steps":
-                    check_list = [step]
-                for other_obj in check_list:
-                    pargs = {x + "__isnull": True for x in object_list if (x != objs) and (other_obj.plural_name != x)}
-                    if other_obj.plural_name != "steps":
-                        pargs[other_obj.plural_name] = other_obj
-                    param = other_obj.values.instance_of(Parameter).filter(name=name, steps=step, **pargs)
-                    if param.exists():
-                        return param
-                return Parameter.objects.none()
-        return step.values.instance_of(Parameter).filter(name=name, results__isnull=True,
-                                                                    processes__isnull=True,
-                                                                    analyses__isnull=True)
+                parameters = parameters.filter(**{objs+"__in": kwargs[objs]})
+            else:
+                parameters = parameters.filter(**{objs+"__isnull": True})
+        return parameters
 
     @classmethod
     def get_or_create(cls, name, data, **kwargs):
         assert "steps" in kwargs, "'steps' keyword must be provided to get a Parameter"
         assert kwargs["steps"].count() == 1, "Parameter must only link to one Step"
-        try:
-            vals = cls.get(name=name, **kwargs)
-        except:
-            vals = None
-        if not vals or (hasattr(vals, "exists") and not vals.exists()):
+        steps = kwargs["steps"]
+        step = steps.get()
+        # Get the highest precedence object in kwargs
+        for obj in ["results", "analyses", "processes", "steps"]:
+            if obj in kwargs:
+                top_obj = kwargs[obj].get()
+                if obj in ["analyses", "processes"]:
+                    parameters = top_obj.get_parameters(steps=steps)
+                else:
+                    parameters = top_obj.get_parameters()
+                break
+        # Create a new one
+        if name not in parameters[step.pk]:
             val = cls.create(name, data, **kwargs)
-            return cls.objects.filter(pk=val.pk)
+            return val.qs()
         else: #Check if the data matches, and if not, make a new one at the proper level
-            val = vals.get() #Shouldn't be multiple
-            value = val.data.value
-            if value == data:
-                return cls.objects.filter(pk=val.pk)
+            db_param = parameters[step.pk][name][0]
+            db_value = db_param.data.get().get_value()
+            in_value = data
+            if db_value == in_value:
+                return db_param.qs()
+            if str(db_value) == str(in_value):
+                return db_param.qs()
             # Coerce using each of the data types available for this signature and check if that matches
-            for data_type in val.signature.data_types.all():
-                data = data_type.model_class().cast_function(data)
-                if value == data:
-                    return cls.objects.filter(pk=val.pk)
+            for data_type in db_param.signature.get().data_types.all():
+                cast_fn = data_type.model_class().cast_function
+                casted_value = cast_fn(in_value)
+                casted_db_value = cast_fn(db_value)
+                if db_value == casted_value:
+                    return db_param.qs()
+                if casted_db_value == casted_value:
+                    return db_param.qs()
+                if str(db_value) == str(casted_value):
+                    return db_param.qs()
+                if str(casted_db_value) == str(casted_value):
+                    return db_param.qs()
+            # Didn't match any of our standard ways to compare, so let's make a new one
             val = cls.create(name, data, **kwargs)
-            return cls.objects.filter(pk=val.pk)
+            return val.qs()
 
     def is_default(self, obj):
-        return not obj.values.filter(name=self.name).exists()
+        return not obj.values.prefetch_related("signature__name").filter(signature__name=self.name).exists()
 
     def is_override(self, obj):
         return not self.is_default(obj)
@@ -411,7 +420,7 @@ class Reference(Value):
     base_name = "reference"
     plural_name = "references"
 
-    str_description = "Reference values point at something, such as an academic work (Bibtex reference, text reference), or a web link" 
+    str_description = "Reference values point at something, such as an academic work (Bibtex reference, text reference), or a web link"
 
 class WikiLink(Value):
     # Stores links that are specifically to the Wiki, especially automated reports
@@ -466,7 +475,7 @@ class Matrix(Value):
 
 class Partition(Value):
     # A datatype that stores a bitstring bloomfilter that defines a complete partition of
-    # all objects linked to it (that is, for all pairwise combinations of 
+    # all objects linked to it (that is, for all pairwise combinations of
     # Objects O linked to Partition P, each object has exactly one label)
     # This is critical Ananke integration groundwork
     base_name = "partition"

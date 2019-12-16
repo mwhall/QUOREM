@@ -4,9 +4,10 @@ from django.apps import apps
 
 #for searching
 from django.contrib.postgres.search import SearchVector
+from django.contrib.contenttypes.models import ContentType
 
 from db.models.object import Object
-
+from combomethod import combomethod
 class Analysis(Object):
     base_name = "analysis"
     plural_name = "analyses"
@@ -30,25 +31,24 @@ class Analysis(Object):
             search_vector= (SearchVector('location', weight='A'))
         )
 
-    def get_parameters(self, steps=[]):
-        # Get the parameters for this Analysis and all its steps
-        # including the extra ones
-        parameters = defaultdict(dict)
-        if steps != []:
-            steps = [apps.get_model("db", "Step").objects.filter(name__in=steps)]
-        else:
-            steps = [self.process.steps, self.extra_steps]
-        for step_queryset in steps:
-            for step in step_queryset.all():
-                for queryset in [step.values.filter(processes__isnull=True,
-                                                    analyses__isnull=True,
-                                                    results__isnull=True),
-                                 self.process.values.filter(steps=step),
-                                 self.values.filter(steps=step)]:
-                    for value in queryset.filter(type="parameter"):
-                        parameters[step.name][value.name] = value.content_object.value
-        return parameters
-
+    def get_parameters(self, steps=None, step_field="pk"):
+        Parameter = apps.get_model("db.Parameter")
+        if steps is None:
+            steps = self.process.steps.all()
+#        else:
+#            steps = self.process.steps.filter(pk__in=steps)
+        params = {}
+        for step in steps:
+            anal_params = dict([(x.signature.get().name,
+                                (x, 'analysis'))
+                                for x in self.values.instance_of(Parameter).filter(steps=step)])
+            proc_params = self.process.get_parameters(steps=step.qs())[step.pk]
+            anal_params.update(proc_params)
+            if not anal_params:
+                anal_params = {}
+            params[getattr(step,step_field)] = anal_params
+        return params
+        
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
         samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())
