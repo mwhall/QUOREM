@@ -161,9 +161,9 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 #### Investigation Forms
 
 class InvestigationForm(BootstrapModelForm):
-    value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()],
-                                   required=False,
-                                   widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
+    #value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()],
+    #                               required=False,
+    #                               widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
     class Meta:
         model = Investigation
         exclude = ['search_vector', 'values', 'value_type']
@@ -210,7 +210,7 @@ class FeatureDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Dis
 class ProcessForm(BootstrapModelForm):
     class Meta:
         model = Process
-        exclude = ['search_vector', 'values']
+        exclude = ['search_vector', 'values', 'upstream', 'all_upstream']
 
 class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
     steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps", widget=DisplayText(get_text_method=get_step_link))
@@ -232,12 +232,12 @@ class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
 class StepForm(BootstrapModelForm):
     class Meta:
         model = Step
-        exclude = ('search_vector',)
+        exclude = ('search_vector','values', 'upstream', 'all_upstream', 'processes')
     def get_upstream_link(self, value):
             return Result.objects.get(uuid=value).get_detail_link()
     def __init__(self, *args, **kwargs):
         super(StepForm, self).__init__(*args, **kwargs)
-        self.fields['values'].label = "Default Parameters"
+#        self.fields['values'].label = "Default Parameters"
 
 class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
@@ -299,7 +299,7 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
 class AnalysisForm(BootstrapModelForm):
     class Meta:
         model = Analysis
-        exclude = ('search_vector','values',)
+        exclude = ('search_vector','values','extra_steps')
 
 class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
     default_parameters = forms.CharField(max_length=4096, widget=DisplayText())

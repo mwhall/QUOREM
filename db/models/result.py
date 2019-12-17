@@ -79,23 +79,42 @@ class Result(Object):
 #                                             'active_choices': []}),
                                            ])
 
+    def html_features(self):
+        feature_count = self.features.count()
+        accordions = {'features': {'heading': format_html('Show Features ({})', str(feature_count))}}
+        content = ""
+        for feature in self.features.all():
+            content += format_html("{}<BR/>", mark_safe(str(feature)))
+        accordions['features']['content'] = content
+        return self._make_accordion("features", accordions)
+
+    def html_samples(self):
+        sample_count = self.samples.count()
+        accordions = {'samples': {'heading': format_html('Show Samples ({})', str(sample_count))}}
+        content = ""
+        for sample in self.samples.all():
+            content += format_html("{}<BR/>", mark_safe(str(sample)))
+        accordions['samples']['content'] = content
+        return self._make_accordion("samples", accordions)
+
     @classmethod
     def get_display_form(cls):
         from django_jinja_knockout.widgets import DisplayText
-        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
-        class DisplayForm(BootstrapModelForm,
-                          metaclass=DisplayModelMetaclass):
+        ParentDisplayForm = super().get_display_form()
+        class DisplayForm(ParentDisplayForm):
             provenance = forms.CharField(max_length=4096, widget=DisplayText())
-            graph = forms.CharField(max_length=4096, widget=DisplayText())
+            sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
+            feature_accordion = forms.CharField(widget=DisplayText(), label="Features")
+            node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'all_upstream', \
-                           'features', 'samples']
+                exclude = ['search_vector', 'values', 'all_upstream', 'features', 'samples']
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
-                    initial=kwargs.setdefault('initial',{})
-                    initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph(show_values=True).pipe().decode().replace("\n",""))
-                    initial['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
+                    kwargs['initial'] = OrderedDict()
+                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
+                    kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
+                    kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
                 super().__init__(*args, **kwargs)
         return DisplayForm
 
@@ -140,7 +159,6 @@ class Result(Object):
         input_results = ""
         input_parameters = ""
 
-
     def simple_provenance_graph(self):
         dot = gv.Digraph("provenance", format='svg')
         dot.graph_attr.update(compound='true')
@@ -161,38 +179,38 @@ class Result(Object):
         dot.edges(["PA","AS","SR"])
         samplegraph = gv.Digraph("cluster0")
         sample_name = None
-        nsamples = len(self.samples.all())
+        nsamples = self.samples.count()
         for sample in self.samples.all()[0:3]:
-            attrs = sample.get_node_attrs()
+            attrs = sample.get_node_attrs(show_values=False)
             attrs['name'] = "S%d" % (sample.pk,)
             sample_name = attrs['name']
             samplegraph.node(**attrs)
         if nsamples>3:
             nmore = nsamples - 3
-            attrs = sample.get_node_attrs(highlight=False)
+            attrs = sample.get_node_attrs(highlight=False, show_values=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
             attrs['name'] = "SX"
             samplegraph.node(**attrs)
-        dot.subgraph(samplegraph)
-        if sample_name is not None:
-            dot.edge(sample_name, "R", ltail="cluster0")
         featuregraph = gv.Digraph("cluster1")
         feature_name = None
-        nfeatures = len(self.features.all())
+        nfeatures = self.features.count()
         for feature in self.features.all()[0:3]:
-            attrs = feature.get_node_attrs()
-            attrs['name'] = "S%d" % (feature.pk,)
+            attrs = feature.get_node_attrs(show_values=False)
+            attrs['name'] = "F%d" % (feature.pk,)
             feature_name = attrs['name']
             featuregraph.node(**attrs)
         if nfeatures>3:
             nmore = nfeatures - 3
-            attrs = feature.get_node_attrs(highlight=False)
+            attrs = feature.get_node_attrs(highlight=False, show_values=False)
             attrs['fontname'] = 'FreeSans'
             attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
             attrs['name'] = "FX"
             featuregraph.node(**attrs)
         dot.subgraph(featuregraph)
+        dot.subgraph(samplegraph)
+        if sample_name is not None:
+            dot.edge(sample_name, "R", ltail="cluster0")
         if feature_name is not None:
             dot.edge(feature_name, "R", ltail="cluster1")
         return dot

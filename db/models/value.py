@@ -47,7 +47,7 @@ class Value(PolymorphicModel):
         out_str = "Value type name: %s\n" % (receiver.base_name.capitalize(),)
         out_str += receiver.str_description + "\n"
         if type(receiver) == polymorphic.base.PolymorphicModelBase:
-            out_str += "There are %d %s in this QUOR'em instance\n" % (receiver.objects.count(), receiver.plural_name)
+            out_str += "There are %d %s in this QUOREM instance\n" % (receiver.objects.count(), receiver.plural_name)
             out_str += "%s can be linked to %s\n" % (receiver.plural_name.capitalize(), ", ".join(receiver.linkable_objects))
             if receiver.required_objects:
                 out_str += "%s must contain a link to %s\n" % (receiver.plural_name.capitalize(), ", ".join(receiver.required_objects))
@@ -361,7 +361,7 @@ class File(Value):
     base_name = "file"
     plural_name = "files"
 
-    str_description = "A value for keeping track of Files that are either on the QUOR'em server or elsewhere"
+    str_description = "A value for keeping track of Files that are either on the QUOREM server or elsewhere"
 
 class Category(Value):
     # Links to a homogeneous set of Objects, providing potentially-overlapping categories
@@ -427,7 +427,7 @@ class WikiLink(Value):
     base_name = "wikilink"
     plural_name = "wikilinks"
 
-    str_description = "A Value specifically for links to the internal QUOR'em Wiki"
+    str_description = "A Value specifically for links to the internal QUOREM Wiki"
 
 class Image(Value):
     # Stores images. Useful for pictures of plates, wells, tubes, data etc.

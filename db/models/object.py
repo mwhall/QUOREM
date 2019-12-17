@@ -23,6 +23,7 @@ import colour
 from quorem.wiki import refresh_automated_report
 
 from django_pandas.managers import DataFrameManager
+import django_pandas as dpd
 
 User = get_user_model()
 
@@ -37,15 +38,15 @@ class Object(models.Model):
     has_upstream = False
     search_set = None
 
-    description = "The base class for all Objects in QUOR'em"
+    description = "The base class for all Objects in QUOREM"
 
     search_fields = []
     grid_fields = [id_field]
     allowed_filter_fields = OrderedDict()
 
     gv_node_style = {}
-    node_height = 3
-    node_width = 3
+    node_height = 2
+    node_width = 2
 
     search_vector = SearchVectorField(blank=True,null=True)
 
@@ -193,6 +194,44 @@ class Object(models.Model):
         update_kwargs = {x: update_kwargs[x] for x in update_kwargs if update_kwargs[x] != {}}
         return object_ids, create_kwargs, update_kwargs
 
+    def iter_values_str(self):
+        vals=self.values.values("signature__name", "data__pk", "signature__value_type__model")
+        out_str = ""
+        for val in vals:
+            data = apps.get_model("db.Data").objects.get(pk=val['data__pk'])
+            yield {"name": val['signature__name'], 
+                   "data": str(data), 
+                   "type": val['signature__value_type__model'].capitalize()}
+    
+    def _make_accordion(self, name, data):
+        #Data must be in format
+        #{"groupName": ("groupLabel", "groupContent/HTML")}
+        accordion_html = format_html('<div class="accordion" id="{}Accordion">', name)
+        for group_label in data:
+            accordion_html += '<div class="card">'
+            accordion_html += format_html('<div class="card-header" id="heading{}">', group_label)
+            accordion_html += '<h2 class="mb-0">'
+            accordion_html += format_html('<button class="btn btn-link" type="button" data-toggle="collapse" \
+                                           data-target="#collapse{}" aria-expanded="false" aria-controls="collapse{}">',
+                                          group_label, group_label)
+            accordion_html += mark_safe(data[group_label]["heading"])
+            accordion_html += '</button></h2></div>'
+            accordion_html += format_html('<div id="collapse{}" class="collapse" aria-labelledby="heading{}" data-parent="#{}Accordion">', group_label, group_label, name)
+            accordion_html += '<div class="card-body">'
+            accordion_html += mark_safe(data[group_label]["content"])
+            accordion_html += '</div></div></div>'
+        accordion_html += "</div>"
+        return accordion_html
+
+    def html_values(self):
+        value_type_options = self.values.values_list("signature__value_type__model",flat=True).distinct()
+        value_counts = self.get_value_counts()[self.pk]
+        accordions = {x: {"heading": "%s (%d)" % (x.capitalize(), value_counts[x]), "content": ""} for x in value_type_options}
+        for value_str in self.iter_values_str():
+            accordions[value_str["type"].lower()]["content"] += format_html("{}: {}</BR>", value_str["name"], 
+                                                                                           value_str["data"])
+        return self._make_accordion("value", accordions)
+
     @combomethod
     def get_value_counts(receiver, queryset=None):
         if type(receiver) == models.base.ModelBase:
@@ -213,13 +252,42 @@ class Object(models.Model):
         return type_counts
 
     @combomethod
+    def dataframe(receiver, wide=False, **kwargs):
+        if not kwargs:
+            if type(receiver) == models.base.ModelBase:
+                kwargs[receiver.plural_name] = receiver.objects.all()
+            else:
+                kwargs[receiver.plural_name] = receiver.qs()
+        fieldnames = ["signature__name", "signature__value_type__model", "data"]
+        objs_kwargs = [x.plural_name for x in Object.get_object_types() if x.plural_name in kwargs]
+        fkwargs = {x+"__in":kwargs[x] for x in objs_kwargs}
+        objs_names = [x + "__name" for x in objs_kwargs]
+        fieldnames += objs_names
+        vals = apps.get_model("db.Value").objects.filter(**fkwargs)
+        df = dpd.io.read_frame(vals, fieldnames=fieldnames, index_col=objs_names[0])
+        data = apps.get_model("db.Data").objects.filter(pk__in=df["data"]).get_real_instances()
+        values = {x.pk: x.get_value() for x in data}
+        df["data"] = df["data"].apply(lambda x: values[x])
+        if wide:
+            df = df.pivot_table(values="data",columns="signature__name", index=objs_names, aggfunc=lambda x: x)
+            df.columns = df.columns.rename("value_name")
+        name_map = {"signature__name": "value_name", 
+                          "signature__value_type__model": "value_type",
+                          "data": "value_data"}
+        name_map.update({x+"__name": x+"_name" for x in objs_kwargs})
+        df.rename(mapper=name_map, axis=1, inplace=True)
+        if not wide:
+            df.index = df.index.rename(objs_kwargs[0]+"_name")
+        return df
+
+    @combomethod
     def info(receiver):
         out_str = "Object type name: %s\n" % (receiver.base_name.capitalize(),)
         out_str += receiver.description + "\n"
         if type(receiver) == models.base.ModelBase:
             if receiver.has_upstream:
                 out_str += "%s have upstream/downstream links to other %s\n" % (receiver.plural_name.capitalize(), receiver.plural_name)
-            out_str += "There are %d %s in this QUOR'em instance\n" % (receiver.objects.count(), receiver.plural_name)
+            out_str += "There are %d %s in this QUOREM instance\n" % (receiver.objects.count(), receiver.plural_name)
         else:
             out_str += "There are %d %s upstream of this one, and %d %s downstream of this one\n" % (receiver.all_upstream.count(), receiver.plural_name, receiver.all_downstream.count(), receiver.plural_name)
             value_counts = ", ".join(["%d %s" % (vtype.objects.filter(pk__in=receiver.values.all()).count(), vtype.plural_name) for vtype in apps.get_model('db.Value').get_value_types()])
@@ -344,9 +412,10 @@ class Object(models.Model):
         from django_jinja_knockout.widgets import DisplayText
         class DisplayForm(BootstrapModelForm,
                           metaclass=DisplayModelMetaclass):
-            node = forms.CharField(max_length=4096, widget=DisplayText())
+            value_accordion = forms.CharField(widget=DisplayText(), label="Values")
+#            node = forms.CharField(widget=DisplayText())
             if cls.has_upstream:
-                graph = forms.CharField(max_length=4096, widget=DisplayText())
+                graph = forms.CharField(widget=DisplayText())
             class Meta:
                 model = cls
                 exclude = ['search_vector', 'values']
@@ -354,8 +423,13 @@ class Object(models.Model):
                     exclude += ['all_upstream']
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
-                    initial=kwargs.setdefault('initial',{})
-                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
+                    if 'initial' in kwargs:
+                        initial = kwargs['initial']
+                    else:
+                        kwargs['initial'] = OrderedDict()
+                        initial = kwargs['initial']
+#                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
+                    initial['value_accordion'] = mark_safe(kwargs['instance'].html_values())
                     if cls.has_upstream:
                         initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
                 super().__init__(*args, **kwargs)
@@ -369,6 +443,7 @@ class Object(models.Model):
             form = cls.get_display_form()
             def get_heading(self):
                 return ""
+            
         DetailView.__module__ = cls.base_name
         DetailView.__name__ = cls.__name__
         DetailView.__qualname__ = DetailView.__name__
@@ -601,9 +676,9 @@ class Object(models.Model):
                 if ds_pk in all_pks:
                     edges.add((str(obj.pk), str(ds_pk)))
         dot.edges(list(edges))
-        dim = max(10,int(nnodes/2.0))
-        dim = min(dim, 14)
-        dot.attr(size="%d,%d!" % (dim,dim))
+        dim = max(14,int(nnodes/2.0))
+        dim = min(dim, 10)
+        dot.attr(size="%d,%d!" % (dim,2*dim))
         return dot
 
 ##Function for search.

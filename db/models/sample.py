@@ -1,9 +1,11 @@
 from django.db import models
 from django.apps import apps
+from django import forms
+from django.utils.html import mark_safe, format_html
 
 #for searching
 from django.contrib.postgres.search import SearchVector
-
+from collections import OrderedDict
 from .object import Object
 
 from django_pandas.managers import DataFrameManager
@@ -57,3 +59,29 @@ class Sample(Object):
         if upstream:
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results.distinct()
+
+    def html_features(self):
+        feature_count = self.features.count()
+        accordions = {'features': {'heading': format_html('Show Features ({})', str(feature_count))}}
+        content = ""
+        for feature in self.features.all():
+            content += format_html("{}<BR/>", mark_safe(str(feature)))
+        accordions['features']['content'] = content
+        return self._make_accordion("features", accordions)
+
+    @classmethod
+    def get_display_form(cls):
+        from django_jinja_knockout.widgets import DisplayText
+        ParentDisplayForm = super().get_display_form()
+        class DisplayForm(ParentDisplayForm):
+            feature_accordion = forms.CharField(widget=DisplayText(), label="Features")
+            node = None #Cheating way to override parent's Node and hide it
+            graph = None
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'features']
+            def __init__(self, *args, **kwargs):
+                kwargs['initial'] = OrderedDict()
+                kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
+                super().__init__(*args, **kwargs)
+        return DisplayForm

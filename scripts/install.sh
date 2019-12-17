@@ -18,6 +18,7 @@ fi
 
 conda create --name $venv python=3.6
 conda activate $venv
+conda env update --file scripts/qiime2-2019.10-py36-linux-conda.yml
 pip install -r requirements.txt
 echo "Sudo password required to act as postgres user"
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
@@ -30,7 +31,7 @@ python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
 python manage.py makemigrations
 python manage.py migrate
 python manage.py collectstatic
-python manage.py initializewiki
+python manage.py initialize
 
 # Leave these links as optional
 #chmod 755 ./scripts/launchquorem.sh && sudo ln -s `pwd`/scripts/launchquorem.sh /usr/local/bin/launchquorem

@@ -210,7 +210,10 @@ class Data(PolymorphicModel):
         return all_subclasses(Data, data_subclasses)
 
     def __str__(self):
-        return str(self.value)
+        return str(self.get_value())
+
+    def __unicode__(self):
+        return str(self.get_value())
 
     @classmethod
     def cast(cls, value):

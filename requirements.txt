@@ -23,5 +23,6 @@ version_parser==1.0.0
 django-jinja-knockout==0.8.0
 rest-pandas==1.1.0
 django-pandas==0.6.1
+xlsxwriter==1.2.6
 -e git+https://github.com/Dmitri-Sintsov/djk-bootstrap4.git#egg=djk_ui
 -e git+https://github.com/django-wiki/django-wiki.git#egg=django-wiki

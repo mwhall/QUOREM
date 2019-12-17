@@ -49,6 +49,17 @@ class Analysis(Object):
             params[getattr(step,step_field)] = anal_params
         return params
         
+    @classmethod
+    def get_display_form(cls):
+        from django_jinja_knockout.widgets import DisplayText
+        ParentDisplayForm = super().get_display_form()
+        class DisplayForm(ParentDisplayForm):
+            node = None #Cheating way to override parent's Node and hide it
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'extra_steps']
+        return DisplayForm
+
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
         samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())
