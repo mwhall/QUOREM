@@ -518,7 +518,7 @@ def search(request):
 # need some logic to rpesent range filters for aplicable dtypes
     else:
         metadata = None
-
+    
     #remove empty keys if there are any
     selected = {
         key: value

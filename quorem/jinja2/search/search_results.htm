@@ -38,13 +38,15 @@
               {% endif %}
             {% endif %}
           </div>
-          <button type="submit" class="btn btn-success">Search</button>
+	  <button type="submit" class="btn btn-success">Search</button>
         </form>
 
         <!-- Display of Selected Facets -->
         {% if selected and page_total %}
+	<br>
         <a href="{{ url('csv_download')|data_download() }}" class='btn btn-primary'>Download Search Results as CSV</a>
         <a href="{{ url('xls_download')|data_download() }}" class='btn btn-secondary'>Download Search Results as XLS</a>
+	<br>
         {% endif %}
         <p>Filters:</p>
           {% if selected.otype %}
@@ -79,6 +81,7 @@
       </div>
       <!-- Facet Selection Cards -->
       <div class="col-4">
+	<br>
         {% include 'search/search_facets.htm' %}
       </div>
       </div>

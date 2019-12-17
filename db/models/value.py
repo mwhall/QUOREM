@@ -47,7 +47,7 @@ class Value(PolymorphicModel):
         out_str = "Value type name: %s\n" % (receiver.base_name.capitalize(),)
         out_str += receiver.str_description + "\n"
         if type(receiver) == polymorphic.base.PolymorphicModelBase:
-            out_str += "There are %d %s in this QUOR'em instance\n" % (receiver.objects.count(), receiver.plural_name)
+            out_str += "There are %d %s in this QUOREM instance\n" % (receiver.objects.count(), receiver.plural_name)
             out_str += "%s can be linked to %s\n" % (receiver.plural_name.capitalize(), ", ".join(receiver.linkable_objects))
             if receiver.required_objects:
                 out_str += "%s must contain a link to %s\n" % (receiver.plural_name.capitalize(), ", ".join(receiver.required_objects))
@@ -57,6 +57,9 @@ class Value(PolymorphicModel):
                 object_counts[Obj.plural_name] = getattr(receiver, Obj.plural_name).count()
             out_str += "Linked to %s Objects (%s)\n" % (sum(list(object_counts.values())), ", ".join(["%d %s" % (y,x) for x,y in object_counts.items()]))
         return out_str
+
+    def qs(self):
+        return self._meta.model.objects.filter(pk=self.pk)
 
     @classmethod
     def get_or_create(cls, name, data, signature=None, **kwargs):
@@ -286,53 +289,59 @@ class Parameter(Value):
             steps = kwargs["steps"]
             assert steps.count() == 1, "Only one Step can be linked to a Parameter"
             step = steps.first()
-        object_list = ["results", "analyses", "processes", "steps"]
+        parameters = step.values.instance_of(cls).filter(signature__name=name)
+        object_list = ["results", "analyses", "processes"]
+        assert sum([x in kwargs for x in object_list]) <= 1, "Only one of 'results', 'analyses', or 'processes' allowed in Parameter.get()"
         for objs in object_list:
             if (objs in kwargs) and kwargs[objs].exists():
-                obj = kwargs[objs].first()
-                if objs == "results":
-                    check_list = [obj, obj.analysis, obj.analysis.process, step]
-                elif objs == "analyses":
-                    check_list = [obj, obj.process, step]
-                elif objs == "processes":
-                    check_list = [obj, step]
-                elif objs == "steps":
-                    check_list = [step]
-                for other_obj in check_list:
-                    pargs = {x + "__isnull": True for x in object_list if (x != objs) and (other_obj.plural_name != x)}
-                    if other_obj.plural_name != "steps":
-                        pargs[other_obj.plural_name] = other_obj
-                    param = other_obj.values.instance_of(Parameter).prefetch_related("signature__name").filter(signature__name=name, steps=step, **pargs)
-                    if param.exists():
-                        return param
-                return Parameter.objects.none()
-        return step.values.instance_of(Parameter).prefetch_related("signature__name").filter(signature__name=name, results__isnull=True,
-                                                                    processes__isnull=True,
-                                                                    analyses__isnull=True)
+                parameters = parameters.filter(**{objs+"__in": kwargs[objs]})
+            else:
+                parameters = parameters.filter(**{objs+"__isnull": True})
+        return parameters
 
     @classmethod
     def get_or_create(cls, name, data, **kwargs):
         assert "steps" in kwargs, "'steps' keyword must be provided to get a Parameter"
         assert kwargs["steps"].count() == 1, "Parameter must only link to one Step"
-        try:
-            vals = cls.get(name=name, **kwargs)
-        except:
-            vals = None
-        if not vals or (hasattr(vals, "exists") and not vals.exists()):
+        steps = kwargs["steps"]
+        step = steps.get()
+        # Get the highest precedence object in kwargs
+        for obj in ["results", "analyses", "processes", "steps"]:
+            if obj in kwargs:
+                top_obj = kwargs[obj].get()
+                if obj in ["analyses", "processes"]:
+                    parameters = top_obj.get_parameters(steps=steps)
+                else:
+                    parameters = top_obj.get_parameters()
+                break
+        # Create a new one
+        if name not in parameters[step.pk]:
             val = cls.create(name, data, **kwargs)
-            return cls.objects.filter(pk=val.pk)
+            return val.qs()
         else: #Check if the data matches, and if not, make a new one at the proper level
-            val = vals.get() #Shouldn't be multiple
-            value = val.data.value
-            if value == data:
-                return cls.objects.filter(pk=val.pk)
+            db_param = parameters[step.pk][name][0]
+            db_value = db_param.data.get().get_value()
+            in_value = data
+            if db_value == in_value:
+                return db_param.qs()
+            if str(db_value) == str(in_value):
+                return db_param.qs()
             # Coerce using each of the data types available for this signature and check if that matches
-            for data_type in val.signature.data_types.all():
-                data = data_type.model_class().cast_function(data)
-                if value == data:
-                    return cls.objects.filter(pk=val.pk)
+            for data_type in db_param.signature.get().data_types.all():
+                cast_fn = data_type.model_class().cast_function
+                casted_value = cast_fn(in_value)
+                casted_db_value = cast_fn(db_value)
+                if db_value == casted_value:
+                    return db_param.qs()
+                if casted_db_value == casted_value:
+                    return db_param.qs()
+                if str(db_value) == str(casted_value):
+                    return db_param.qs()
+                if str(casted_db_value) == str(casted_value):
+                    return db_param.qs()
+            # Didn't match any of our standard ways to compare, so let's make a new one
             val = cls.create(name, data, **kwargs)
-            return cls.objects.filter(pk=val.pk)
+            return val.qs()
 
     def is_default(self, obj):
         return not obj.values.prefetch_related("signature__name").filter(signature__name=self.name).exists()
@@ -352,7 +361,7 @@ class File(Value):
     base_name = "file"
     plural_name = "files"
 
-    str_description = "A value for keeping track of Files that are either on the QUOR'em server or elsewhere"
+    str_description = "A value for keeping track of Files that are either on the QUOREM server or elsewhere"
 
 class Category(Value):
     # Links to a homogeneous set of Objects, providing potentially-overlapping categories
@@ -418,7 +427,7 @@ class WikiLink(Value):
     base_name = "wikilink"
     plural_name = "wikilinks"
 
-    str_description = "A Value specifically for links to the internal QUOR'em Wiki"
+    str_description = "A Value specifically for links to the internal QUOREM Wiki"
 
 class Image(Value):
     # Stores images. Useful for pictures of plates, wells, tubes, data etc.

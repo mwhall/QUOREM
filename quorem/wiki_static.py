@@ -5,8 +5,8 @@ from wiki.models.article import Article, ArticleRevision
 from wiki.core.exceptions import NoRootURL
 
 docs_manifest = ["root.md", "develop.md", "use.md", "deploy.md",
-                 "use/analyze.md", "use/export.md", "use/input.md",
-                 "use/search.md", "use/wiki.md", "develop/django.md",
+                 "use/input.md", "use/search.md", "use/wiki.md", 
+                 "develop/install.md", "develop/jupyter.md",
                  "develop/qiime2.md", "develop/reports.md", "develop/schema.md",
                  "deploy/backup.md", "deploy/install.md", "deploy/secure.md",
                  "deploy/serve.md", "deploy/storage.md", "deploy/upgrade.md"]
@@ -39,6 +39,8 @@ class WikiStatic(object):
     def update_wiki(self):
         try:
             print("Retrieving slug %s" % (self.slug,))
+            if self.slug == "root":
+                self.slug = "/"
             wiki_page = URLPath.get_by_path(self.slug)
             #Create a new revision and update with the template content
             article = wiki_page.article
@@ -74,9 +76,6 @@ class WikiStatic(object):
         return content, title
 
     def _create_root(self):
-        root = URLPath.create_root(title="QUOR'em Wiki",
+        root = URLPath.create_root(title="QUOREM Wiki",
                                    content=self.content)
         return root
- 
-docs_wiki = [WikiStatic(slug=x.split(".md")[0],
-                        template=x) for x in docs_manifest]

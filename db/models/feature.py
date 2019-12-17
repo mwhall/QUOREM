@@ -21,8 +21,8 @@ class Feature(Object):
     plural_name = "features"
 
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ff5497'}
-    node_height = 10
-    node_width = 12
+    node_height = 5
+    node_width = 7
     grid_fields = ["name", "samples", "annotations"]
 
     description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
@@ -69,6 +69,15 @@ class Feature(Object):
         if upstream:
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
         return results
+
+    def html_samples(self):
+        sample_count = self.samples.count()
+        accordions = {'samples': {'heading': format_html('Show Samples ({})', str(sample_count))}}
+        content = ""
+        for sample in self.samples.all():
+            content += format_html("{}<BR/>", mark_safe(str(sample)))
+        accordions['samples']['content'] = content
+        return self._make_accordion("samples", accordions)
 
     def get_node_attrs(self, show_values=True, highlight=False):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
@@ -120,18 +129,18 @@ class Feature(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
         from django_jinja_knockout.widgets import DisplayText
-        class DisplayForm(BootstrapModelForm,
-                          metaclass=DisplayModelMetaclass):
-            node = forms.CharField(max_length=4096, widget=DisplayText())
+        ParentDisplayForm = super().get_display_form()
+        class DisplayForm(ParentDisplayForm):
+            sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
+            node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'annotations']
+                exclude = ['search_vector', 'values']
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
-                    initial=kwargs.setdefault('initial',{})
-                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
+                    kwargs['initial'] = OrderedDict()
+                    kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                 super().__init__(*args, **kwargs)
         return DisplayForm
     

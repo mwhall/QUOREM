@@ -2,20 +2,23 @@ import zipfile
 import yaml
 import re
 import os
+import time
 import tempfile
 import h5py as h5
 
-import pandas as pd
 
 from django.contrib.contenttypes.models import ContentType
 
+from celery import current_app
 from scipy.sparse import coo_matrix, csr_matrix
+import pandas as pd
 
 from .models.object import Object
 from .models.value import Value
 from .models.sample import Sample
 from .models.feature import Feature
 from .models.step import Step
+from .models.file import UploadFile
 
 def scalar_constructor(loader, node):
     value = loader.construct_scalar(node)
@@ -90,6 +93,7 @@ def ingest_artifact(artifact_file_or_path, analysis):
     # Cache
     objects = {Obj.plural_name: {} for Obj in Object.get_object_types()}
     # Create
+    print("Initializing Objects")
     for kwargs in artifactiterator.iter_objects(update=False):
         obj_ids, create_kwargs, update_kwargs = Object._parse_kwargs(**kwargs)
         if "results" in create_kwargs:
@@ -108,6 +112,7 @@ def ingest_artifact(artifact_file_or_path, analysis):
                     continue
                 objects[Objs][obj_id] = obj
     # Update
+    print("Updating Objects")
     for kwargs in artifactiterator.iter_objects():
         obj_ids, create_kwargs, update_kwargs = Object._parse_kwargs(**kwargs)
         if not update_kwargs:
@@ -116,16 +121,31 @@ def ingest_artifact(artifact_file_or_path, analysis):
             for obj_id in obj_ids[Objs]:
                 obj = objects[Objs][obj_id]
                 obj.update(**update_kwargs[Objs])
+    print("Putting in values")
     # Values
     for kwargs in artifactiterator.iter_values():
+        valClass = Value
+        if "value_type" in kwargs:
+            valClass = Value.get_value_types(type_name=kwargs["value_type"])
         value_kwargs = Value._parse_kwargs(**kwargs)
         try:
-            vals = Value.get_or_create(**value_kwargs)
-        except:
+            vals = valClass.get_or_create(**value_kwargs)
+        except Exception as e:
             print("Warning: failed to get/create value")
             print(kwargs)
             print(value_kwargs)
+            print(e)
     return artifactiterator.base_uuid
+
+def ingest_artifact_directory(directory, analysis, userprofile, sleep=1):
+    for file in os.listdir(directory):
+        print("Ingesting %s via celery" % (file,))
+        upf = UploadFile(upload_file=directory+file, userprofile=userprofile, upload_type="A")
+        upf.save()
+        current_app.send_task('db.tasks.react_to_file', (upf.pk,),
+                      kwargs={'analysis_pk': analysis.pk})
+        # Give this file a headstart to process in a concurrency scenario
+        time.sleep(sleep)
 
 class ArtifactIterator:
     def __init__(self, path_or_file):

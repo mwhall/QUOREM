@@ -1,20 +1,13 @@
-Title: QUOR'em Wiki
-# Welcome to your QUOR'em Wiki!
+# Welcome to your QUOREM Wiki!
 
-In this Wiki, you will find automatically-generated pages for your investigations, samples, replicates, and more. Automated wiki reports are automatically refreshed, but a manual refresh can be done by the administrator with the `manage.py refreshwiki` command.
+In this Wiki, you will find automatically-generated pages for your Samples, Features, and more.
 
-You may edit anything on any page (including this one!). These pages were set as useful defaults. Fill in the Investigation pages with other details (project goals, targeted journal, authors' contact information, etc.). Add the location of the sample in the freezer, or a table showing which assays have been completed. This Wiki is **yours**. It will store all revision history, so don't be afraid to make changes!
+You may edit anything on any page (including this one!). These pages were set as useful defaults.
 
-## List of Investigations
+## Documentation
 
-The [List of Investigations](wiki:/investigation) is an automatically maintained list of the investigations in this QUOR'em database instance.
+For general database user instructions, see the "[Using QUOREM](wiki:/use)" pages.
 
-To add an investigation to the database, go to the [Create Investigation](/investigation/create) and fill in the fields. You can add samples immediately, or later on, including via spreadsheet input.
+For developer information, see the "[Developing for QUOREM](wiki:/develop)" pages.
 
-## List of Protocols
-
-The [List of Protocols](wiki:/protocol) is an automatically maintained list of the wet-lab protocols in this QUOR'em database instance.
-
-## List of Pipelines
-
-The [List of Pipelines](wiki:/pipeline) is an automatically maintained list of the computational pipelines in this QUOR'em database instance.
+For system administrator/deployment information, see the "[Deploying QUOREM](wiki:/deploy)" pages.

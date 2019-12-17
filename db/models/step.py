@@ -3,8 +3,10 @@ from django.apps import apps
 from django.utils.html import mark_safe
 #for searching
 from django.contrib.postgres.search import SearchVector
-
+from django.contrib.contenttypes.models import ContentType
 from db.models.object import Object
+
+from combomethod import combomethod
 
 class Step(Object):
     base_name = "step"
@@ -34,17 +36,21 @@ class Step(Object):
     @classmethod
     def get_display_value(cls, obj, field):
         if field == "values":
-            return mark_safe("<br/>".join(["%s: %s" % (key, val) for key, val in obj.get_parameters().items()]))
+            return mark_safe("<br/>".join([str(x[0]) for x in obj.get_parameters()[obj.pk].values()]))
         elif field == "name":
             return obj.get_detail_link()
         elif field == "processes":
             return ",".join([str(x) for x in obj.processes.all()]) if obj.processes.exists() else "Not used in any Process"
 
-    def get_parameters(self):
-        parameters = dict(self.values.prefetch_related("signature", "data").filter(results__isnull=True, analyses__isnull=True, processes__isnull=True).instance_of(apps.get_model("db.Parameter")).values_list("signature__name", "data__pk"))
-        data = apps.get_model("db.Data").objects.filter(pk__in=parameters.values())
-        parameters = {x: data.get(pk=y).get_value() for x,y in parameters.items()}
-        return parameters
+    def get_parameters(self, step_field="pk"):
+        Parameter = apps.get_model("db.Parameter")
+        step_params = dict([(x.signature.get().name,
+                            (x, 'step'))
+                            for x in self.values.instance_of(Parameter).filter(results__isnull=True, 
+                                analyses__isnull=True, processes__isnull=True)])
+        if not step_params:
+            step_params = {}
+        return {getattr(self, step_field): step_params}
 
     def related_samples(self, upstream=False):
         samples = apps.get_model("db", "Sample").objects.filter(source_step__pk=self.pk)
