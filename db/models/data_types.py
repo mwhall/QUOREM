@@ -120,6 +120,11 @@ class DataSignature(models.Model):
     value_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     data_types = models.ManyToManyField(ContentType, related_name="+")
     values = models.ManyToManyField("Value", related_name="signature")
+
+    #Flags for certain DataSignature types
+    #Feature Annotation: This Value provides a human-readable label for a feature
+    feature_annotation = models.BooleanField(default=False)
+
     # 0: None of these linked to these values
     # Positive integer: This many, exactly, are linked to these values
     # -1: Any number of these objects may be attached (including 0) NOTE: Currently unused case?

@@ -1,7 +1,8 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
+from django import forms
 from django.db import models
 from django.apps import apps
-
+from django.utils.html import mark_safe, format_html
 #for searching
 from django.contrib.postgres.search import SearchVector
 from django.contrib.contenttypes.models import ContentType
@@ -19,9 +20,6 @@ class Analysis(Object):
     # This is an instantiation/run of a Process and its Steps
     name = models.CharField(max_length=255)
     process = models.ForeignKey('Process', on_delete=models.CASCADE, related_name='analyses')
-    # Just in case this analysis had any extra steps, they can be defined and tagged here
-    # outside of a Process
-    extra_steps = models.ManyToManyField('Step', blank=True)
     # Run-specific parameters can go in here, but I guess Measures can too
     values = models.ManyToManyField('Value', related_name='analyses', blank=True)
 
@@ -48,18 +46,34 @@ class Analysis(Object):
                 anal_params = {}
             params[getattr(step,step_field)] = anal_params
         return params
-        
+
+    def html_results(self):
+        result_count = self.results.count()
+        accordions = {'results': {'heading': format_html('Show Results ({})', str(result_count))}}
+        content = ""
+        for result in self.results.all():
+            content += format_html("{}<BR/>", mark_safe(str(result)))
+        accordions['results']['content'] = content
+        return self._make_accordion("results", accordions)
+
     @classmethod
     def get_display_form(cls):
         from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
+            result_accordion = forms.CharField(widget=DisplayText(), label="Results")
             node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'extra_steps']
+                exclude = ['search_vector', 'values']
+            def __init__(self, *args, **kwargs):
+                if kwargs.get('instance'):
+                    kwargs['initial'] = OrderedDict()
+                    kwargs['initial']['result_accordion'] = mark_safe(kwargs['instance'].html_results())
+                super().__init__(*args, **kwargs)
+                self.fields.move_to_end("value_accordion")
         return DisplayForm
-
+  
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
         samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())

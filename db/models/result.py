@@ -102,6 +102,7 @@ class Result(Object):
         from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
+            parameters = forms.CharField(widget=DisplayText(), label="Parameters (non-default if bold)")
             provenance = forms.CharField(max_length=4096, widget=DisplayText())
             sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
             feature_accordion = forms.CharField(widget=DisplayText(), label="Features")
@@ -115,7 +116,12 @@ class Result(Object):
                     kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
                     kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                     kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
+                    kwargs['initial']['parameters'] = mark_safe("<BR>".join([format_html("<b>{}: {} (set by {})</b>" if dat[1]=="result" else "{}: {} (set by {})", name, str(dat[0].data.get().get_value()), dat[1].capitalize()) for name, dat in kwargs['instance'].get_parameters()[kwargs['instance'].source_step.pk].items()]))
                 super().__init__(*args, **kwargs)
+                self.fields.move_to_end("value_accordion")
+                self.fields.move_to_end("graph")
+                self.fields["upstream"].label = "Input Results"
+                self.fields["source_step"].label = "Output By Step"
         return DisplayForm
 
     @classmethod

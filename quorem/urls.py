@@ -30,12 +30,16 @@ urlpatterns = []
 
 for Obj in object_list:
     urlpatterns += [re_path(r'%s/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name),
-                     Obj.get_detail_view(as_view=True),
-                     name= Obj.base_name + '_detail',
-                     kwargs={'view_title': 'List of %s' % (Obj.plural_name,)}),
-                     re_path(r'%s/all/$' % (Obj.base_name,), Obj.get_list_view(as_view=True),
-                         name=Obj.base_name+"_all",
-                         kwargs={"view_title": 'All %s' % (Obj.plural_name.capitalize())})]
+                             Obj.get_detail_view(as_view=True),
+                             name= Obj.base_name + '_detail',
+                             kwargs={'view_title': 'List of %s' % (Obj.plural_name,)}),
+                    re_path(r'%s/all/$' % (Obj.base_name,), Obj.get_list_view(as_view=True),
+                             name=Obj.base_name+"_all",
+                             kwargs={"view_title": 'All %s' % (Obj.plural_name.capitalize())}),
+                    re_path(r'%s/update/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name),
+                             Obj.get_update_view(as_view=True),
+                             name = Obj.base_name + "_update",
+                             kwargs={"view_title": "Update %s" % (Obj.base_name.capitalize(),)})]
 urlpatterns += [
     # Main page routing
     path('admin/', admin.site.urls),
@@ -62,14 +66,8 @@ urlpatterns += [
     re_path(r'investigation/create/$', InvestigationCreate.as_view(),
         name='investigation_create',
         kwargs={'view_title': "Create New Investigation", 'allow_anonymous': False}),
-    re_path(r'investigation/edit/(?P<investigation_id>\d+)/$', InvestigationUpdate.as_view(),
-        name='investigation_update',
-        kwargs={'view_title': 'Update Investigation', 'allow_anonymous': False}),
 
     # Sample Routing
-    re_path(r'sample/edit/(?P<sample_id>\d+)/$', SampleUpdate.as_view(),
-        name='sample_update',
-        kwargs={'view_title': 'Sample Update', 'allow_anonymous': False}),
     re_path(r'sample/create/$', SampleCreate.as_view(),
         name='sample_create',
         kwargs={'view_title': 'Create New Sample'}),
@@ -83,9 +81,6 @@ urlpatterns += [
     re_path(r'process/create/$', ProcessCreate.as_view(),
         name = 'process_create',
         kwargs={'view_title': "Create New Process", 'allow_anonymous': False}),
-    re_path(r'process/edit/(?P<process_id>\d+)/$', ProcessUpdate.as_view(),
-        name = 'process_update',
-        kwargs={'view_title': "Process Update", 'allow_anonymous': False}),
 
 
     # Analysis Routing
@@ -96,9 +91,6 @@ urlpatterns += [
     re_path(r'step/create/$', StepCreate.as_view(),
         name = 'step_create',
         kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
-    re_path(r'step/edit/(?P<step_id>\d+)/$', StepUpdate.as_view(),
-        name = 'step_update',
-        kwargs = {'view_title': "Step Update", 'allow_anonymous': False}),
 
 
     # Inline Forim Routing, AJAX FkWidgetGrids, currently unused

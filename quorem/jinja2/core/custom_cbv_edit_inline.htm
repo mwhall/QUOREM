@@ -13,6 +13,20 @@
         <card-title>{{ view.get_heading() }}</card-title>
     </div>
     <div class="card-body">
+    {% if ('update' not in request.resolver_match.url_name) and ('create' not in request.resolver_match.url_name) -%}
+       <div class="btn-group btn-group-sm dropleft" role="group" style="display: flex; justify-content: flex-end">
+          <button id="btnDownloadGroup" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Download As...
+          </button>
+       <div class="dropdown-menu" aria-labelledby="btnDownloadGroup">
+          <a class="dropdown-item" href="#">.CSV</a>
+          <a class="dropdown-item" href="#">.XLS</a>
+       </div>
+       <div class="btn-group btn-group-sm" role="group" style="display: flex; justify-content: flex-end">
+          <a href="{{ view.get_object().get_update_link() }}" type="button" class="btn btn-primary">Edit</a>
+       </div>
+    </div>
+    {% endif -%}
         {{ bs_inline_formsets(
             related_form=form, formsets=formsets, action=view.get_form_action_url(), opts=view.get_bs_form_opts()
         ) }}

@@ -23,13 +23,12 @@ class Feature(Object):
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ff5497'}
     node_height = 5
     node_width = 7
-    grid_fields = ["name", "samples", "annotations"]
+    grid_fields = ["name", "samples"]
 
     description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
 
     name = models.CharField(max_length=255, verbose_name="Name")
 
-    annotations = models.ManyToManyField('Value', related_name='+', blank=True)
     values = models.ManyToManyField('Value', related_name="features", blank=True)
 
     @classmethod
@@ -43,16 +42,14 @@ class Feature(Object):
                 return mark_safe("<BR/>".join([str(x) for x in obj.samples.all()[0:10]] + ["... %d more" % (obj.samples.all().count()-10,)]))
             else:
                 return mark_safe("<BR/>".join([str(x) for x in obj.samples.all()]))
-        elif field=="annotations":
-            return mark_safe("<BR/>".join([str(x) for x in obj.annotations.all()]))
 
     @classmethod
-    def add_to_annotations(cls, name, value_type=None, data_type=None):
+    def add_to_annotations(cls, name, value_type=None):
         if value_type is None:
             value_type = Value # This will add all subclasses of Values too, I think
         else:
             value_type = Value.get_value_types(type_name=value_type)
-        features = cls.objects.prefetch_related("values", "values__signature").filter(values__signature__name=name)
+        signatures = DataSignature.objects.filter(name=name, value_type=ContentType.objects.get_for_model(value_type))
         for feat in features:
             feat.annotations.add(*feat.values.instance_of(value_type).prefetch_related("signature").filter(signature__name=name))
 
@@ -99,15 +96,9 @@ class Feature(Object):
                         continue
                     htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype,)
                     htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
-            data_types = self.annotations.values_list("signature__data_types", flat=True).distinct()
-            annotations = []
             for data_type_pk in data_types:
                 data_type = ContentType.objects.get_for_id(data_type_pk).model_class()
-                annotations = data_type.objects.filter(pk__in=self.annotations.values("data")).values_list("value", flat=True)
             htm += "<tr><td colspan=\"2\"></td></tr>"
-            htm += "<tr><td colspan=\"2\"><b>Annotations</b></td></tr>"
-            for annotation in annotations:
-                htm += "<tr><td colspan=\"2\">%s</td></tr>" % (cgi.escape(annotation),)
         htm += "</table>>"
         
         
@@ -142,6 +133,7 @@ class Feature(Object):
                     kwargs['initial'] = OrderedDict()
                     kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                 super().__init__(*args, **kwargs)
+                self.fields.move_to_end("value_accordion")
         return DisplayForm
     
     
