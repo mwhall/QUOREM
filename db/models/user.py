@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 
 from django.apps import apps
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 
 User = get_user_model()
 #Needed for input
@@ -28,6 +30,14 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user.email
 
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    #if created:
+    #    print("CREATED")
+    #    UserProfile.objects.create(user=instance)
+    UserProfile.objects.get_or_create(user=instance)
+    instance.userprofile.save()
+
 #a class for mail messages sent to users.
 class UserMail(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -43,4 +53,3 @@ class UploadMessage(models.Model):
     """
     file = models.ForeignKey("UploadFile", on_delete=models.CASCADE, verbose_name='Uploaded File')
     error_message = models.CharField(max_length = 1000, null=True, verbose_name="Status")
-

@@ -993,3 +993,7 @@ def csv_download_view(request):
     response = HttpResponse(csv, content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="hello.csv"'
     return response
+
+
+def no_auth_view(request):
+    return render(request, 'core/noauth.htm')

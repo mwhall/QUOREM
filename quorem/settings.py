@@ -86,6 +86,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'quorem.middleware.UserAccessMiddleware',
     DJK_MIDDLEWARE,
     ]
 

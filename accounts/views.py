@@ -18,8 +18,8 @@ def account_signup(request):
         if form.passwords_match():
             user.set_password(password)
             user.save()
-            up = UserProfile.create(user=user)
-            up.save()
+        #    up = UserProfile.create(user=user)
+        #    up.save()
             authenticate(email=email, password=password)
             login(request, user)
             return redirect('homepage')
@@ -62,6 +62,8 @@ def account_edit(request):
 def forgot_password(request):
     pass
 
-
+"""
 def unauthorized(request):
+    print("AUTH CHECK FAILED")
     return redirect('landing')
+"""
