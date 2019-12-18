@@ -113,7 +113,7 @@ class Result(Object):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     kwargs['initial'] = OrderedDict()
-                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
+                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
                     kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                     kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
                     kwargs['initial']['parameters'] = mark_safe("<BR>".join([format_html("<b>{}: {} (set by {})</b>" if dat[1]=="result" else "{}: {} (set by {})", name, str(dat[0].data.get().get_value()), dat[1].capitalize()) for name, dat in kwargs['instance'].get_parameters()[kwargs['instance'].source_step.pk].items()]))

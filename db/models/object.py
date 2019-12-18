@@ -477,7 +477,7 @@ class Object(models.Model):
 #                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
                     initial['value_accordion'] = mark_safe(kwargs['instance'].html_values())
                     if cls.has_upstream:
-                        initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("\n",""))
+                        initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
                 super().__init__(*args, **kwargs)
         return DisplayForm
 
