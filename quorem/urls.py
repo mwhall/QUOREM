@@ -138,9 +138,10 @@ urlpatterns += [
     path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 
     #downloads
-    path('test/', testView, name='test'),
+#    path('test/', testView, name='test'),
     path('data-csv/', csv_download_view, name='csv_download'),
     path('data-xls/', xls_download_view, name='xls_download'),
+    path('data-artifact/', artifact_download_view, name='artifact_download'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 for ObjA in Object.get_object_types():

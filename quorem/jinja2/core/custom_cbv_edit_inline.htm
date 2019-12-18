@@ -25,9 +25,9 @@
           {% if 'result' in request.resolver_match.url_name -%}
               {% if obj.has_value(name="uploaded_artifact", value_type="file") -%}
                   {% if obj.get_value(name="qiime2_type") == "Visualization" -%}
-          <a class="dropdown-item" href="#">.qzv (Visualization)</a>
+          <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qzv (Visualization)</a>
                   {% else -%}
-          <a class="dropdown-item" href="#">.qza (Artifact)</a>
+          <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qza (Artifact)</a>
                   {% endif -%}
               {% endif -%}
           {% endif -%}
