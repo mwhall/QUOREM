@@ -69,9 +69,6 @@ class Object(models.Model):
     def qs(self):
         return self._meta.model.objects.filter(pk=self.pk)
  
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def get_str_fields(self, measures=False, objects=True):
         field_values = defaultdict(list)
         for val in self.values.all():
@@ -406,6 +403,41 @@ class Object(models.Model):
         return cls._meta.model.objects.filter(**kwargs)
 
     @classmethod
+    def get_crud_form(cls):
+        from django_jinja_knockout.forms import BootstrapModelForm
+        from django_jinja_knockout.widgets import DisplayText
+        class CrudForm(BootstrapModelForm):
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values']
+                if cls.has_upstream:
+                    exclude += ['all_upstream', 'upstream']
+        return CrudForm
+
+    @classmethod
+    def get_update_view(cls, as_view=False):
+        from django_jinja_knockout.views import InlineCrudView
+        class CrudView(InlineCrudView):
+            pk_url_kwarg = cls.base_name + '_id'
+            form = cls.get_crud_form()
+            template_name = "core/custom_cbv_edit_inline.htm"
+            def get_heading(self):
+                return "Update %s" % (cls.base_name.capitalize(),)
+            def get_bs_form_opts(self):
+                return {'submit_text': 'Save %s' % (cls.base_name.capitalize(),)}
+            def get_success_url(self):
+                return reverse('%s_detail' % (cls.base_name,),
+                               kwargs = {'%s_id' % (cls.base_name,): self.object.pk})
+            
+        CrudView.__module__ = cls.base_name
+        CrudView.__name__ = cls.__name__
+        CrudView.__qualname__ = CrudView.__name__
+        if as_view:
+            return CrudView.as_view()
+        else:
+            return CrudView
+
+    @classmethod
     def get_display_form(cls):
         # Causes issues if these are above before a DB exists
         from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
@@ -441,8 +473,9 @@ class Object(models.Model):
         class DetailView(InlineDetailView):
             pk_url_kwarg = cls.base_name + '_id'
             form = cls.get_display_form()
+            template_name = "core/custom_cbv_edit_inline.htm"
             def get_heading(self):
-                return ""
+                return "%s Detail" % (cls.base_name.capitalize(),)
             
         DetailView.__module__ = cls.base_name
         DetailView.__name__ = cls.__name__
@@ -605,6 +638,12 @@ class Object(models.Model):
                          flatatt({'href': reverse(lookup,
                                  kwargs=kwargs)}),
                                  name))
+
+    def get_update_link(self):
+        kwargs = {}
+        lookup = self.base_name + "_update"
+        kwargs[self.base_name + "_id"] = self.pk
+        return reverse(lookup, kwargs=kwargs)
 
     def get_node_attrs(self, show_values=True, highlight=False, value_counts=None):
         htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)

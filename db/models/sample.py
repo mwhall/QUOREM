@@ -79,9 +79,10 @@ class Sample(Object):
             graph = None
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'features']
+                exclude = ['search_vector', 'values', 'features', 'all_upstream']
             def __init__(self, *args, **kwargs):
                 kwargs['initial'] = OrderedDict()
                 kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
                 super().__init__(*args, **kwargs)
+                self.fields.move_to_end("value_accordion")
         return DisplayForm

@@ -1,7 +1,9 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from django.db import models
 from django.apps import apps
+from django import forms
+from django.utils.html import mark_safe, format_html
 
 #for searching
 from django.contrib.postgres.search import SearchVector
@@ -51,6 +53,67 @@ class Process(Object):
 
     def add_steps(self, steps):
         self.steps.add(*apps.get_model("db.Step").objects.filter(pk__in=steps))
+
+    @classmethod
+    def get_crud_form(cls):
+        CrudForm = super().get_crud_form()
+        class CustomMMChoiceField(forms.ModelMultipleChoiceField):
+            def label_from_instance(self, obj):
+                count = obj.results.values("source_step").distinct().count()
+                return "%s (%d %s)" % (obj.name, count, "Step" if (count==1) else "Steps")
+        class ProcessCrudForm(CrudForm):
+            steps = forms.ModelMultipleChoiceField(queryset=apps.get_model("db.Step").objects.all(),
+                                                   label="Add/Remove Steps Individually",
+                                                   required=False)
+            analyses = CustomMMChoiceField(queryset=apps.get_model("db.Analysis").objects.all(), 
+                                           label="Add Steps from Analyses",
+                                           required=False)
+            def __init__(self, *args, **kwargs):
+                if 'instance' in kwargs:
+                    kwargs['initial'] = {'steps': [x.pk for x in kwargs['instance'].steps.all()]}
+                super().__init__(*args, **kwargs)
+            def save(self, commit=True):
+                instance = super().save(commit=False)
+                instance.steps.set(self.cleaned_data['steps'])
+                for analysis in self.cleaned_data['analyses']:
+                    instance.steps.add(*analysis.results.values_list("source_step", flat=True))
+                if commit:
+                    instance.save()
+                return instance 
+
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'all_upstream', 'upstream']
+
+        return ProcessCrudForm
+
+    def html_steps(self):
+        step_count = self.steps.count()
+        accordions = {'steps': {'heading': format_html('Show Steps ({})', str(step_count))}}
+        content = ""
+        for step in self.steps.all():
+            content += format_html("{}<BR/>", mark_safe(str(step)))
+        accordions['steps']['content'] = content
+        return self._make_accordion("steps", accordions)
+
+    @classmethod
+    def get_display_form(cls):
+        from django_jinja_knockout.widgets import DisplayText
+        ParentDisplayForm = super().get_display_form()
+        class DisplayForm(ParentDisplayForm):
+            step_accordion = forms.CharField(widget=DisplayText(), label="Steps")
+            node = None #Cheating way to override parent's Node and hide it
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'all_upstream']
+            def __init__(self, *args, **kwargs):
+                if kwargs.get('instance'):
+                    kwargs['initial'] = OrderedDict()
+                    kwargs['initial']['step_accordion'] = mark_safe(kwargs['instance'].html_steps())
+                super().__init__(*args, **kwargs)
+                self.fields.move_to_end("value_accordion")
+                self.fields.move_to_end("graph")
+        return DisplayForm
 
     @classmethod
     def update_search_vector(cls):
