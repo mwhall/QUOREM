@@ -125,6 +125,16 @@ class Result(Object):
         return DisplayForm
 
     @classmethod
+    def get_crud_form(cls):
+        CrudForm = super().get_crud_form()
+        class ResultCrudForm(CrudForm):
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'samples', 
+                           'features', 'upstream', 'all_upstream']
+        return ResultCrudForm
+
+    @classmethod
     def update_search_vector(cls):
         cls.objects.update(
             search_vector= (SearchVector('source', weight='A') +
