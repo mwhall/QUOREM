@@ -126,6 +126,20 @@ class Object(models.Model):
                                              not (hasattr(field, "blank") and field.blank) and field.concrete))
         return list(headings)
 
+    def get_value(self, name, value_type=None):
+        if value_type is not None:
+            value_type = apps.get_model("db.Value").get_value_types(type_name=value_type)
+        else:
+            value_type = apps.get_model("db.Value")
+        return self.values.instance_of(value_type).get(signature__name=name).data.get().get_value()
+
+    def has_value(self, name, value_type=None):
+        if value_type is not None:
+            value_type = apps.get_model("db.Value").get_value_types(type_name=value_type)
+        else:
+            value_type = apps.get_model("db.Value")
+        return self.values.instance_of(value_type).filter(signature__name=name).exists()
+
     @classmethod
     def relational_field(cls, field):
         return cls._meta.get_field(field).is_relation

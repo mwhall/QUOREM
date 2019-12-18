@@ -14,18 +14,29 @@
     </div>
     <div class="card-body">
     {% if ('update' not in request.resolver_match.url_name) and ('create' not in request.resolver_match.url_name) -%}
+       {% with obj=view.get_object() %}
        <div class="btn-group btn-group-sm dropleft" role="group" style="display: flex; justify-content: flex-end">
           <button id="btnDownloadGroup" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           Download As...
           </button>
        <div class="dropdown-menu" aria-labelledby="btnDownloadGroup">
-          <a class="dropdown-item" href="#">.CSV</a>
-          <a class="dropdown-item" href="#">.XLS</a>
+          <a class="dropdown-item" href="#">.csv</a>
+          <a class="dropdown-item" href="#">.xls</a>
+          {% if 'result' in request.resolver_match.url_name -%}
+              {% if obj.has_value(name="uploaded_artifact", value_type="file") -%}
+                  {% if obj.get_value(name="qiime2_type") == "Visualization" -%}
+          <a class="dropdown-item" href="#">.qzv (Visualization)</a>
+                  {% else -%}
+          <a class="dropdown-item" href="#">.qza (Artifact)</a>
+                  {% endif -%}
+              {% endif -%}
+          {% endif -%}
        </div>
        <div class="btn-group btn-group-sm" role="group" style="display: flex; justify-content: flex-end">
-          <a href="{{ view.get_object().get_update_link() }}" type="button" class="btn btn-primary">Edit</a>
+          <a href="{{ obj.get_update_link() }}" type="button" class="btn btn-primary">Edit</a>
        </div>
     </div>
+       {% endwith %}
     {% endif -%}
         {{ bs_inline_formsets(
             related_form=form, formsets=formsets, action=view.get_form_action_url(), opts=view.get_bs_form_opts()
