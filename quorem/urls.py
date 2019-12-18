@@ -146,7 +146,6 @@ urlpatterns += [
     path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 
     #downloads
-    path('test/', testView, name='test'),
     path('data-csv/', csv_download_view, name='csv_download'),
     path('data-xls/', xls_download_view, name='xls_download'),
 

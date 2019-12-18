@@ -518,7 +518,7 @@ def search(request):
 # need some logic to rpesent range filters for aplicable dtypes
     else:
         metadata = None
-    
+
     #remove empty keys if there are any
     selected = {
         key: value
@@ -686,7 +686,6 @@ def ajax_value_table_view(request):
     #gives a qs with the distinct names of values ass. w the selected class
 #    qs = Value.objects.filter(**{q: klass.objects.all()}).distinct().values_list('name', flat=True)
     qs = Value.objects.filter(**{q: False}).order_by('signature__name').distinct('signature__name').values_list('signature__name', flat=True)
-    print("**** ", qs)
     return render(request, 'search/ajax_value_names.htm', {'qs': qs})
 
 def ajax_value_table_related_models_view(request):
@@ -909,11 +908,6 @@ class MailOpen(View):
                                                         'selected': mail,})
 
 
-def testView(request):
-    qs = Sample.objects.all()
-    return render(request, 'test_download.htm')
-
-
 def xls_download_view(request):
     model_map =  {'investigation': Investigation,
                   'sample': Sample,
@@ -922,7 +916,7 @@ def xls_download_view(request):
                   'process': Process,
                   'step': Step,
                   'result': Result,}
-    fields = None
+
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
         q = request.GET.get('q2', '').strip()
@@ -937,15 +931,14 @@ def xls_download_view(request):
         query = SearchQuery(q)
 
     klass = model_map[selected_type]
+    plural = klass.plural_name
+
     if meta:
         qs = klass.objects.filter(values__signature__name__in=[meta]).annotate(value_name=F('values__signature__name'))
     else:
         qs = klass.objects.all().annotate(value_name=F('values__signature__name'))
 
-    if fields:
-        df = django_pd.read_frame(qs, fieldnames=fields)
-    else:
-        df = django_pd.read_frame(qs)
+    df = klass.dataframe(**{plural: qs})
 
     with BytesIO() as b:
         writer = pd.ExcelWriter(b, engine="xlsxwriter")
@@ -964,7 +957,7 @@ def csv_download_view(request):
                   'process': Process,
                   'step': Step,
                   'result': Result,}
-    fields = None
+
     q = request.GET.get('q', '').strip() #user input from search bar
     if not q:
         q = request.GET.get('q2', '').strip()
@@ -979,16 +972,13 @@ def csv_download_view(request):
         query = SearchQuery(q)
 
     klass = model_map[selected_type]
+    plural = klass.plural_name
     if meta:
         qs = klass.objects.filter(values__signature__name__in=[meta]).annotate(value_name=F('values__signature__name'))
     else:
         qs = klass.objects.all().annotate(value_name=F('values__signature__name'))
 
-
-    if fields:
-        df = django_pd.read_frame(qs, fieldnames=fields)
-    else:
-        df = django_pd.read_frame(qs)
+    df = klass.dataframe(**{plural: qs})
     csv = df.to_csv()
     response = HttpResponse(csv, content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="hello.csv"'

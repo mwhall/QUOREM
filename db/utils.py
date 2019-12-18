@@ -239,7 +239,7 @@ def value_table_html(x_selected, y_selected=None):
                      '5': (Process, 'processes__isnull'),
                      '6': (Analysis, 'analyses__isnull'),
                      '7': (Result, 'results__isnull')}
-    print(x_selected)
+
     """
     dep_q = {}
 #    ind_q = {}
@@ -264,9 +264,9 @@ def value_table_html(x_selected, y_selected=None):
     val_names = x_selected[keys[0]]
 
     klass = dep_tuple[0]
-
+    plural = klass.plural_name
     #vqs = Value.objects.filter(**dep_q)
     qs = klass.objects.filter(values__signature__name__in=val_names).annotate(value_namee=F('values__signature__name'))
-    df = qs.to_dataframe()
+    df = klass.dataframe(**{plural:qs})
 #    df = Value.queryset_to_table(vqs, indexes=indexes
     return df.to_html(classes=['table'])
