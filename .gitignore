@@ -1,7 +1,8 @@
 accounts/migrations/*
+db/migrations/*
+landingpage/migrations/*
 accounts/__pycache__/*
 backup.json
-db/migrations/*
 db/__pycache__/*
 db/models/__pycache__/*
 diagrams/
