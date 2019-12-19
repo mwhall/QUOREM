@@ -8,6 +8,8 @@ import h5py as h5
 
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.files import File
+from django.conf import settings
 
 from celery import current_app
 from scipy.sparse import coo_matrix, csr_matrix
@@ -138,14 +140,19 @@ def ingest_artifact(artifact_file_or_path, analysis):
     return artifactiterator.base_uuid
 
 def ingest_artifact_directory(directory, analysis, userprofile, sleep=1):
-    for file in os.listdir(directory):
-        print("Ingesting %s via celery" % (file,))
-        upf = UploadFile(upload_file=directory+file, userprofile=userprofile, upload_type="A")
-        upf.save()
-        current_app.send_task('db.tasks.react_to_file', (upf.pk,),
+    directory = os.path.relpath(directory, settings.BASE_DIR)
+    prev_dir = os.getcwd()
+    os.chdir(settings.BASE_DIR +"/"+ directory)
+    for file in os.listdir("."):
+        if file.endswith(".qza") or file.endswith(".qzv"):
+            print("Ingesting %s via celery" % (file,))
+            upf = UploadFile(upload_file=File(open(file, 'rb')), userprofile=userprofile, upload_type="A")
+            upf.save()
+            current_app.send_task('db.tasks.react_to_file', (upf.pk,),
                       kwargs={'analysis_pk': analysis.pk})
         # Give this file a headstart to process in a concurrency scenario
-        time.sleep(sleep)
+            time.sleep(sleep)
+    os.chdir(prev_dir)
 
 class ArtifactIterator:
     def __init__(self, path_or_file):
