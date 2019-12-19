@@ -345,7 +345,7 @@ class AggregatePlotForm(forms.Form):
         fieldsets = (
         #title, description, Fields
             ('Select an Aggregate Query', 'Select Aggregate', {'fields': ('agg_choice',)}),
-            ('Select Dependant and Independant Variables', 'Select Variables', {'fields': ('field1', 'field2')}),
+            ('Select Dependent and Independent Variables', 'Select Variables', {'fields': ('field1', 'field2')}),
             ('Select Filters for Data', 'Filter Data', {'fields': ('field3',)}),
         )
 
@@ -434,13 +434,13 @@ class TrendPlotForm(forms.Form):
 
     class Meta:
         fieldsets = (
-            ('Choose Dependant Variable', "Select X", {'fields': ('x_val_category', 'x_val',)}),
-            ("Choose Independant Variable", "Select Y", {'fields': ('y_val',)}),
+            ('Choose Dependent Variable', "Select X", {'fields': ('x_val_category', 'x_val',)}),
+            ("Choose Independent Variable", "Select Y", {'fields': ('y_val',)}),
             ("Choose output format", "Select Plot", {'fields':('operation_choice',)}),
         )
 
 class ValueTableForm(forms.Form):
-    #need a field for choosing a dependant variable
+    #need a field for choosing a dependent variable
     CHOICES = [
                 ('', "Select..."),
                 ('1', 'Investigation'),
@@ -452,20 +452,20 @@ class ValueTableForm(forms.Form):
                 ('7', 'Result'),
               ]
 
-    depField = forms.ChoiceField(choices=CHOICES)
+    depField = forms.ChoiceField(choices=CHOICES, label="Object")
     depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
 
-    #independant variables
+    #independent variables
 #    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
 #    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
 
     #??? how do filters get made???
     class Meta:
         fieldsets = (
-            ("Select the dependant variable (rows of the table; data tuples)",
-             "Select Dependant", {'fields': ('depField', 'depValue')}),
-        #    ("Select the independant variable (rows of the table; data tuples)",
-        #     "Select Independant", {'fields': ('indField_0', 'indValue_0')}),
+            ("Select the object type and values",
+             "Select Object", {'fields': ('depField', 'depValue')}),
+        #    ("Select the independent variable (rows of the table; data tuples)",
+        #     "Select Independent", {'fields': ('indField_0', 'indValue_0')}),
         )
 
     """

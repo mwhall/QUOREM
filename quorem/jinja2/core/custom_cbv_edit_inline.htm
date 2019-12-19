@@ -7,6 +7,25 @@
 {% if main_navs is defined -%}
 {{ bs_navs(navs=main_navs) }}
 {% endif -%}
+<style>
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu a::after {
+  transform: rotate(-90deg);
+  position: absolute;
+  right: 6px;
+  top: .8em;
+}
+
+.dropdown-submenu .dropdown-menu {
+  top: 0;
+  left: -105%;
+  margin-left: .1rem;
+  margin-right: .1rem;
+}
+</style>
 <div class="card">
     <div class="card-header">
         <card-title>{{ view.get_heading() }}</card-title>
@@ -20,9 +39,24 @@
 		  <i class="fas fa-download"></i> Download As... 
           </button>
        <div class="dropdown-menu" aria-labelledby="btnDownloadGroup">
-          <a class="dropdown-item" href="#">.csv</a>
-          <a class="dropdown-item" href="#">.xls</a>
-          {% if 'result' in request.resolver_match.url_name -%}
+	      <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Spreadsheet</a>
+              <ul class="dropdown-menu">
+                 <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Tall Format</a>
+                 <ul class="dropdown-menu">
+                     <li><a class="dropdown-item" href="/data-spreadsheet/?format=csv&object={{obj.base_name}}&id={{obj.pk}}">.csv</a></li>
+                     <li><a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{obj.base_name}}&id={{obj.pk}}">.xls</a></li>
+                 </ul>
+                 </li>
+                 <li class="dropdown-submenu"><a class="dropdown-item dropdown-toggle" href="#">Wide Format</a>
+                 <ul class="dropdown-menu">
+                     <li><a class="dropdown-item" href="/data-spreadsheet/?format=csv&object={{obj.base_name}}&id={{obj.pk}}&wide=true">.csv</a></li>
+                     <li><a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{obj.base_name}}&id={{obj.pk}}&wide=true">.xls</a></li>
+                 </ul>
+                 </li>
+
+               </ul>
+               </li> 
+         {% if 'result' in request.resolver_match.url_name -%}
               {% if obj.has_value(name="uploaded_artifact", value_type="file") -%}
               {% with q2type=obj.get_value(name="qiime2_type") %}
                   {% if q2type == "Visualization" -%}
@@ -58,5 +92,22 @@
 
 {% block bottom_scripts -%}
     <script src="{{ static('djk/js/formsets.js') }}"></script>
+    <script>
+$('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
+  if (!$(this).next().hasClass('show')) {
+    $(this).parents('.dropdown-menu').first().find('.show').removeClass("show");
+  }
+  var $subMenu = $(this).next(".dropdown-menu");
+  $subMenu.toggleClass('show');
+
+
+  $(this).parents('li.nav-item.dropdown.show').on('hidden.bs.dropdown', function(e) {
+    $('.dropdown-submenu .show').removeClass("show");
+  });
+
+
+  return false;
+});
+</script>
 {% endblock bottom_scripts -%}
 

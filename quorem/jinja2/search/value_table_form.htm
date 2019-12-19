@@ -23,13 +23,13 @@
             {% for fieldset in form.fieldsets() %}
             <fieldset>
               <h2 class="fs-title">{{ fieldset.title }}</h2>
-              <div {% if fieldset.description=="Select Independant" %} class="form-fields" {% endif %}>
+              <div {% if fieldset.description=="Select Object" %} class="form-fields" {% endif %}>
                 {% for field in fieldset %}
                   {{field.label}}
                   {{ field }}
                 {% endfor %}
               </div>
-              {% if fieldset.description =="Select Independant" %}
+              {% if fieldset.description=="***Select Object" %}
               <button type="button" class="btn btn-info add-fields">Select More</button>
               {% endif %}
 
@@ -39,7 +39,7 @@
               {% if loop.last %}
                 <input type="submit" name="submit" class="submit action-button" value="Submit"/>
               {% else %}
-                <input {% if fieldset.title=="Data Choice" %}id="options"{% endif %} type="button" name="next" class="next action-button" value="Next"/>
+                <input {% if fieldset.title=="Select Object" %}id="options"{% endif %} type="button" name="next" class="next action-button" value="Next"/>
               {% endif %}
             </fieldset>
             {% endfor %}

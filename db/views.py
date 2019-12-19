@@ -38,6 +38,7 @@ import numpy as np
 from celery import current_app
 
 from .models import *
+from .models.object import Object
 from .forms import *
 from .utils import barchart_html, trendchart_html, value_table_html
 
@@ -991,7 +992,33 @@ def csv_download_view(request):
 
 def no_auth_view(request):
     return render(request, 'core/noauth.htm')
-    
+
+
+def spreadsheet_download_view(request):
+    id = request.GET.get('id', '')
+    obj = request.GET.get('object','')
+    wide = request.GET.get('wide','')
+    format = request.GET.get('format', 'csv')
+    if str(wide).lower() in ["1", "true"]:
+        wide = True
+    else:
+        wide = False
+    Obj = Object.get_object_types(type_name=obj)
+    df = Obj.objects.get(pk=id).dataframe(wide=wide)
+    if format.lower() == "csv":
+        df = df.to_csv()
+        response = HttpResponse(df, content_type='text/csv')
+    elif format.lower() in ["xls", "xlsx"]:
+        with BytesIO() as b:
+            writer = pd.ExcelWriter(b, engine="xlsxwriter")
+            df.to_excel(writer)
+            writer.save()
+            response = HttpResponse(b.getvalue(), content_type='application/vnd.ms-excel')
+    else:
+        raise ValueError("Unrecognized spreadsheet format '%s'" % (format,))
+    return response
+
+
 def artifact_download_view(request):
     result_id = request.GET.get('result_id', '')
     if result_id:
