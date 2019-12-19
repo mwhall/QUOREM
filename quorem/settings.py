@@ -227,3 +227,10 @@ AUTH_USER_MODEL = 'accounts.User'
 # For the django-wiki installation
 SITE_ID = 1
 WIKI_ACCOUNT_HANDLING = False
+WIKI_MARKDOWN_KWARGS = {'extension_configs': 
+                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}}, 
+                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
+                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
+                                       'markdown.extensions.def_list', 'markdown.extensions.tables', 
+                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists', 
+                                       'markdown.extensions.admonition']}
