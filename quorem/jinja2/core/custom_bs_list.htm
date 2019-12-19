@@ -5,10 +5,10 @@
 <script type="text/javascript">
 function togglefiltertext( )
 {
-    if ( document.getElementById("togglefilters").innerHTML === "Show Filters" )
-        document.getElementById("togglefilters").innerHTML = "Hide Filters";
+    if ( document.getElementById("togglefilters").innerHTML === "Show Filters&nbsp;<i class=\"fas fa-filter\"></i>" )
+	document.getElementById("togglefilters").innerHTML = "Hide Filters&nbsp;<i class=\"fas fa-filter\"></i>";
     else
-        document.getElementById("togglefilters").innerHTML = "Show Filters";
+	document.getElementById("togglefilters").innerHTML = "Show Filters&nbsp;<i class=\"fas fa-filter\"></i>";
 }
 </script>
 
@@ -21,10 +21,8 @@ function togglefiltertext( )
             {{ caller(has_filters=True) }}
         {% else -%}
 	{% if view.allowed_filter_fields -%}
-    <button id="togglefilters" class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="togglefiltertext()">Show Filters</button>
-   <a class="btn btn-primary"  href="{{ view.reset_filter_link() }}" role="button">
-    Reset Filters
-  </a>
+	<button id="togglefilters" class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample" onclick="togglefiltertext()">Show Filters&nbsp;<i class="fas fa-filter"></i></button>
+   <a class="btn btn-primary"  href="{{ view.reset_filter_link() }}" role="button">Reset Filters &nbsp;<i class="fas fa-undo"></i></a>
    </br>
     <div class="collapse" id="collapseExample">
 <br/>

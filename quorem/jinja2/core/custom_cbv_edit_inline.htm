@@ -7,25 +7,46 @@
 {% if main_navs is defined -%}
 {{ bs_navs(navs=main_navs) }}
 {% endif -%}
-
 <div class="card">
     <div class="card-header">
         <card-title>{{ view.get_heading() }}</card-title>
     </div>
     <div class="card-body">
     {% if ('update' not in request.resolver_match.url_name) and ('create' not in request.resolver_match.url_name) -%}
+       {% with obj=view.get_object() %}
+         
        <div class="btn-group btn-group-sm dropleft" role="group" style="display: flex; justify-content: flex-end">
           <button id="btnDownloadGroup" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          Download As...
+		  <i class="fas fa-download"></i> Download As... 
           </button>
        <div class="dropdown-menu" aria-labelledby="btnDownloadGroup">
-          <a class="dropdown-item" href="#">.CSV</a>
-          <a class="dropdown-item" href="#">.XLS</a>
-       </div>
+          <a class="dropdown-item" href="#">.csv</a>
+          <a class="dropdown-item" href="#">.xls</a>
+          {% if 'result' in request.resolver_match.url_name -%}
+              {% if obj.has_value(name="uploaded_artifact", value_type="file") -%}
+              {% with q2type=obj.get_value(name="qiime2_type") %}
+                  {% if q2type == "Visualization" -%}
+                     <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qzv (Visualization)</a>
+                  </div>
+                  <div class="btn-group btn-group-sm" role="group" style="display: flex; justify-content: flex-end">
+			  <a href="https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/{{ obj.get_value("uploaded_artifact", "file").upload_file.url }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
+                  </div>
+                 {% else -%}
+                     <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qza (Artifact)</a>
+                  </div>
+                  {% endif -%}
+         
+      {% endwith %}
+        {% else %}
+	  </div>
+            {% endif -%}
+       {% else %}
+	  </div>
+         {% endif -%}
        <div class="btn-group btn-group-sm" role="group" style="display: flex; justify-content: flex-end">
-          <a href="{{ view.get_object().get_update_link() }}" type="button" class="btn btn-primary">Edit</a>
-       </div>
-    </div>
+	       <a type="button" class="btn btn-primary" href="/{{ obj.base_name }}/update/{{ obj.pk }}">Edit&nbsp;<i class="fas fa-edit"></i></a>
+       </div></div>
+       {% endwith %}
     {% endif -%}
         {{ bs_inline_formsets(
             related_form=form, formsets=formsets, action=view.get_form_action_url(), opts=view.get_bs_form_opts()

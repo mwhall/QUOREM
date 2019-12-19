@@ -1,4 +1,6 @@
 from collections import OrderedDict
+from textwrap import fill, wrap
+import colour
 
 from django import forms
 from django.db import models
@@ -38,6 +40,22 @@ class Result(Object):
     all_upstream = models.ManyToManyField('self', symmetrical=False, related_name='all_downstream', blank=True)
 
     values = models.ManyToManyField('Value', related_name="results", blank=True)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        step_down = self.source_step
+        for result in self.upstream.all():
+            step_up = result.source_step
+            step_down.upstream.add(step_up)
+            step_down.all_upstream.add(step_up)
+            upstream_qs = step_up.all_upstream.all()
+            downstream_qs = step_down.all_downstream.all()
+            step_down.all_upstream.add(*upstream_qs)
+            step_up.all_downstream.add(*downstream_qs)
+            for down_obj in downstream_qs:
+                for up_obj in upstream_qs:
+                    down_obj.all_upstream.add(up_obj)
+
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>',
@@ -113,7 +131,7 @@ class Result(Object):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     kwargs['initial'] = OrderedDict()
-                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("\n",""))
+                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
                     kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                     kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
                     kwargs['initial']['parameters'] = mark_safe("<BR>".join([format_html("<b>{}: {} (set by {})</b>" if dat[1]=="result" else "{}: {} (set by {})", name, str(dat[0].data.get().get_value()), dat[1].capitalize()) for name, dat in kwargs['instance'].get_parameters()[kwargs['instance'].source_step.pk].items()]))
@@ -123,6 +141,16 @@ class Result(Object):
                 self.fields["upstream"].label = "Input Results"
                 self.fields["source_step"].label = "Output By Step"
         return DisplayForm
+
+    @classmethod
+    def get_crud_form(cls):
+        CrudForm = super().get_crud_form()
+        class ResultCrudForm(CrudForm):
+            class Meta:
+                model = cls
+                exclude = ['search_vector', 'values', 'samples', 
+                           'features', 'upstream', 'all_upstream']
+        return ResultCrudForm
 
     @classmethod
     def update_search_vector(cls):
@@ -164,6 +192,58 @@ class Result(Object):
         cmd = ""
         input_results = ""
         input_parameters = ""
+
+    def get_node_attrs(self, show_values=True, highlight=False, value_counts=None):
+        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
+        if not show_values:
+           sep = ""
+        else:
+           sep = "border=\"1\" sides=\"b\""
+        values = {}
+        for val in [("qiime2_type", "value"), ("qiime2_format", "value"), ("uploaded_artifact", "file")]:
+            try:
+                values[val[0]] = self.get_value(*val)
+            except:
+                pass
+        if "qiime2_type" in values:
+            htm += "<tr><td colspan=\"2\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, values["qiime2_type"])
+        if "qiime2_format" in values:
+            htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (values["qiime2_format"],)
+        if "uploaded_artifact" in values:
+            htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (values["uploaded_artifact"].upload_file.name,)
+        htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (str(getattr(self, self.id_field)),)
+        if show_values and value_counts is None:
+            val_counts = self.get_value_counts()[self.pk]
+        elif show_values and value_counts:
+            val_counts = value_counts
+        else:
+            val_counts = {}
+        if val_counts:
+            htm += "<tr><td><i>Type</i></td><td><i>Count</i></td></tr>"
+            for vtype, count in val_counts.items():
+                htm += "<tr><td border=\"1\" bgcolor=\"#ffffff\">%s</td>" % (vtype.capitalize(),)
+                htm += "<td border=\"1\" bgcolor=\"#ffffff\">%d</td></tr>" % (count,)
+            if ('description' in val_counts) and (val_counts['description'] >= 0):
+                descriptions = self.values.instance_of(apps.get_model("db.Description"))
+                htm+="<tr><td colspan=\"2\">Description</td></tr>"
+                for descrip in descriptions:
+                    htm+="<tr><td border=\"1\" colspan=\"2\"><i>%s</i></td></tr>" % ("<BR/>".join(wrap(descrip.data.get().get_value(), width=70)),)
+        htm += "</table>>"
+        attrs = self.gv_node_style.copy()
+        attrs["name"] = str(self.pk)
+        attrs["label"] = htm
+        attrs["fontname"] = "FreeSans"
+        attrs["href"] = reverse(self.base_name + "_detail",
+                                kwargs={self.base_name+"_id":self.pk})
+        if not highlight:
+            col = colour.Color(attrs["fillcolor"])
+        else:
+            black= colour.Color('black')
+            col = colour.Color(attrs["fillcolor"])
+            col = list(col.range_to(black, 10))[1]
+            attrs['penwidth'] = "3"
+        attrs['fillcolor'] = col.hex_l
+        return attrs
 
     def simple_provenance_graph(self):
         dot = gv.Digraph("provenance", format='svg')

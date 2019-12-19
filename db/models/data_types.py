@@ -370,6 +370,9 @@ class PintDatum(Data):
     default_unit = unitregistry.Unit("dimensionless")
     native_type = Q_
     value = models.FloatField()
+
+    def __str__(self):
+        return str(self.value * self.default_unit)
     
     @classmethod
     def db_cast_function(cls, x):

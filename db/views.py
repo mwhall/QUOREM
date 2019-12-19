@@ -991,3 +991,14 @@ def csv_download_view(request):
 
 def no_auth_view(request):
     return render(request, 'core/noauth.htm')
+    
+def artifact_download_view(request):
+    result_id = request.GET.get('result_id', '')
+    if result_id:
+        result = Result.objects.get(pk=result_id)
+        assert result.has_value("uploaded_artifact", "file")
+        artifact = result.get_value("uploaded_artifact", "file").upload_file.file
+        filename = artifact.name.split("/")[-1]
+        response = HttpResponse(artifact.file, content_type='zip/qza')
+        response['Content-Disposition'] = 'attachment; filename="%s"' % (filename,)
+        return response
