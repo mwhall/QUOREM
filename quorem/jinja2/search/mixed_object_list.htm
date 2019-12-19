@@ -18,8 +18,8 @@
         <div class="d-flex w-100 justify-content-between">
           <h5 class="mb-1">Sample {{ item.obj.name|highlight(q) }}</h5>
         </div>
-        <p class="mb-1">Investigations: {% for investigation in item.obj.investigations.all() %} {{ investigation.name|highlight(q) }} {% endfor %}</p>
-      <p class="mb-1">A later iteration will include more information here.</p>
+        <!-- p class="mb-1">Investigations: {% for investigation in item.obj.investigations.all() %} {{ investigation.name|highlight(q) }} {% endfor %}</p -->
+      <p class="mb-1"> Sourced from {{ item.obj.source_step.name }}</p>
       </a>
      {% elif item.otype == 'feature' %}
       <a class="list-group-item list-group-item-action flex-column align-items-start"
@@ -30,7 +30,7 @@
       {% if item.obj.samples.count() %}
       <p class="mb-1">Observed in {{ str(item.obj.samples.count())|highlight(q) }} Samples</p>
       {% endif %}
-      <p class="mb-1">A later iteration will include more information here.</p>
+      <p class="mb-1">{{ item.obj.description }}</p>
       </a>   {% elif item.otype == 'process' %}
     <a class="list-group-item list-group-item-action flex-column align-items-start"
     href="/process/{{ item.obj.pk }}">
@@ -55,10 +55,10 @@
     <a class="list-group-item list-group-item-action flex-column align-items start"
     href="/result/{{ item.obj.pk }}">
     <div class="d-flex w-100 justify-content-between">
-      <h5 class="mb-1">{{ item.obj.type }} result </h5>
+      <h5 class="mb-1">Result from {{ item.obj.source_step.name }}</h5>
     </div>
-    <p class="mb-1">UUID {{ item.obj.uuid }}</p>
-    <p class="mb-1">Sourced from {{ item.obj.source }}</p>
+    <p class="mb-1">UUID {{ item.obj.name }}</p>
+    <p class="mb-1">{{ item.obj.description }}</p>
     <a>
 
 
@@ -68,8 +68,7 @@
     <div class="d-flex w-100 justify-content-between">
       <h5 class="mb-1">{{ item.obj.name }}</h5>
     </div>
-    <p class="mb-1">Using process {{ item.obj.process }}</p>
-    <p class="mb-1">From {{ item.obj.location }}</p>
+    <p class="mb-1">Using process {{ item.obj.process.name }}</p>
     <a>
     {% endif %}
   {% endfor %}

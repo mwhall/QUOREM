@@ -142,6 +142,8 @@ urlpatterns += [
     path('data-csv/', csv_download_view, name='csv_download'),
     path('data-xls/', xls_download_view, name='xls_download'),
     path('data-artifact/', artifact_download_view, name='artifact_download'),
+    #redirect no-auth users to here
+    path('no-auth/', no_auth_view, name='noauth'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 for ObjA in Object.get_object_types():

@@ -68,7 +68,7 @@ class Object(models.Model):
 
     def qs(self):
         return self._meta.model.objects.filter(pk=self.pk)
- 
+
     def get_str_fields(self, measures=False, objects=True):
         field_values = defaultdict(list)
         for val in self.values.all():
@@ -210,10 +210,10 @@ class Object(models.Model):
         out_str = ""
         for val in vals:
             data = apps.get_model("db.Data").objects.get(pk=val['data__pk'])
-            yield {"name": val['signature__name'], 
-                   "data": str(data), 
+            yield {"name": val['signature__name'],
+                   "data": str(data),
                    "type": val['signature__value_type__model'].capitalize()}
-    
+
     def _make_accordion(self, name, data):
         #Data must be in format
         #{"groupName": ("groupLabel", "groupContent/HTML")}
@@ -239,7 +239,7 @@ class Object(models.Model):
         value_counts = self.get_value_counts()[self.pk]
         accordions = {x: {"heading": "%s (%d)" % (x.capitalize(), value_counts[x]), "content": ""} for x in value_type_options}
         for value_str in self.iter_values_str():
-            accordions[value_str["type"].lower()]["content"] += format_html("{}: {}</BR>", value_str["name"], 
+            accordions[value_str["type"].lower()]["content"] += format_html("{}: {}</BR>", value_str["name"],
                                                                                            value_str["data"])
         return self._make_accordion("value", accordions)
 
@@ -272,9 +272,17 @@ class Object(models.Model):
         fieldnames = ["signature__name", "signature__value_type__model", "data"]
         objs_kwargs = [x.plural_name for x in Object.get_object_types() if x.plural_name in kwargs]
         fkwargs = {x+"__in":kwargs[x] for x in objs_kwargs}
+        if 'value_names' in kwargs:
+            fkwargs['signature__name__in'] = kwargs['value_names']
+        if 'only_types' in kwargs:
+            only = [ContentType.objects.get_for_model(x) for x in kwargs['only_types']]
+            fkwargs['signature__value_type__model__in'] = only
         objs_names = [x + "__name" for x in objs_kwargs]
         fieldnames += objs_names
         vals = apps.get_model("db.Value").objects.filter(**fkwargs)
+    #    if 'exclude_types' in kwargs:
+    #        exclude= {'signature__name__in': kwargs['exclude_types']}
+    #        vals = vals.exclude(**exclude)
         df = dpd.io.read_frame(vals, fieldnames=fieldnames, index_col=objs_names[0])
         data = apps.get_model("db.Data").objects.filter(pk__in=df["data"]).get_real_instances()
         values = {x.pk: x.get_value() for x in data}
@@ -282,7 +290,7 @@ class Object(models.Model):
         if wide:
             df = df.pivot_table(values="data",columns="signature__name", index=objs_names, aggfunc=lambda x: x)
             df.columns = df.columns.rename("value_name")
-        name_map = {"signature__name": "value_name", 
+        name_map = {"signature__name": "value_name",
                           "signature__value_type__model": "value_type",
                           "data": "value_data"}
         name_map.update({x+"__name": x+"_name" for x in objs_kwargs})
@@ -442,7 +450,7 @@ class Object(models.Model):
             def get_success_url(self):
                 return reverse('%s_detail' % (cls.base_name,),
                                kwargs = {'%s_id' % (cls.base_name,): self.object.pk})
-            
+
         CrudView.__module__ = cls.base_name
         CrudView.__name__ = cls.__name__
         CrudView.__qualname__ = CrudView.__name__
@@ -490,7 +498,7 @@ class Object(models.Model):
             template_name = "core/custom_cbv_edit_inline.htm"
             def get_heading(self):
                 return "%s Detail" % (cls.base_name.capitalize(),)
-            
+
         DetailView.__module__ = cls.base_name
         DetailView.__name__ = cls.__name__
         DetailView.__qualname__ = DetailView.__name__

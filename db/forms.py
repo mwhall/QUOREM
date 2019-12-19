@@ -415,18 +415,18 @@ class TrendPlotForm(forms.Form):
     MODEL_CHOICES = (
         ('', '----------'),
         ('1', 'Samples'),
-    #    ('2', 'Biological Replicates'),
-    #    ('3', 'Computational Pipelines'),
+        ('2', 'Features'),
+        ('3', 'Results'),
 
     )
     #In each field, define class labels for widgets where field change affects subesqeuent fields.
     #These class labels will have JS event listeneres attached where relevant.
-    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
-                                      label="Select Investigation(s)")
+    #invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
+    #                                  label="Select Investigation(s)")
     x_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select X-value category.", widget=forms.Select(attrs={'class':'x-val'}))
     x_val = forms.CharField(widget=forms.Select, label="Select X Value.")
 
-    y_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Y-value category.")
+#    y_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Y-value category.")
     y_val = forms.CharField(widget=forms.Select, label="Select Y Value.")
 
     operation_choice = forms.ChoiceField(choices = (('1','Scatter'),('2','Contiuous')),
@@ -434,9 +434,8 @@ class TrendPlotForm(forms.Form):
 
     class Meta:
         fieldsets = (
-            ('Choose Investigation(s)', "Select Investigation(s)", {'fields': ('invField',)}),
             ('Choose Dependant Variable', "Select X", {'fields': ('x_val_category', 'x_val',)}),
-            ("Choose Independant Variable", "Select Y", {'fields': ('y_val_category', 'y_val',)}),
+            ("Choose Independant Variable", "Select Y", {'fields': ('y_val',)}),
             ("Choose output format", "Select Plot", {'fields':('operation_choice',)}),
         )
 

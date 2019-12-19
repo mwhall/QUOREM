@@ -43,7 +43,7 @@ def react_to_file(upload_file_id, **kwargs):
         # A for Artifact
         status = ""
         if from_form == "A":
-            mail.title="The qiime artifact you uploaded "
+            mail.title="The QIIME2 artifact you uploaded "
             print("Processing qiime file...")
             try:
                 status = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"])
@@ -122,7 +122,7 @@ def process_qiime_artifact(upfile, analysis_pk):
     analysis = Analysis.objects.get(pk=analysis_pk)
     result_uuid = ingest_artifact(infile, analysis)
     res = Result.get(name=result_uuid)
-    fileval = File.get_or_create(name="uploaded_artifact", data=upfile, 
+    fileval = File.get_or_create(name="uploaded_artifact", data=upfile,
                                  data_type="uploadfile", results=res)
     print("#\n#\n")
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
