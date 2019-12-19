@@ -188,6 +188,7 @@ function populateXOptions(){
   });
 }
 function populateYOptions(){
+  console.log('sanity check');
   var url = $('#msform').attr('data-y-url');
   var xmodel = $('#id_x_val_category').val();
   var ymodel = $('#id_y_val_category').val();
@@ -210,8 +211,8 @@ function populateYOptions(){
 }
 //Bind event listeners
 $("#id_x_val_category").change(populateXOptions);
-$("#id_invField").change(populateXOptions);
-$('#id_y_val_category').change(populateYOptions);
+//$("#id_invField").change(populateXOptions);
+$('#id_x_val').change(populateYOptions);
 
 
 /*****************************************************************************

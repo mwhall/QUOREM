@@ -510,7 +510,7 @@ def search(request):
                     'analysis': 'analyses__isnull',
                     'process': 'processes__isnull'}[selected['otype']]
 
-        metadata = Value.objects.filter(**{q_string: False}).order_by('signature__name').distinct('signature__name')
+        metadata = Value.objects.filter(**{q_string: False}).exclude(signature__value_type__in=[ContentType.objects.get_for_model(Version)]).order_by('signature__name').distinct('signature__name')
 
         if meta:
             vals = Value.objects.filter(**{q_string: False}).filter(signature__name=meta)
@@ -742,8 +742,8 @@ class PlotTrendView(FormView):
 
     def form_valid(self, form):
         req = self.request.POST
-        html, choices= trendchart_html(req['invField'], req['x_val'], req['x_val_category'],
-                                        req['y_val'], req['y_val_category'], req['operation_choice'])
+        html, choices= trendchart_html(req['x_val'], req['x_val_category'],
+                                        req['y_val'], req['operation_choice'])
         return render(self.request, '/analyze/plot_trend.htm', {'graph':html, 'choices':choices, 'action':self.action})
 
 
@@ -755,62 +755,66 @@ class PlotTrendView(FormView):
 #trendx_view is the same as aggregate view for now. This may change at some point which is why
 # its a seperate function.
 def ajax_plot_trendx_view(request):
-    inv_id = request.GET.getlist('inv_id[]')
-    #if only one id is selected, not a list.
-    if not inv_id:
-        inv_id = request.GET.get('inv_id')
-    model_choice = request.GET.get('otype')
+    print("HI")
+
+    model_choice = request.GET.get('type')
+    print(model_choice)
     exclude = request.GET.get('exclude')
 
     qs = None
     otype = None
 
+    type_map = {'1': (Sample, 'sample'),
+                '2': (Feature, 'feature'),
+                '3': (Result, ''),}
+
+    q_string = {'1' : 'samples__isnull',
+                '2': 'features__isnull',
+                '3': 'results__isnull',
+                #'step': 'steps__isnull',
+                #'analysis': 'analyses__isnull',
+                #'process': 'processes__isnull',
+                }[model_choice]
+
+    qs = Value.objects.filter(**{q_string: False}).exclude(
+        signature__value_type__in=[ContentType.objects.get_for_model(Version)]).order_by(
+        'signature__name').distinct('signature__name').values_list(
+        'signature__name', flat=True)
+    print(qs)
     if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
+        return render (request, 'analyze/ajax_model_options.htm', {'otype': type, 'qs':qs,})
 
-    if model_choice == "1": #Samples
-        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).order_by('name').distinct('name')
-        otype = "sample"
-
-    elif model_choice == "2": #Features
-        otype = "feature"
     return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
 #trend y view will need to know what was chosen in trend x.
 def ajax_plot_trendy_view(request):
-    """
-    vars from ajax:
-    otype: model for y, as an integer.
-    x_model: model for x, as an integr.
-    x_choice: meta for x, as a string.
-    """
-
-    inv_id = request.GET.getlist('inv_id[]')
-    #if only one id is selected, not a list.
-    if not inv_id:
-        inv_id = request.GET.get('inv_id')
-
-    model_choice = request.GET.get('otype')
     x_model = request.GET.get('x_model')
     x_sel = request.GET.get('x_choice')
 
-    qs = None
-    otype = None
+    q_tuple = {'1' : (Sample, 'samples__in'),
+                '2': (Feature, 'features__in'),
+                '3': (Result, 'results__in'),
+                #'step': 'steps__isnull',
+                #'analysis': 'analyses__isnull',
+                #'process': 'processes__isnull',
+                }[x_model]
 
-    if not model_choice:
+    qs = None
+
+    if not x_model:
         return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
     xqs = None
-    #X was sample
-    if x_model == '1':
-    #    xqs = Sample.objects.filter(values__in=Value.objects.filter(samples__in=Sample.objects.filter(investigation__in=inv_id)).filter(name=x_sel))
-        x = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).filter(name=x_sel)
-        xqs = Sample.objects.filter(values__in=x)
-        otype = 'sample'
+    klass = q_tuple[0]
+    q_string = q_tuple[1]
+
+    xqs = klass.objects.filter(values__signature__name__in=[x_sel])
     yops = None
     if xqs:
-        yops = Value.objects.filter(samples__in=xqs).order_by('name').distinct('name')
-    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':yops,})
+        yops = Value.objects.filter(**{q_string: xqs}).exclude(signature__value_type__in=[ContentType.objects.get_for_model(Version)]).order_by('signature__name').distinct('signature__name').values_list('signature__name', flat=True)
+    print("YOPS")
+    print(yops)
+    return render (request, 'analyze/ajax_model_options.htm', {'qs':yops,})
 
 ###############################################################################
 ### View for handling file uploads                                          ###

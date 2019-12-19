@@ -122,7 +122,7 @@ def barchart_html(agg, inv, model, meta):
     return None
 
 #Code for trendline/scatterplot
-def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operation):
+def trendchart_html( x_val, x_val_category, y_val, operation):
     """
     #To save code, use a dict that maps numerical field vals to django model
     cat_map = {'1': (models.Sample, models.SampleMetadata, 'sample__in', "Sample"),
@@ -164,46 +164,60 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                                     sample__in=models.Sample.objects.filter(
                                     investigation__in=invs))}).filter(
                                     key=y_val).values('value').order_by('value')
-    """
+
 
     cat_map = {'1': (models.Sample, 'samples__in', "Sample"),}
-    op_map = {'1': 'markers', '2': 'lines+markers'}
+
     q_map = {'str val': 'str__value',
             'int val': 'int__value',
             'float val': 'float__value',}
-
+    """
     x = None
     y = None
     xqs = None
     yqs = None
     qs = None #for finding same objects in x and y
 
-    x_type, x_search, x_cat = cat_map[x_val_category]
-    y_type, y_search, y_cat = cat_map[y_val_category]
+#    x_type, x_search, x_cat = cat_map[x_val_category]
+#    y_type, y_search, y_cat = cat_map[y_val_category]
 
-    if x_type is models.Sample:
-        xqs = models.Value.objects.filter(**{x_search: x_type.objects.filter(
-                                    investigation__in=invs)}).filter(
-                                    name=x_val)
-        xval_type = xqs[0].content_type.name
-        x_filt = q_map[xval_type]
-        xqs = xqs.order_by(x_filt)
-        s_filt = x_filt + "__values"
-        qs = x_type.objects.filter(values__in=xqs).order_by(s_filt)
 
-        ### Y options will be dependant on x choice.
-        ### only choice for y when x is samples is also samples for now.
+    """
+    1- Find value QS for x_val
+    2- Find klass qs for x_val
+    3- find value qs for y_val(klass__in=xqs)
+    """
+    op_map = {'1': 'markers', '2': 'lines+markers'}
+    q_tuple = {'1' : (Sample, 'samples__in'),
+                '2': (Feature, 'features__in'),
+                '3': (Result, 'results__in'),
+                #'step': 'steps__isnull',
+                #'analysis': 'analyses__isnull',
+                #'process': 'processes__isnull',
+                }[x_val_category]
 
-        #by using samples__in=qs, the yqs will be ordered by qs.
-        yqs = models.Value.objects.filter(samples__in=qs).filter(name=y_val)
+    klass = q_tuple[0]
+    q_string = q_tuple[1]
 
-    print("XQS: ",xqs)
-    print("YQS: ", yqs)
-    x = [s.content_object.value for s in xqs]
-    y = [s.content_object.value for s in yqs]
+    modelqs = klass.objects.filter(values__signature__name__in=[x_val])
+    #xqs = Value.objects.filter(**{q_string: modelqs}).filter(signature__name=x_val)
+    #yqs = Value.objects.filter(**{q_string: modelqs}).filter(signature__name=y_val)
 
-    x_type, x_search, x_cat = cat_map[x_val_category]
-    y_type, y_search, y_cat = cat_map[y_val_category]
+    #print("XQS: ",xqs)
+    #print("YQS: ", yqs)
+
+    qdf = klass.dataframe(**{klass.plural_name: modelqs, 'value_names':[x_val, y_val]}, wide=True)
+
+    print(qdf.columns)
+
+    x = qdf[x_val].values
+    y = qdf[y_val].values
+
+    print(x)
+    print(y)
+
+    x_cat  = klass.base_name
+    y_cat = klass.base_name
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y,
@@ -214,7 +228,7 @@ def trendchart_html(invs, x_val, x_val_category, y_val, y_val_category, operatio
                     yaxis={'title':y_val})
     fig.layout = layout
     return to_html(fig, full_html=False), {'style': op_map[operation],
-                                           'inv': [i.name for i in models.Investigation.objects.filter(pk__in=invs)],
+                                           'inv': "NO",
                                            'x_cat': x_cat,
                                            'x_val': x_val,
                                            'y_cat': y_cat,
@@ -265,8 +279,9 @@ def value_table_html(x_selected, y_selected=None):
 
     klass = dep_tuple[0]
     plural = klass.plural_name
+    index_name = "%s_name" % plural
     #vqs = Value.objects.filter(**dep_q)
-    qs = klass.objects.filter(values__signature__name__in=val_names).annotate(value_namee=F('values__signature__name'))
-    df = klass.dataframe(**{plural:qs})
+    qs = klass.objects.filter(values__signature__name__in=val_names).annotate(value_name=F('values__signature__name'))
+    df = klass.dataframe(**{plural:qs, 'value_names':val_names}).reset_index().set_index([index_name, 'value_name', 'value_type'])
 #    df = Value.queryset_to_table(vqs, indexes=indexes
     return df.to_html(classes=['table'])
