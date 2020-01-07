@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
 from db.views import *
-from db.autocomplete_views import ValueAutocomplete, CategoryAutocomplete, object_relation_view_factory, ObjectAutocomplete
+from db.autocomplete_views import *
 
 from db.models.object import Object
 
@@ -39,7 +39,10 @@ for Obj in object_list:
                     re_path(r'%s/update/(?P<%s_id>\d+)/$' % (Obj.base_name, Obj.base_name),
                              Obj.get_update_view(as_view=True),
                              name = Obj.base_name + "_update",
-                             kwargs={"view_title": "Update %s" % (Obj.base_name.capitalize(),)})]
+                             kwargs={"view_title": "Update %s" % (Obj.base_name.capitalize(),)}),
+                    path('object-autocomplete/%s/' % (Obj.base_name,),
+                             object_autocomplete_factory(Obj.base_name).as_view(),
+                             name="object-%s-autocomplete"%(Obj.base_name,))]
 urlpatterns += [
     # Main page routing
     path('admin/', admin.site.urls),
@@ -92,15 +95,6 @@ urlpatterns += [
         name = 'step_create',
         kwargs={'view_title': "Create New Step", 'allow_anonymous': False}),
 
-
-    # Inline Forim Routing, AJAX FkWidgetGrids, currently unused
-#    re_path(r'process-step-grid(?P<action>/?\w*)/$', StepFkWidgetGrid.as_view(),
-#        name='process_step_grid', kwargs={'ajax':True}),
-#    re_path(r'sample-grid(?P<action>/?\w*)/$', SampleFkWidgetGrid.as_view(),
-#        name='sample_grid', kwargs={'ajax':True}),
-#    re_path(r'replicate-grid(?P<action>/?\w*)/$', ReplicateFkWidgetGrid.as_view(),
-#        name='replicate_grid', kwargs={'ajax':True}),
-
     #### Search Result Routing
     path('search/', search, name='search-results'),
 
@@ -116,16 +110,24 @@ urlpatterns += [
     path("ajax/trendy-options/", ajax_plot_trendy_view, name="ajax_trend_y_options"),
     path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
 
+    path('plot/bar/taxonomy/select/', TaxBarSelectView.as_view(), name='plot-tax-bar-select'),
+    path('plot/bar/taxonomy/', TaxBarPlotView.as_view(), name='plot-tax-bar'),
     ## Autocomplete Routing
     re_path(r'^value-autocomplete/$',
             ValueAutocomplete.as_view(),
             name='value-autocomplete'),
-    re_path(r'^category-autocomplete/$',
-            CategoryAutocomplete.as_view(),
-            name='category-autocomplete'),
     re_path(r'^object-autocomplete/$',
             ObjectAutocomplete.as_view(),
             name='object-autocomplete'),
+    re_path(r'^object-autocomplete/result/taxonomy/$',
+            TaxonomyResultAutocomplete.as_view(),
+            name='result-taxonomy-autocomplete'),
+    re_path(r'^object-autocomplete/result/countmatrix/$',
+            CountMatrixAutocomplete.as_view(),
+            name='result-countmatrix-autocomplete'),
+    re_path(r'^taxonomic-level-autocomplete/$',
+            TaxonomicLevelAutocomplete.as_view(),
+            name='taxonomic-level-autocomplete'),
     ##onto test
     path('ontology/viewer/', onto_view, name='onto_view'),
     path('ajax/load-onto/', onto_json, name='onto_json'),

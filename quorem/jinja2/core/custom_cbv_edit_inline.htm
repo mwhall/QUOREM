@@ -28,13 +28,10 @@
 </style>
 <div class="card">
     <div class="card-header">
-        <card-title>{{ view.get_heading() }}</card-title>
-    </div>
-    <div class="card-body">
+    {{ view.get_heading() }}
     {% if ('update' not in request.resolver_match.url_name) and ('create' not in request.resolver_match.url_name) -%}
-       {% with obj=view.get_object() %}
-         
-       <div class="btn-group btn-group-sm dropleft" role="group" style="display: flex; justify-content: flex-end">
+       {% with obj=view.get_object() %} 
+       <div class="btn-group btn-group-sm dropleft float-right" role="group">
           <button id="btnDownloadGroup" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 		  <i class="fas fa-download"></i> Download As... 
           </button>
@@ -82,6 +79,8 @@
        </div></div>
        {% endwith %}
     {% endif -%}
+    </div>
+    <div class="card-body">
         {{ bs_inline_formsets(
             related_form=form, formsets=formsets, action=view.get_form_action_url(), opts=view.get_bs_form_opts()
         ) }}

@@ -43,19 +43,7 @@ class Result(Object):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        step_down = self.source_step
-        for result in self.upstream.all():
-            step_up = result.source_step
-            step_down.upstream.add(step_up)
-            step_down.all_upstream.add(step_up)
-            upstream_qs = step_up.all_upstream.all()
-            downstream_qs = step_down.all_downstream.all()
-            step_down.all_upstream.add(*upstream_qs)
-            step_up.all_downstream.add(*downstream_qs)
-            for down_obj in downstream_qs:
-                for up_obj in upstream_qs:
-                    down_obj.all_upstream.add(up_obj)
-
+        self.infer_step_upstream(results=self.qs())
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>',

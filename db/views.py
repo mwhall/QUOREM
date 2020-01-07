@@ -1,11 +1,13 @@
 from collections import OrderedDict, defaultdict
 import string
+import ast
+import urllib
 
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic.edit import CreateView
 from django.http import JsonResponse
-from django.urls import reverse
+from django.urls import reverse as django_reverse
 from django.utils.html import format_html, mark_safe
 from django.db import models, utils
 from django.http import Http404
@@ -17,6 +19,7 @@ from django.core.paginator import(
 )
 from django.db.models import F, Q
 from django.views.generic.edit import FormView
+from django.views.generic.base import TemplateView
 
 ###Stuff for searching
 from django.contrib.postgres.search import (
@@ -37,10 +40,23 @@ import pandas as pd
 import numpy as np
 from celery import current_app
 
+from .plot import *
 from .models import *
 from .models.object import Object
 from .forms import *
 from .utils import barchart_html, trendchart_html, value_table_html
+
+def reverse(*args, **kwargs):
+    get = kwargs.pop('get', {})
+    post = kwargs.pop('post', {})
+    url = django_reverse(*args, **kwargs)
+    if get:
+        url += '?' + urllib.parse.urlencode(get)
+    if post:
+        postcopy = post.copy()
+        postcopy.pop("csrfmiddlewaretoken")
+        url += '?' + urllib.parse.urlencode(postcopy)
+    return url
 
 def value_filter_view_factory(object_class):
 
@@ -354,6 +370,15 @@ class ProcessUpdate(BsTabsMixin, InlineCrudView):
     def get_success_url(self):
         return reverse('process_detail', kwargs={'process_id': self.object.pk})
 
+###############################################################################
+### PLOT REDIRECTS                                                          ###
+###############################################################################
+
+class TaxBarSelectView(FormView):
+    form_class = TaxBarSelectForm
+    template_name = 'core/taxbarselect.htm'
+    def post(self, request, *args, **kwargs):
+        return redirect(reverse('plot-tax-bar', post=request.POST))
 
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
@@ -625,6 +650,25 @@ def ajax_aggregates_meta_view(request):
 #    elif model_choice == '3': #Computational something or other
     return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
+
+class TaxBarPlotView(TemplateView):
+    template_name = "plot/taxbarplot.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tr = self.request.GET.get('taxonomy_result','')
+        cmr = self.request.GET.get('count_matrix','')
+        tl = self.request.GET.get('taxonomic_level','')
+        relative = self.request.GET.get('relative','')
+        opt_kwargs = {}
+        if tl != '':
+            opt_kwargs["level"] = tl
+        if relative != '':
+            opt_kwargs["relative"] = False if relative.lower() in ["false", "f", "no", "n", "0"] else True
+        plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
+        context["plot_html"] = plot_html
+        context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
+        context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()
+        return context
 
 ###############################################################################
 ### Trend Analysis Views                                                    ###

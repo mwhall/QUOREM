@@ -243,6 +243,20 @@ class Object(models.Model):
                                                                                            value_str["data"])
         return self._make_accordion("value", accordions)
 
+    def bootstrap_card(self):
+        descriptions = self.values.instance_of(apps.get_model("db.Description"))
+        html = "<div class=\"card bg-light mb-3 border-bottom\" style=\"max-width: 100%;\">"
+        html +=     "<div class=\"card-header\">%s</div>" % (self.base_name.capitalize(), )
+        html +=     "<div class=\"card-body\">"
+        html +=       "<h5 class=\"card-title\">%s</h5>" % (self.get_detail_link(),)
+        html += "<p class=\"card-text\">"
+        for descrip in descriptions:
+            html += descrip.data.get().get_value()
+        html +=       "</p>"
+        html +=     "</div>"
+        html +=   "</div>"
+        return html
+
     @combomethod
     def get_value_counts(receiver, queryset=None):
         if type(receiver) == models.base.ModelBase:
@@ -263,13 +277,15 @@ class Object(models.Model):
         return type_counts
 
     @combomethod
-    def dataframe(receiver, wide=False, **kwargs):
-        if not kwargs:
+    def dataframe(receiver, wide=False, additional_fields=None, **kwargs):
+        if receiver.plural_name not in kwargs:
             if type(receiver) == models.base.ModelBase:
                 kwargs[receiver.plural_name] = receiver.objects.all()
             else:
                 kwargs[receiver.plural_name] = receiver.qs()
         fieldnames = ["signature__name", "signature__value_type__model", "data"]
+        if additional_fields:
+            fieldnames += additional_fields
         objs_kwargs = [x.plural_name for x in Object.get_object_types() if x.plural_name in kwargs]
         fkwargs = {x+"__in":kwargs[x] for x in objs_kwargs}
         if 'value_names' in kwargs:

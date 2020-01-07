@@ -324,6 +324,22 @@ class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Di
                    'results': DisplayText(get_text_method=get_result_link)}
 
 
+##### Plot Option Select Form
+
+class TaxBarSelectForm(forms.Form):
+    taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                             label="Taxonomic Classification Set", 
+                                             widget=autocomplete.ModelSelect2(url='result-taxonomy-autocomplete', attrs={"style": "flex-grow: 1"}))
+    count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                          label="Count Matrix",
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete', attrs={"style": "flex-grow: 1"}))
+    samples = forms.ModelMultipleChoiceField(queryset=Sample.objects.all(),
+                                          required=False,
+                                          label="Samples",
+                                          widget=autocomplete.ModelSelect2Multiple(url='object-sample-autocomplete', attrs={"data-allow-clear": "true", "style": "flex-grow: 1"}))
+    taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", "data-placeholder": "genus"}))
+
+
 ##### Search form
 class SearchBarForm(forms.Form):
     search = forms.CharField(max_length=100)

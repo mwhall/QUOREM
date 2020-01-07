@@ -27,7 +27,8 @@ function togglefiltertext( )
     <div class="collapse" id="collapseExample">
 <br/>
     <div class="accordion" id="accordionFilter">
-      <div class="card card-body">
+      <div class="card border-bottom">
+	 <div class="card-body">
             {% for num, field in view.object_filter_fields() -%}
           <div class="card">
             <div class="card-header" id="heading{{ num }}">
@@ -45,6 +46,7 @@ function togglefiltertext( )
       </div>
     </div>
             {% endfor -%}
+</div>
 </div>
 </div>
 </div>

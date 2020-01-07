@@ -38,7 +38,18 @@
     {% include 'core/header.htm' -%}
     <div class="container marketing">
       <div class="row">
-        <div class="col-lg-6">
+         <div class="col-lg-6">
+          <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
+          alt="graph image" width="140" height="140">
+          <h2>Taxonomy Bar Plots</h2>
+          <p>Visualize abundance data together with taxonomic classifications.
+          </p>
+          <p>
+            <a class="btn btn-info mybutton" href="/plot/bar/taxonomy/select/" role="button">
+              Plot</a>
+          </p>
+	 </div>
+       <div class="col-lg-6">
           <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
           alt="graph image" width="140" height="140">
           <h2>Graph Vizualisations</h2>
