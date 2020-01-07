@@ -1,0 +1,34 @@
+{% extends 'base.htm' -%}
+{% block main -%}
+{% if main_navs is defined -%}
+    {% from 'bs_navs.htm' import bs_navs with context -%}
+    {{ bs_navs(navs=main_navs) }}
+{% endif -%}
+<div class="card">
+  <div class="card-header">
+    Create Taxonomy Abundance Bar Plot
+  </div>
+  <div class="card-body">
+<form display="table">
+{% csrf_token %}
+{% for field in form.visible_fields() -%}
+<div class="input-group mb-3">
+<div class="input-group-prepend">
+	<span class="input-group-text" id="{{ field.name }}">{{field.label}}</span>
+</div>
+{{ field }}
+{% if field.name == "samples" -%}
+<small id="samplesHelpBlock" class="form-text text-muted">
+  Select Samples individually, or leave blank to plot all Samples from the selected Matrix.
+</small>
+{% elif field.name == "taxonomic_level" -%}
+<small id="levelHelpBlock" class="form-text text-muted">
+  Select the taxonomic level to plot.
+</small>
+{% endif %}
+</div>
+{%  endfor -%}
+<button type="submit" formmethod="post" class="btn btn-primary">Submit</a>
+</form>
+</div>
+{% endblock main -%}
