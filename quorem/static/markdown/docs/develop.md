@@ -1,4 +1,5 @@
 Title: Developing for QUOREM
+
 This documentation is for those who want to:
 
  - Aid in the general development of QUOREM
@@ -13,9 +14,11 @@ The central QUOREM GitHub is at: https://github.com/mwhall/QUOREM
 
 More details on the architecture of QUOREM will be available here in the future.
 
-## Scraping New QIIME2 Types
+## Scraping New QIIME2 Artifact Formats
 
-QUOREM aims to cache as much of the useful information in each QIIME2 filetype as is practical. However, you may have custom QIIME2 plugins, or new plugins that haven't been adding to QUOREM by the main team yet. QUOREM will still archive it and scrape its metadata, but it will not have access to its primary data. In order to add new artifact types to QUOREM, the `db/artifacts.py` file has a `ArtifactDataScraper` class that must be subclassed out with a `qiime_format` attribute containing the name of the QIIME2 data type that this scraper handles. The `iter_data` and `iter_values` functions must be specified and must yield records in QUOREM's input format.
+QUOREM currently supports complete data input from the following artifacts formats: BIOMV210DirFmt, TSVTaxonomyDirectoryFormat, AlphaDiversityDirectoryFormat, DistanceMatrixDirectoryFormat, NewickDirectoryFormat, DADA2StatsDirFmt.
+
+QUOREM aims to cache as much of the useful information in each QIIME2 filetype as is practical. However, you may have custom QIIME2 plugins, or new plugins that haven't been added to QUOREM by the main team yet. QUOREM will still archive it and scrape its metadata, but it will not have access to its primary data. In order to add new artifact types to QUOREM, the `db/artifacts.py` file has a `ArtifactDataScraper` class that must be subclassed out with a `qiime_format` attribute containing the name of the QIIME2 data type that this scraper handles. The `init` function is used to load the file from the .qza file, and `iter_data` and `iter_values` functions must be specified and must yield records in QUOREM's input format.
 
 ## Adding Results from Other Tools
 
