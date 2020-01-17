@@ -404,11 +404,11 @@ class PhylogeneticTree(ArtifactDataScraper):
 
     def iter_values(self):
         yield {"result_name": self.uuid,
-               "value_name": "newick_tree",
-               "value_type": "value", #TODO: Make a Tree ValueType
+               "value_name": "newick",
+               "value_type": "tree",
                "value_data": self.newick,
-               "value_object": "result",
-               "data_type": "str"}
+               "data_type": "newicktree",
+               "value_object": "result"}
 
 class BetaDiversity(ArtifactDataScraper):
     qiime_format = 'DistanceMatrixDirectoryFormat'

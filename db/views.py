@@ -380,6 +380,13 @@ class TaxBarSelectView(FormView):
     def post(self, request, *args, **kwargs):
         return redirect(reverse('plot-tax-bar', post=request.POST))
 
+class TreeSelectView(FormView):
+    form_class = TreeSelectForm
+    template_name = 'core/treeselect.htm'
+    def post(self, request, *args, **kwargs):
+        return redirect(reverse('plot-tree', post=request.POST))
+
+
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
 ###############################################################################
@@ -650,6 +657,21 @@ def ajax_aggregates_meta_view(request):
 #    elif model_choice == '3': #Computational something or other
     return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
 
+class TreePlotView(TemplateView):
+    template_name = "plot/treeplot.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tr = self.request.GET.get('tree_result','')
+        feature_pks = self.request.GET.get('features','')
+        show_names = self.request.GET.get('show_names','')
+        show_names = False if show_names.lower() in ["", "false", "f", "no", "n", "0"] else True
+        if feature_pks:
+            feature_pks = [int(x) for x in feature_pks.split(",")]
+        else:
+            feature_pks = []
+        plot = tree_plot(tr, feature_pks, show_names)
+        context["plot_html"] = mark_safe(plot)
+        return context
 
 class TaxBarPlotView(TemplateView):
     template_name = "plot/taxbarplot.htm"
@@ -663,7 +685,7 @@ class TaxBarPlotView(TemplateView):
         if tl != '':
             opt_kwargs["level"] = tl
         if relative != '':
-            opt_kwargs["relative"] = False if relative.lower() in ["false", "f", "no", "n", "0"] else True
+            opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()

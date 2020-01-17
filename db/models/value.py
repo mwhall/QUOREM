@@ -482,3 +482,10 @@ class Partition(Value):
     plural_name = "partitions"
 
     str_description = "A Partition is a grouping where every Object in the set has exactly one label"
+
+class Tree(Value):
+    # A datatype that stores tree-like relationships, particularly for Features that are taxa
+    base_name = "tree"
+    plural_name = "trees"
+
+    str_description = "A Tree is an acyclic graph where nodes and edges model ancestry"

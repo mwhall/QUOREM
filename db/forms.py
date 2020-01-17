@@ -326,6 +326,11 @@ class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Di
 
 ##### Plot Option Select Form
 
+class TreeSelectForm(forms.Form):
+    tree_result = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                         label="Phylogenetic Tree",
+                                         widget=autocomplete.ModelSelect2(url='result-tree-autocomplete', attrs={"style": "flex-grow: 1"}))
+
 class TaxBarSelectForm(forms.Form):
     taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
                                              label="Taxonomic Classification Set", 

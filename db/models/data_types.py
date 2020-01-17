@@ -20,6 +20,7 @@ from .user import UserProfile
 from .object import Object
 from ..postgres import ArrayPosition, ArrayPositions, Unnest
 
+import ete3
 import arrow
 import pint
 import geopy
@@ -555,3 +556,9 @@ class SequenceDatum(Data):
     type_name = "sequence"
     value = models.TextField()
 
+class NewickTreeDatum(Data):
+    type_name = "newicktree"
+    native_type = ete3.Tree
+    cast_function = lambda x: ete3.Tree(x, format=1) #TODO: support other formats
+    db_cast_function = lambda x: x.write()
+    value = models.TextField()

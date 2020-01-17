@@ -73,6 +73,13 @@ for Obj in Object.get_object_types():
     generated_class = object_autocomplete_factory(Obj.base_name)
     globals()[generated_class.__name__] = generated_class
 
+class TreeResultAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = Result.objects.filter(values__signature__name="newick")
+        if self.q:
+            qs = qs.filter(name__icontains=self.q)
+        return qs.distinct()
+
 class TaxonomyResultAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Result.objects.filter(values__signature__name="taxonomic_classification")
