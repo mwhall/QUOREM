@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 import plotly.offline as plt
+import ete3
 from .models import *
 
 def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=True):
@@ -41,3 +42,22 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
                      height=750)
 
     return plt.plot(fig, output_type='div')
+
+def tree_plot(tree_pk, feature_pks=[], show_names=False):
+    tree_result = Result.objects.get(pk=tree_pk)
+    if not feature_pks:
+        feature_pks = list(tree_result.features.values_list("name", flat=True))
+    else:
+        feature_pks = list(Feature.objects.filter(pk__in=feature_pks).values_list("name", flat=True))
+    newick_str = tree_result.get_value("newick")
+    tree = ete3.Tree(newick_str)
+    ts = ete3.TreeStyle()
+    ts.show_leaf_name = show_names
+    ts.mode = "c"
+    ts.root_opening_factor = 0.075
+    ts.arc_start = -180 # 0 degrees = 3 o'clock
+    ts.arc_span = 360
+    tree = tree.get_common_ancestor(feature_pks)
+    svg = tree.render("%%return", tree_style=ts)[0].replace("b'","'").strip("'").replace("\\n","").replace("\\'","")
+    svg = svg.replace("<svg ", "<svg class=\"img-fluid\" ")
+    return svg

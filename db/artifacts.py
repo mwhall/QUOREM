@@ -5,7 +5,7 @@ import os
 import time
 import tempfile
 import h5py as h5
-
+import ete3
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
@@ -353,6 +353,125 @@ class ArtifactDataScraper:
         for sc in cls.__subclasses__():
             if sc.qiime_format == format:
                 return sc
+
+# Stub for Alex
+#class PCoAResults(ArtifactDataScraper):
+#    qiime_format = 'OrdinationDirectoryFormat'
+#
+
+class Dada2DenoiseStats(ArtifactDataScraper):
+    qiime_format = 'DADA2StatsDirFmt'
+
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/stats.tsv"
+        xf = ai.zfile.open(self.data_file)
+        self.tf = pd.read_csv(xf, sep="\t", comment="#", index_col=0)
+
+    def iter_objects(self, update=True):
+        for index, row in self.tf.iterrows():
+            yield {"sample_name": index,
+                   "result_name": self.uuid,
+                   "sample_result": self.uuid}
+
+    def iter_values(self):
+        for index, row in self.tf.iterrows():
+            for value_name, count in row.iteritems():
+                yield {"result_name": self.uuid,
+                        "value_name": value_name,
+                        "value_data": count,
+                        "value_type": "measure",
+                        "data_type": "int",
+                        "sample_name": index,
+                        "value_object": "result",
+                        "value_object.1": "sample"}
+
+class PhylogeneticTree(ArtifactDataScraper):
+    qiime_format = 'NewickDirectoryFormat'
+
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/tree.nwk"
+        xf = ai.zfile.open(self.data_file)
+        self.newick = xf.read().decode()
+        self.tree = ete3.Tree(self.newick, format=1)
+
+    def iter_objects(self, update=True):
+        for leaf in self.tree.iter_leaves():
+            yield {"feature_name": leaf.name,
+                   "result_name": self.uuid,
+                   "feature_result": self.uuid}
+
+    def iter_values(self):
+        yield {"result_name": self.uuid,
+               "value_name": "newick",
+               "value_type": "tree",
+               "value_data": self.newick,
+               "data_type": "newicktree",
+               "value_object": "result"}
+
+class BetaDiversity(ArtifactDataScraper):
+    qiime_format = 'DistanceMatrixDirectoryFormat'
+
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/distance-matrix.tsv"
+        xf = ai.zfile.open(self.data_file)
+        self.tf = pd.read_csv(xf, sep="\t", index_col=0)
+
+    def iter_objects(self, update=True):
+        for index, row in self.tf.iterrows():
+            yield {"sample_name": index,
+                   "result_name": self.uuid,
+                   "sample_result": self.uuid}
+
+    def iter_values(self):
+        for index, row in self.tf.iterrows():
+            for col, dist in row.iteritems():
+                if index != col: # Don't store identities
+                    yield {"result_name": self.uuid,
+                           "sample_name": index,
+                           "sample_name.1": col,
+                           "value_data": dist,
+                           "data_type": "float",
+                           "value_name": "beta_diversity",
+                           "value_type": "measure",
+                           "value_object": "sample",
+                           "value_object.1": "result"}
+
+class AlphaDiversity(ArtifactDataScraper):
+    qiime_format = 'AlphaDiversityDirectoryFormat'
+
+    def __init__(self, ai):
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/alpha-diversity.tsv"
+        xf = ai.zfile.open(self.data_file)
+        self.tf = pd.read_csv(xf, sep="\t", index_col=0)
+
+    def iter_values(self):
+        measure = self.tf.columns[0]
+        yield {"result_name": self.uuid,
+               "value_name": "metric",
+               "value_type": "parameter",
+               "value_data": measure,
+               "value_object": "result",
+               "data_type": "str"}
+        for index, row in self.tf.iterrows():
+            yield {"result_name": self.uuid,
+                   "value_name": "alpha_diversity",
+                   "value_type": "measure",
+                   "value_data": row[measure],
+                   "sample_name": index,
+                   "value_object": "result",
+                   "value_object.1": "sample",
+                   "data_type": "float"}
+
+    def iter_objects(self, update=True):
+        for index, row in self.tf.iterrows():
+            yield {"sample_name": index,
+                   "result_name": self.uuid,
+                   "sample_result": self.uuid}
+
 
 class Taxonomy(ArtifactDataScraper):
     qiime_format = 'TSVTaxonomyDirectoryFormat'

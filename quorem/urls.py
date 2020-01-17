@@ -112,6 +112,8 @@ urlpatterns += [
 
     path('plot/bar/taxonomy/select/', TaxBarSelectView.as_view(), name='plot-tax-bar-select'),
     path('plot/bar/taxonomy/', TaxBarPlotView.as_view(), name='plot-tax-bar'),
+    path('plot/tree/select/', TreeSelectView.as_view(), name='plot-tree-select'),
+    path('plot/tree/', TreePlotView.as_view(), name='plot-tree'),
     ## Autocomplete Routing
     re_path(r'^value-autocomplete/$',
             ValueAutocomplete.as_view(),
@@ -119,6 +121,9 @@ urlpatterns += [
     re_path(r'^object-autocomplete/$',
             ObjectAutocomplete.as_view(),
             name='object-autocomplete'),
+    re_path(r'^object-autocomplete/result/tree/$',
+            TreeResultAutocomplete.as_view(),
+            name='result-tree-autocomplete'),
     re_path(r'^object-autocomplete/result/taxonomy/$',
             TaxonomyResultAutocomplete.as_view(),
             name='result-taxonomy-autocomplete'),
