@@ -1,3 +1,4 @@
+import os
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
@@ -44,6 +45,7 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
     return plt.plot(fig, output_type='div')
 
 def tree_plot(tree_pk, feature_pks=[], show_names=False):
+    os.environ['QT_QPA_PLATFORM']='offscreen'
     tree_result = Result.objects.get(pk=tree_pk)
     if not feature_pks:
         feature_pks = list(tree_result.features.values_list("name", flat=True))
