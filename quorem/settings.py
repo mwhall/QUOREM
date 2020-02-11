@@ -182,6 +182,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+#Email Settings
+# Google SMTP allows ~3000 emails per month
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'quorem.team@gmail.com'
+EMAIL_HOST_PASSWORD = 'gvwusszwfjgthnzt'
+DEFAULT_FROM_EMAIL = 'QUOREM Team <quotem.team@gmail.com>'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
@@ -228,10 +237,10 @@ AUTH_USER_MODEL = 'accounts.User'
 # For the django-wiki installation
 SITE_ID = 1
 WIKI_ACCOUNT_HANDLING = False
-WIKI_MARKDOWN_KWARGS = {'extension_configs': 
-                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}}, 
-                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
-                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
-                                       'markdown.extensions.def_list', 'markdown.extensions.tables', 
-                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists', 
+WIKI_MARKDOWN_KWARGS = {'extension_configs':
+                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}},
+                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list',
+                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list',
+                                       'markdown.extensions.def_list', 'markdown.extensions.tables',
+                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists',
                                        'markdown.extensions.admonition']}
