@@ -6,7 +6,8 @@ import plotly.offline as plt
 import ete3
 from .models import *
 
-def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=True):
+
+def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=True, jupyter=False):
     linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
     if level in linnean_levels:
         level = linnean_levels[level]
@@ -26,25 +27,39 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
         sample_names = sample_names.filter(pk__in=samples)
     sample_pks = list(sample_pks.values_list("pk",flat=True))
     sample_names = list(sample_names.values_list("name",flat=True))
-    tax_df = tax_result.dataframe(value_names=["taxonomic_classification"], 
+    tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
                                   additional_fields=["features__pk"])
-    tax_df["value_data"] = tax_df["value_data"].str.split(";").apply(lambda x: x[-1] if len(x) <= level else x[level])
+    def format_taxonomy(x): 
+        if len(x) <= level:
+            tax_index = len(x)-1
+        else:
+            tax_index = level
+        while x[tax_index].endswith("__"):
+            tax_index -= 1
+        if tax_index > 0:
+            return "; ".join([x[tax_index-1], x[tax_index]])
+        else:
+            return x[tax_index]
+    tax_df["value_data"] = tax_df["value_data"].str.split("; ").apply(format_taxonomy)
     tax_merge = tax_df.groupby("value_data").apply(lambda x: x['features__pk'].unique())
     data = []
     for tax, merge in tax_merge.items():
-        data.append(go.Bar(name=tax, 
-                           x=sample_names, 
-                           y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]))
+        data.append(go.Bar(name=tax,
+                           x=sample_names,
+                           y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0],
+                           text=tax,
+                          hoverinfo='x+text+y'))
     fig = go.Figure(data=data)
     # Change the bar mode
     fig.update_layout(barmode='stack',
                      legend_orientation='h',
-                     legend=dict(x=0,y=-0.45),
+                     legend=dict(x=0,y=-0.6),
                      height=750)
+    if jupyter:
+        return plt.iplot(fig)
+    return plt.plot(fig, output_type="div")
 
-    return plt.plot(fig, output_type='div')
-
-def tree_plot(tree_pk, feature_pks=[], show_names=False):
+def tree_plot(tree_pk, feature_pks=[], show_names=False, return_ete=False):
     os.environ['QT_QPA_PLATFORM']='offscreen'
     tree_result = Result.objects.get(pk=tree_pk)
     if not feature_pks:
@@ -53,6 +68,8 @@ def tree_plot(tree_pk, feature_pks=[], show_names=False):
         feature_pks = list(Feature.objects.filter(pk__in=feature_pks).values_list("name", flat=True))
     newick_str = tree_result.get_value("newick")
     tree = ete3.Tree(newick_str)
+    if return_ete:
+        return tree
     ts = ete3.TreeStyle()
     ts.show_leaf_name = show_names
     ts.mode = "c"
