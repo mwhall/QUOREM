@@ -17,6 +17,7 @@
       </ul>
         <div class= "center"><button>{{ action }}</button></div>
         <p class = "small" >Not Registered? <a href="{% url 'accounts:signup' %}">Sign-Up</a></p>
+        <p class = "small">Forgot your password? <a href="{% url 'password_reset' %}">Click here to reset</a></p>
       </form>
     </div>
 {% endblock %}

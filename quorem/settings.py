@@ -18,7 +18,6 @@ from django.utils.version import get_version
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
@@ -28,7 +27,7 @@ SECRET_KEY = '4pmq)x=1c+b8*am8ok9xc!-tt-3=_1&rjp!i^o-bvebehf8m3y'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '192.168.1.137']
 
 # Django-jinja2-knockout'd packages
 DJK_APPS = ['quorem', 'db']
@@ -40,8 +39,10 @@ INSTALLED_APPS = [
     'landingpage',
     'dal',
     'dal_select2',
+    'dal_queryset_sequence',
     #postgres, needed for search functionality
     'django.contrib.postgres',
+    'database_size',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -149,9 +150,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'circle_test',
-        'USER': 'root',
-        'PASSWORD': '',
+        'NAME': 'qdb',
+        'USER': 'quser',
+        'PASSWORD': 'abc123def4',
         'HOST': '127.0.0.1',
     }
 }
@@ -181,6 +182,15 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+#Email Settings
+# Google SMTP allows ~3000 emails per month
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'quorem.team@gmail.com'
+EMAIL_HOST_PASSWORD = 'gvwusszwfjgthnzt'
+DEFAULT_FROM_EMAIL = 'QUOREM Team <quotem.team@gmail.com>'
 
 
 # Internationalization
@@ -228,10 +238,10 @@ AUTH_USER_MODEL = 'accounts.User'
 # For the django-wiki installation
 SITE_ID = 1
 WIKI_ACCOUNT_HANDLING = False
-WIKI_MARKDOWN_KWARGS = {'extension_configs': 
-                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}}, 
-                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
-                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list', 
-                                       'markdown.extensions.def_list', 'markdown.extensions.tables', 
-                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists', 
+WIKI_MARKDOWN_KWARGS = {'extension_configs':
+                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}},
+                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list',
+                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list',
+                                       'markdown.extensions.def_list', 'markdown.extensions.tables',
+                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists',
                                        'markdown.extensions.admonition']}

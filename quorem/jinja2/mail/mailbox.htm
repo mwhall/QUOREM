@@ -93,7 +93,7 @@
               <h5 class="card-title">{{ selected.title }}</h5>
               <p class="sent-date">{{ selected.date_created }}</p>
               <div class="card-body">
-                <p class="card-text">{{ selected.message }}</p>
+                <p class="card-text">{{ selected.message|safe }}</p>
               </div>
               {% else %}
               <h5 class="no-selection card-title text-center">

@@ -42,11 +42,12 @@ def react_to_file(upload_file_id, **kwargs):
         # S for Spreadsheet
         # A for Artifact
         status = ""
+        result = None
         if from_form == "A":
             mail.title="The QIIME2 artifact you uploaded "
             print("Processing qiime file...")
             try:
-                status = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"])
+                status, result = process_qiime_artifact(upfile, analysis_pk=kwargs["analysis_pk"])
             except Exception as e:
                 print(e)
 
@@ -71,6 +72,10 @@ def react_to_file(upload_file_id, **kwargs):
             mail.title += "was successfully added to QUOR'em."
             mail.message = "Your file upload completed successfully. You will now \
             be able to browse, visualize, and search for your data."
+            if result:
+                mail.message += "<br>"
+                mail.message += "You may view the result of your upload by clicking below: <br>"
+                mail.message += result.__str__()
             mail.save()
             report_success(upfile)
         else:
@@ -128,7 +133,7 @@ def process_qiime_artifact(upfile, analysis_pk):
     print("~~~~~~~~~TOTAL TIME TO RUN ~~~~~~~~~~~\n#\n")
     print(time.time() - start_time)
     print("#\n#\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    return "Success"
+    return "Success", res[0]
 
 @shared_task
 def report_success(upfile):
