@@ -88,9 +88,9 @@ class TaxonomyResultAutocomplete(autocomplete.Select2QuerySetView):
         return qs.distinct()
 
 class CountMatrixAutocomplete(autocomplete.Select2QuerySetView):
-    matrix_ct = ContentType.objects.get_for_model(Matrix)
     def get_queryset(self):
-        qs = Result.objects.filter(values__signature__value_type=self.matrix_ct)
+        matrix_ct = ContentType.objects.get_for_model(Matrix)
+        qs = Result.objects.filter(values__signature__value_type=matrix_ct)
         if self.q:
             qs = qs.filter(name__icontains=self.q)
         return qs.distinct()

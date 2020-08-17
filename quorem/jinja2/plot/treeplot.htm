@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {% include 'base_head.htm' -%}
+    {% block head -%}
+
+
+    {% endblock head -%}
+    {% block style %}
+    {% endblock %}
+  </head>
+  <body>
+    {% include 'core/header.htm' -%}
+    <div class="card">
+      {% block body %}
+            {% if plot_html %}
+	    <BR/>
+            {{ plot_html }}
+            {% endif %}
+      {% endblock body %}
+    </div>
+      {% include 'base_bottom_scripts.htm' -%}
+      {% block bottom_scripts -%}
+      {% endblock bottom_scripts -%}
+  </body>
+</html>

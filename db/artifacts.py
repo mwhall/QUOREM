@@ -398,7 +398,7 @@ class PhylogeneticTree(ArtifactDataScraper):
 
     def iter_objects(self, update=True):
         for leaf in self.tree.iter_leaves():
-            yield {"feature_name": leaf.name,
+            yield {"feature_name": leaf.name.strip("'"),
                    "result_name": self.uuid,
                    "feature_result": self.uuid}
 
