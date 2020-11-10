@@ -679,7 +679,7 @@ class TaxBarPlotView(TemplateView):
         context = super().get_context_data(**kwargs)
         tr = self.request.GET.get('taxonomy_result','')
         cmr = self.request.GET.get('count_matrix','')
-        tl = self.request.GET.get('taxonomic_level','')
+        tl = self.request.GET.get('taxonomic_level','').lower()
         relative = self.request.GET.get('relative','')
         opt_kwargs = {}
         if tl != '':
