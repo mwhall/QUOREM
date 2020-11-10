@@ -20,7 +20,7 @@ plotly = "==4.0.0"
 djk-ui = {editable = true,git = "https://github.com/Dmitri-Sintsov/djk-bootstrap4.git"}
 django-jinja-knockout = {editable = true,git = "https://github.com/Dmitri-Sintsov/django-jinja-knockout.git",ref = "v0.8.0"}
 django-wiki = {editable = true,git = "https://github.com/django-wiki/django-wiki.git"}
-Django = "==2.2.8"
+Django = "==2.2.13"
 django-autocomplete-light = "==3.3.0"
 combomethod = "==1.0.12"
 arrow = "==0.13.1"
