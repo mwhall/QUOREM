@@ -46,6 +46,12 @@ from .models.object import Object
 from .forms import *
 from .utils import barchart_html, trendchart_html, value_table_html
 
+#Stuff for dash
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import dash_bootstrap_components as dbc
+
 def reverse(*args, **kwargs):
     get = kwargs.pop('get', {})
     post = kwargs.pop('post', {})
@@ -1095,3 +1101,7 @@ def artifact_download_view(request):
         response = HttpResponse(artifact.file, content_type='zip/qza')
         response['Content-Disposition'] = 'attachment; filename="%s"' % (filename,)
         return response
+
+
+## DASH APPS
+# These need to be here or in urls.py apparently.

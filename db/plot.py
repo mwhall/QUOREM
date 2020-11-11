@@ -29,7 +29,7 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
     sample_names = list(sample_names.values_list("name",flat=True))
     tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
                                   additional_fields=["features__pk"])
-    def format_taxonomy(x): 
+    def format_taxonomy(x):
         if len(x) <= level:
             tax_index = len(x)-1
         else:
@@ -53,7 +53,7 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
     # Change the bar mode
     fig.update_layout(barmode='stack',
                      legend_orientation='h',
-                     legend=dict(x=0,y=-0.6),
+                     legend=dict(x=0,y=-1.7),
                      height=750)
     if jupyter:
         return plt.iplot(fig)

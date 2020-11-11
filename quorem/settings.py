@@ -56,6 +56,12 @@ INSTALLED_APPS = [
     'django_jinja.contrib._humanize',
     'djk_ui',
     'django_jinja_knockout',
+    ##django-plotly-dash###################
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig'
+    # Below line is needed for d-p-dash if we upgrade to django 3.0
+    #X_FRAME_OPTIONS = 'SAMEORIGIN'
+    ######################################
+
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
     ##########
@@ -93,7 +99,7 @@ MIDDLEWARE = [
 
 
 ROOT_URLCONF = 'quorem.urls'
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = False
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
 CELERY_ACCEPT_CONTENT = ['application/json']
@@ -150,9 +156,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'qdb',
-        'USER': 'quser',
-        'PASSWORD': 'abc123def4',
+        'NAME': 'quorem',
+        'USER': 'alex',
+        'PASSWORD': '15fdnigp',
         'HOST': '127.0.0.1',
     }
 }
