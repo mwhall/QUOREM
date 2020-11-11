@@ -57,9 +57,8 @@ INSTALLED_APPS = [
     'djk_ui',
     'django_jinja_knockout',
     ##django-plotly-dash###################
-    'django_plotly_dash.apps.DjangoPlotlyDashConfig'
-    # Below line is needed for d-p-dash if we upgrade to django 3.0
-    #X_FRAME_OPTIONS = 'SAMEORIGIN'
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+
     ######################################
 
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
@@ -79,6 +78,8 @@ INSTALLED_APPS = [
     'wiki.plugins.help.apps.HelpConfig',
     'polymorphic',
 ] + DJK_APPS
+# Below line is needed for d-p-dash if we upgrade to django 3.0
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 DJK_MIDDLEWARE = 'django_jinja_knockout.middleware.ContextMiddleware'
 
@@ -94,6 +95,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'quorem.middleware.UserAccessMiddleware',
+
+    'django_plotly_dash.middleware.BaseMiddleware',
+
     DJK_MIDDLEWARE,
     ]
 
