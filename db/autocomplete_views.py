@@ -1,7 +1,8 @@
 #Views for autocomplete
 from django.contrib.contenttypes.models import ContentType
+from django.utils.html import format_html, mark_safe
 
-from dal import autocomplete
+from dal import autocomplete, forward
 
 from db.models import *
 from db.models.object import Object
@@ -55,6 +56,7 @@ def object_autocomplete_factory(object_name):
 
     class ObjectAutocomplete(autocomplete.Select2QuerySetView):
         def get_queryset(self):
+            count_matrix = self.forwarded.get("count_matrix",None)
             qs = obj.objects.all()
             if self.q:
                 qs = qs.filter(name__icontains=self.q)
@@ -63,7 +65,11 @@ def object_autocomplete_factory(object_name):
                 pks = pk.split(",")
                 pks = [int(x) for x in pks]
                 qs = qs.filter(pk__in=pks)
+            if count_matrix:
+                qs = qs.filter(pk__in=Result.objects.get(pk=count_matrix).related_samples())
             return qs.distinct()
+        def get_result_label(self, item):
+            return mark_safe(format_html(item.name))
 
     ObjectAutocomplete.__name__ = obj.base_name.capitalize() + "Autocomplete"
     ObjectAutocomplete.__qualname__ = ObjectAutocomplete.__name__
@@ -84,17 +90,26 @@ class TaxonomyResultAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
         qs = Result.objects.filter(values__signature__name="taxonomic_classification")
         if self.q:
-            qs = qs.filter(name__icontains=self.q)
+            qs = qs.filter(name__icontains=self.q) | qs.filter(analysis__name__icontains=self.q)
         return qs.distinct()
+    def get_result_label(self, item):
+        return mark_safe(format_html('<b>Result {}</b>, UUID {}, <b>Analysis</b>: {}', item.pk, item.name, item.analysis.name))
+
 
 class CountMatrixAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
-        matrix_ct = ContentType.objects.get_for_model(Matrix)
-        qs = Result.objects.filter(values__signature__value_type=matrix_ct)
+        taxonomy_result = self.forwarded.get("taxonomy_result", None)
+        self.matrix_ct = ContentType.objects.get_for_model(Matrix)
+        qs = Result.objects.filter(values__signature__value_type=self.matrix_ct)
         if self.q:
             qs = qs.filter(name__icontains=self.q)
+        if taxonomy_result:
+            tr = Result.objects.get(pk=taxonomy_result)
+            qs = qs.filter(analysis=tr.analysis)
         return qs.distinct()
+    def get_result_label(self, item):
+        return mark_safe(format_html('<b>Result {}</b>, UUID {}, Produced by {}', item.pk, item.name, item.source_step.name))
 
 class TaxonomicLevelAutocomplete(autocomplete.Select2ListView):
     def get_list(self):
-        return ["kingdom","phylum","class","order","family","genus","species"]
+        return [x.capitalize() for x in ["kingdom","phylum","class","order","family","genus","species"]]

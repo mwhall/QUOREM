@@ -27,7 +27,7 @@ SECRET_KEY = '4pmq)x=1c+b8*am8ok9xc!-tt-3=_1&rjp!i^o-bvebehf8m3y'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '192.168.1.137']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'quoc.ca']
 
 # Django-jinja2-knockout'd packages
 DJK_APPS = ['quorem', 'db']
@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'dal_queryset_sequence',
     #postgres, needed for search functionality
     'django.contrib.postgres',
-    'database_size',
+#    'database_size',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
