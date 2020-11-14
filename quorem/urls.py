@@ -60,6 +60,7 @@ urlpatterns += [
     path('home/', HomePage.as_view(), name='homepage'),
     # Upload routing
     path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
+    path('upload/spreadsheet-simple', simple_sample_metadata_upload.as_view(), name='upload_simple_spreadsheet'),
     path('upload/artifact', artifact_upload.as_view(), name='upload_artifact'),
     #Upload list.
     re_path(r'upload/all/$', UploadList.as_view(), name='upload_all',

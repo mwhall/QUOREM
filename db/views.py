@@ -914,6 +914,29 @@ class spreadsheet_upload(CreateView):
     def get_success_url(self):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
+class simple_sample_metadata_upload(CreateView):
+    form_class = SpreadsheetUploadForm
+    template_name = 'core/uploadcard-simple.htm'
+
+    def get_form_kwargs(self, *args, **kwargs):
+        kwargs = super(simple_sample_metadata_upload, self).get_form_kwargs(*args, **kwargs)
+        kwargs['userprofile'] = UserProfile.objects.get(user=self.request.user)
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        user = self.request.user
+        userprofile = UserProfile.objects.get(user=user)
+        self.object.userprofile = userprofile
+        self.object.upload_type = "M"
+        self.object.save()
+        current_app.send_task('db.tasks.react_to_file', args=(self.object.pk,))
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
+                                                                    'new':"new"})
+
 
 class artifact_upload(CreateView):
     form_class = ArtifactUploadForm

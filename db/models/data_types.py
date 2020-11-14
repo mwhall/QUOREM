@@ -1,6 +1,7 @@
 import warnings
 
 from django.db import models
+
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
@@ -90,7 +91,7 @@ class VersionField(models.BigIntegerField):
                        "(in this form: X.Y.Z).",
         }
     default_validators = [validate_version]
-    
+
     def to_python(self, value):
         if value is None:
             return None
@@ -141,8 +142,8 @@ class DataSignature(models.Model):
         for Obj in Object.get_object_types():
             if Obj.plural_name not in object_counts:
                 object_counts[Obj.plural_name] = 0
-        signature = DataSignature(name=name, 
-                                  value_type=ContentType.objects.get_for_model(value_type), 
+        signature = DataSignature(name=name,
+                                  value_type=ContentType.objects.get_for_model(value_type),
                                   object_counts=object_counts)
         signature.save()
         return signature
@@ -173,6 +174,7 @@ class DataSignature(models.Model):
         if type(value_type) == ContentType:
             ctype = value_type
         elif type(value_type) == str:
+            ##This throws an error, and can't fix it due to circular import. TODO resolve
             ctype = ContentType.objects.get_for_model(Value.get_value_types(type_name=value_type))
         else:
             ctype = ContentType.objects.get_for_model(value_type)
@@ -264,7 +266,7 @@ class Data(PolymorphicModel):
         castable = []
         for mdl in cast_order:
             try:
-                #NOTE: Not mdl.cast() because this 
+                #NOTE: Not mdl.cast() because this
                 mdl.cast_function(value)
                 castable.append(mdl)
             except:
@@ -343,7 +345,7 @@ def datum_factory(obj):
     object_class_name = obj.base_name.capitalize() + "Datum"
     class Meta:
         app_label = "db"
-    cls = type(object_class_name, (Data,), 
+    cls = type(object_class_name, (Data,),
               {'type_name': obj.base_name,
                'value': models.ForeignKey(obj.base_name.capitalize(), on_delete=models.CASCADE),
                '__module__': 'db.models.data_types',
@@ -361,7 +363,7 @@ for Obj in Object.get_object_types():
 # Using definitions from Pint to power these
 # and allow arbitrary units and standardized representation
 
-# TODO: cast function wrappers for unitregistry that attempt to keep 
+# TODO: cast function wrappers for unitregistry that attempt to keep
 #       users in a lane convertible from the default unit
 #       and some way to change the units stored on disk with a warning
 #       that conversions are destructive
@@ -374,7 +376,7 @@ class PintDatum(Data):
 
     def __str__(self):
         return str(self.value * self.default_unit)
-    
+
     @classmethod
     def db_cast_function(cls, x):
         return x.to(cls.default_unit).magnitude
@@ -461,7 +463,7 @@ class CoordDatum(Data):
     cast_function = geopy.point.Point
     db_cast_function = lambda x: [x.latitude, x.longitude, x.altitude]
     value = ArrayField(base_field=models.FloatField(), size=3)
-    
+
 def polygon_parser(poly_str):
     point_strings = poly_str.split(";")
     points = []
@@ -521,7 +523,7 @@ class MatrixDatum(Data):
     # A container for Sparse Matrices
     type_name = "coomatrix"
     native_type = coo_matrix
-    db_cast_function = lambda x: {'value': x.data.tolist(), 'row': x.row.tolist(), 'col': x.col.tolist(), 
+    db_cast_function = lambda x: {'value': x.data.tolist(), 'row': x.row.tolist(), 'col': x.col.tolist(),
                                   'rowobj': ContentType.objects.get_by_natural_key('db', x.rowobj),
                                   'colobj': ContentType.objects.get_by_natural_key('db', x.colobj)}
     value = ArrayField(base_field=models.FloatField())

@@ -10,6 +10,7 @@ from django.db import models, transaction
 from django.apps import apps
 
 from .formatters import guess_filetype, parse_csv_or_tsv, TableParser
+from .formatters import simple_sample_metadata_parser
 from .models import *
 from .artifacts import ingest_artifact
 
@@ -36,13 +37,20 @@ def react_to_file(upload_file_id, **kwargs):
             print(e)
     try:
         #user will recieve mail to let them know the atstus of their upload.
+        print("YAHALLOOOOO")
         mail = UserMail(user=upfile.userprofile)
 
         from_form = upfile.upload_type
+        print("YOOOOO  ", from_form)
         # S for Spreadsheet
         # A for Artifact
         status = ""
         result = None
+
+        simple_sample = False #custom message for sample metadata.
+        returned_samples = None
+
+
         if from_form == "A":
             mail.title="The QIIME2 artifact you uploaded "
             print("Processing qiime file...")
@@ -56,6 +64,20 @@ def react_to_file(upload_file_id, **kwargs):
             print("Processing table ...")
             status = process_table(upfile)
             print(status)
+
+        #Simple Sample
+        elif from_form == "M":
+                mail.title = "The metadata spreadsheet you uploaded "
+                print("Processing table. . . ")
+                status, samples_found, samples_not_found = process_simple_metadata(upfile)
+                if samples_found and samples_not_found:
+                    returned_samples = (samples_found, samples_not_found)
+                    simple_sample=True
+                else:
+                    simple_sample = False
+
+                print(status)
+
         else:
             mail.title="A rare error occurred with your upload."
             mail.message="The system was unable to recognize your upload file.\
@@ -76,6 +98,24 @@ def react_to_file(upload_file_id, **kwargs):
                 mail.message += "<br>"
                 mail.message += "You may view the result of your upload by clicking below: <br>"
                 mail.message += result.__str__()
+            if simple_sample:
+                if returned_samples:
+                    mail.message += "<br>"
+                    mail.message += "The following samples were successfully updated: "
+                    mail.message += "<ul>"
+                    for sample in returned_samples[0]:
+                        mail.message += "<li>" + sample + "</li>"
+                    mail.message += "</ul>"
+                    mail.message += "The following samples were not found, please revise your metadata sheet: "
+                    mail.message += "<ul>"
+                    for sample in returned_samples[1]:
+                        mail.message += "<li>" + sample + "</li>"
+                    mail.message += "</ul>"
+                else:
+                    mail.message += "<br>"
+                    mail.message += "There was an error parsing the metadata sheet.<br>"
+                    mail.message += "Please ensure that the first column is one of ['sample_id', 'sample_name', 'sampleID', 'sample']"
+
             mail.save()
             report_success(upfile)
         else:
@@ -134,6 +174,16 @@ def process_qiime_artifact(upfile, analysis_pk):
     print(time.time() - start_time)
     print("#\n#\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     return "Success", res[0]
+
+@shared_task
+def process_simple_metadata(upfile):
+    infile = upfile.upload_file._get_file().open()
+    print("Getting logger")
+    lgr = upfile.logfile.get_logger()
+    print("Parsing...")
+    samples_found, samples_not_found = simple_sample_metadata_parser(infile)
+    print("Done.")
+    return "Success", samples_found, samples_not_found
 
 @shared_task
 def report_success(upfile):
