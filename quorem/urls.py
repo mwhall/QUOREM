@@ -164,7 +164,7 @@ urlpatterns += [
     #redirect no-auth users to here
     path('no-auth/', no_auth_view, name='noauth'),
     #django plotly dash, required. Name is arbitrary
-    path('django_plotly_dash/', include('django_plotly_dash.urls')),
+    #path('django_plotly_dash/', include('django_plotly_dash.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 for ObjA in Object.get_object_types():
