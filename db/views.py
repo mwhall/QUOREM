@@ -392,6 +392,12 @@ class TreeSelectView(FormView):
     def post(self, request, *args, **kwargs):
         return redirect(reverse('plot-tree', post=request.POST))
 
+#For feature correlation, re-use taxbar form.
+class TaxCorrelationSelectView(FormView):
+    form_class = TaxBarSelectForm
+    template_name = 'analyze/correlation.htm'
+    def post(self, request, *args, **kwargs):
+        return redirect(reverse('plot-tax-correlation', post=request.POST))
 
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
@@ -693,6 +699,26 @@ class TaxBarPlotView(TemplateView):
         if relative != '':
             opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
+        context["plot_html"] = plot_html
+        context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
+        context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()
+        return context
+
+#plots correlation bewtween sample values and tax features.
+class TaxCorrelationPlotView(TemplateView):
+    template_name = "plot/taxcorrelationplot.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tr = self.request.GET.get('taxonomy_result','')
+        cmr = self.request.GET.get('count_matrix','')
+        tl = self.request.GET.get('taxonomic_level','').lower()
+        relative = self.request.GET.get('relative','')
+        opt_kwargs = {}
+        if tl != '':
+            opt_kwargs["level"] = tl
+        if relative != '':
+            opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
+        plot_html = tax_correlation_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
         context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()

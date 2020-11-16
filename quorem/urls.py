@@ -122,6 +122,9 @@ urlpatterns += [
     path('plot/bar/taxonomy/', TaxBarPlotView.as_view(), name='plot-tax-bar'),
     path('plot/tree/select/', TreeSelectView.as_view(), name='plot-tree-select'),
     path('plot/tree/', TreePlotView.as_view(), name='plot-tree'),
+
+    path('plot/correlation/select/', TaxCorrelationSelectView.as_view(), name='plot-tax-correlation-select'),
+    path('plot/correlation/', TaxCorrelationPlotView.as_view(), name='plot-tax-correlation'),
     ## Autocomplete Routing
     re_path(r'^value-autocomplete/$',
             ValueAutocomplete.as_view(),

@@ -359,15 +359,6 @@ class TaxBarSelectForm(forms.Form):
     taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", "data-placeholder": "Genus", 'data-html': True}))
 
 
-### Sample-wise feature correlation map form
-class CorrelationMapForm(forms.Form):
-    #Indicate taxonomy boolean: "Select only samples with Taxonomy results"
-    #Choose samples from one or more analyses
-    #Autcomplete: Values (or, later, FeatureValues, source step params) that are common to the samples chosen.
-    # Will Calculate Pearson Correlation Coefficent.
-
-    pass
-
 
 ##### Search form
 class SearchBarForm(forms.Form):
