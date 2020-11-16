@@ -18,6 +18,7 @@ import numpy as np
 
 
 #TODO Remove deprecated code.
+#TODO add NaN cleaning to simple parser
 def simple_sample_metadata_parser(table_file):
     dataframe = parse_csv_or_tsv(table_file)
     try:

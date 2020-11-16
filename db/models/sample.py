@@ -33,12 +33,15 @@ class Sample(Object):
 
     @classmethod
     def update_search_vector(cls):
-        cls.objects.update(
-            search_vector = (SearchVector('name', weight= 'A') #+
-                             # Should be investigation name, not pk.
-                             # SearchVector('investigation', weight = 'B')
-                             )
+        sv = (SearchVector('name', weight='A') +
+                        SearchVector('values__signature__name', weight='B') +
+                        SearchVector('values__signature__data', weight='C')
+
         )
+        cls.objects.update(
+            search_vector= sv
+        )
+
 #        refresh_automated_report("sample", pk=self.pk)
 
     def related_investigations(self):

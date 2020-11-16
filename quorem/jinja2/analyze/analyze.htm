@@ -31,6 +31,13 @@
         padding-left: 2rem;
         padding-right: 2rem;
       }
+      footer{
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 0.5rem;
+        color: #6c757d;
+      }
     </style>
   </head>
   <body>
@@ -39,7 +46,7 @@
     <div class="container marketing">
       <div class="row">
          <div class="col-lg-3">
-          <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
+          <img src="{{ static ('img/column.png') }}"
           alt="graph image" width="140" height="140">
           <h2>Taxonomy Bar Plots</h2>
           <p>Visualize abundance data together with taxonomic classifications.
@@ -62,7 +69,7 @@
 	 </div>
 
        <div class="col-lg-3">
-          <img class="rounded-circle" src="{{ static ('img/graphicon.png') }}"
+          <img src="{{ static ('img/statistics.png') }}"
           alt="graph image" width="140" height="140">
           <h2>Graph Vizualisations</h2>
           <p>Visualize data from the QUOREM database to discover trends and patterns.
@@ -75,11 +82,11 @@
       <div class="col-lg-3">
         <img class="rounded-circle" src="{{ static ('img/report.png') }}"
         alt="graph image" width="140" height="140">
-        <h2>Data Tables</h2>
-        <p>QUOREM unifies your data. Leverage this to create and view data tables.
+        <h2 class="text-secondary">Data Tables</h2>
+        <p class="text-secondary">QUOREM unifies your data. Leverage this to create and view data tables.<br>(Data tables are currently disabled. Please check back as our team continues to add features to QUORem.)
         </p>
         <p>
-          <a class="btn btn-info mybutton" href="{{ url('value_table') }}" role="button">
+          <a class="btn btn-info mybutton disabled" onclick="valueTableAlert()" href="{{ url('value_table') }}" role="button">
             View</a>
         </p>
     </div>
@@ -101,6 +108,14 @@
     </div>
     {% include 'base_bottom_scripts.htm' -%}
     {% block bottom_scripts -%}
+    <script>
+      function valueTableAlert(){
+        window.alert("Value Tables are a work in progress.<br>Please check back as our team continues to add features to QUORem.");
+      }
+    </script>
     {% endblock bottom_scripts -%}
   </body>
+  <footer>
+    Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
+  </footer>
 </html>

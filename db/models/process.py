@@ -65,7 +65,7 @@ class Process(Object):
             steps = forms.ModelMultipleChoiceField(queryset=apps.get_model("db.Step").objects.all(),
                                                    label="Add/Remove Steps Individually",
                                                    required=False)
-            analyses = CustomMMChoiceField(queryset=apps.get_model("db.Analysis").objects.all(), 
+            analyses = CustomMMChoiceField(queryset=apps.get_model("db.Analysis").objects.all(),
                                            label="Add Steps from Analyses",
                                            required=False)
             def __init__(self, *args, **kwargs):
@@ -79,7 +79,7 @@ class Process(Object):
                     instance.steps.add(*analysis.results.values_list("source_step", flat=True))
                 if commit:
                     instance.save()
-                return instance 
+                return instance
 
             class Meta:
                 model = cls
@@ -117,9 +117,15 @@ class Process(Object):
 
     @classmethod
     def update_search_vector(cls):
+        sv = (SearchVector('name', weight='A') +
+                        SearchVector('values__signature__name', weight='B') +
+                        SearchVector('values__signature__data', weight='C')
+
+        )
         cls.objects.update(
-            search_vector = (SearchVector('name', weight='A')
-        ))
+            search_vector= sv
+        )
+
 
     def related_steps(self, upstream=False):
         steps = self.steps.all()

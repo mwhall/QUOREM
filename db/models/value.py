@@ -157,7 +157,7 @@ class Value(PolymorphicModel):
     @classmethod
     def update_search_vector(cls):
         cls.objects.update(
-            search_vector= (SearchVector('name', weight='A')))
+            search_vector= (SearchVector('signature__name', weight='A')))
 
     @classmethod
     def _clean_value_type(cls, **kwargs):
