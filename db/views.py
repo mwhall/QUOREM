@@ -915,7 +915,7 @@ class spreadsheet_upload(CreateView):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 class simple_sample_metadata_upload(CreateView):
-    form_class = SpreadsheetUploadForm
+    form_class = SimpleMetadataUploadForm
     template_name = 'core/uploadcard-simple.htm'
 
     def get_form_kwargs(self, *args, **kwargs):
@@ -930,7 +930,8 @@ class simple_sample_metadata_upload(CreateView):
         self.object.userprofile = userprofile
         self.object.upload_type = "M"
         self.object.save()
-        current_app.send_task('db.tasks.react_to_file', args=(self.object.pk,))
+        current_app.send_task('db.tasks.react_to_file', args=(self.object.pk,),
+        kwargs={'overwrite':form.cleaned_data['overwrite']})
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):

@@ -19,7 +19,7 @@ import numpy as np
 
 #TODO Remove deprecated code.
 #TODO add NaN cleaning to simple parser
-def simple_sample_metadata_parser(table_file):
+def simple_sample_metadata_parser(table_file, overwrite):
     dataframe = parse_csv_or_tsv(table_file)
     try:
         assert dataframe.columns[0] in ['sample_name', 'sampleID', 'sample_id', 'sample']
@@ -45,9 +45,10 @@ def simple_sample_metadata_parser(table_file):
 
     #iter formatted data. ONLY UPDATE SAMPLES, dont create any!
     for pair in formatted_data:
-        sample, created = Sample.objects.get_or_create(name=pair[0])
+        try:
+            sample = Sample.objects.get(name=pair[0])
         #pass if sample doesnt exist.
-        if created:
+        except:
             not_found.append(pair[0])
             continue
 
@@ -55,8 +56,8 @@ def simple_sample_metadata_parser(table_file):
         for k, v in pair[1].items():
             val = Value.get_or_create(k,v)[0]
             #val.save()
-            sample_data_names = [v.signature.get().name for v in sample.values.all()]
-            if val.signature.get().name not in sample_data_names:
+            sample_data_names = [v.signature.get().name for v in sample.values.all()]                
+            if overwrite or val.signature.get().name not in sample_data_names:
                 sample.values.add(val)
         sample.save()
     #return success and failure for user mail

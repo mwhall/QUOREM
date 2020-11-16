@@ -117,6 +117,15 @@ class SpreadsheetUploadForm(ModelForm):
         self.userprofile = kwargs.pop('userprofile')
         super(SpreadsheetUploadForm, self).__init__(*args, **kwargs)
 
+class SimpleMetadataUploadForm(ModelForm):
+    overwrite = forms.BooleanField(required=False)
+    class Meta:
+        model=UploadFile
+        fields = ('upload_file', 'overwrite',)
+    def __init__(self, *args, **kwargs):
+        self.userprofile = kwargs.pop('userprofile')
+        super(SimpleMetadataUploadForm, self).__init__(*args, **kwargs)
+
 ##########################
 
 
@@ -333,21 +342,31 @@ class TreeSelectForm(forms.Form):
 
 class TaxBarSelectForm(forms.Form):
     taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
-                                             label="Taxonomic Classification Set", 
-                                             widget=autocomplete.ModelSelect2(url='result-taxonomy-autocomplete', 
+                                             label="Taxonomic Classification Set",
+                                             widget=autocomplete.ModelSelect2(url='result-taxonomy-autocomplete',
                                                                               attrs={"style": "flex-grow: 1;", 'data-html': True}))
     count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
                                           label="Count Matrix",
-                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete', 
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
                                           forward=("taxonomy_result",),
                                           attrs={"style": "flex-grow: 1", 'data-html': True}))
     samples = forms.ModelMultipleChoiceField(queryset=Sample.objects.all(),
                                           required=False,
                                           label="Samples",
-                                          widget=autocomplete.ModelSelect2Multiple(url='object-sample-autocomplete', 
+                                          widget=autocomplete.ModelSelect2Multiple(url='object-sample-autocomplete',
                                                                                    forward=('count_matrix',),
                                                                                    attrs={"data-allow-clear": "true", "style": "flex-grow: 1", 'data-html': True}))
     taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", "data-placeholder": "Genus", 'data-html': True}))
+
+
+### Sample-wise feature correlation map form
+class CorrelationMapForm(forms.Form):
+    #Indicate taxonomy boolean: "Select only samples with Taxonomy results"
+    #Choose samples from one or more analyses
+    #Autcomplete: Values (or, later, FeatureValues, source step params) that are common to the samples chosen.
+    # Will Calculate Pearson Correlation Coefficent.
+
+    pass
 
 
 ##### Search form

@@ -37,11 +37,9 @@ def react_to_file(upload_file_id, **kwargs):
             print(e)
     try:
         #user will recieve mail to let them know the atstus of their upload.
-        print("YAHALLOOOOO")
         mail = UserMail(user=upfile.userprofile)
 
         from_form = upfile.upload_type
-        print("YOOOOO  ", from_form)
         # S for Spreadsheet
         # A for Artifact
         status = ""
@@ -69,7 +67,7 @@ def react_to_file(upload_file_id, **kwargs):
         elif from_form == "M":
                 mail.title = "The metadata spreadsheet you uploaded "
                 print("Processing table. . . ")
-                status, samples_found, samples_not_found = process_simple_metadata(upfile)
+                status, samples_found, samples_not_found = process_simple_metadata(upfile, overwrite=kwargs['overwrite'])
                 if samples_found and samples_not_found:
                     returned_samples = (samples_found, samples_not_found)
                     simple_sample=True
@@ -176,12 +174,12 @@ def process_qiime_artifact(upfile, analysis_pk):
     return "Success", res[0]
 
 @shared_task
-def process_simple_metadata(upfile):
+def process_simple_metadata(upfile, overwrite):
     infile = upfile.upload_file._get_file().open()
     print("Getting logger")
     lgr = upfile.logfile.get_logger()
     print("Parsing...")
-    samples_found, samples_not_found = simple_sample_metadata_parser(infile)
+    samples_found, samples_not_found = simple_sample_metadata_parser(infile, overwrite)
     print("Done.")
     return "Success", samples_found, samples_not_found
 

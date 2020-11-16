@@ -72,7 +72,9 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
     fig = px.bar(sample_df, x=x_column, y=y_columns)
     fig.update_layout(legend_orientation='h',
                         legend=dict(x=0,y=-1.7),
-                        height=750)
+                        xaxis_title=None,
+                        yaxis_title=None,
+                        height=1140)
     if jupyter:
         return plt.iplot(fig)
     return plt.plot(fig, output_type="div")
