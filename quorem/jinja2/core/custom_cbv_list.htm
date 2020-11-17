@@ -8,3 +8,7 @@
 {% from 'core/custom_bs_list.htm' import bs_list with context -%}
 {{ bs_list(view, object_list, is_paginated, page_obj) }}
 {% endblock main -%}
+{% block bottomscripts -%}
+<script type="text/javascript" src="{{ static('js/quorem_tours.js') }}"></script>
+{% endblock bottomscripts -%}
+

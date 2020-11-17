@@ -288,6 +288,8 @@ class AnalysisCreate(BsTabsMixin, InlineCreateView):
         return {'submit_text': 'Save Analysis'}
     def get_heading(self):
         return "Create New Analysis"
+    def get_success_url(self):
+        return reverse('analysis_detail', kwargs={'analysis_id': self.object.pk})
 
 class StepCreate(BsTabsMixin, InlineCreateView):
     format_view_title = True

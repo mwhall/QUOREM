@@ -51,24 +51,28 @@
   {% endblock body -%}
   {% include 'base_bottom_scripts.htm' -%}
   {% if form -%}
-  <script type="text/javascript" src="{{ static('autocomplete_light/vendor/select2/vendor/jquery-2.1.0.js') }}"></script>
   {{ form.media }}
   {% endif -%}
   <link rel="stylesheet" href="{{ static('css/all.min.css') }}">
+ <link rel="stylesheet" href="{{ static('css/bootstrap-tourist.css') }}">
+ <script type="text/javascript" src="{{ static('js/bootstrap-tourist.js') }}"></script>
+ <script type="text/javascript" src="{{ static('js/quorem_tours.js') }}"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
   <script type="text/javascript">
     $(function() {
       $('[data-toggle="tooltip"]').tooltip()
     })
   </script>
+
   {% block bottom_scripts -%}
+
   {% endblock bottom_scripts -%}
   {% if new_upload %}
-    <script type="text/javascript">
+<!--    <script type="text/javascript">
       $(document).ready(function(){
         $("#uploadModal").modal('show');
       });
-    </script>
+    </script> <--
   {% endif %}
 </body>
 </html>

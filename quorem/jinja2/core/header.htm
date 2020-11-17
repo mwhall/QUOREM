@@ -20,7 +20,7 @@
          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
          role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
          {{ caption|e }}</a>
-         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+         <div class="dropdown-menu" aria-labelledby="viewDropdown">
            <a class="dropdown-item" href="/investigation/all">Investigations</a>
            <a class="dropdown-item" href="/analysis/all">Analyses</a>
            <a class="dropdown-item" href="/process/all">Processes</a>
@@ -32,15 +32,15 @@
       </li>
       {% elif id == 'create' %}
       <li id="{{ id|e }}", class="nav-item dropdown {% if id == active_page %} active {% endif %}">
-         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown"
+         <a class="nav-link dropdown-toggle" href="#" id="createDropdown"
          role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
          {{ caption|e }}</a>
-         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+         <div id="createDropped" class="dropdown-menu" aria-labelledby="navbarDropdown">
            <a class="dropdown-item" href="/upload/artifact">Archive Artifact</a>
            <a class="dropdown-item" href="/upload/spreadsheet-simple">Sample Metadata</a>
            <div class="dropdown-divider"></div>
            <a class="dropdown-item" href="/investigation/create">Investigation</a>
-           <a class="dropdown-item" href="/analysis/create">Analysis</a>
+           <a id="createAnalysis" class="dropdown-item" href="/analysis/create">Analysis</a>
            <a class="dropdown-item" href="/process/create">Process</a>
            <a class="dropdown-item" href="/step/create">Step</a>
            <a class="dropdown-item" href="/sample/create">Sample</a>

@@ -111,6 +111,9 @@
     </div>
     {% include 'base_bottom_scripts.htm' -%}
     {% block bottom_scripts -%}
+    <link rel="stylesheet" href="{{ static('css/bootstrap-tourist.css') }}">
+ <script type="text/javascript" src="{{ static('js/bootstrap-tourist.js') }}"></script>
+ <script type="text/javascript" src="{{ static('js/quorem_tours.js') }}"></script> 
     {% endblock bottom_scripts -%}
   </body>
 </html>

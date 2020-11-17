@@ -4,18 +4,19 @@
     {% from 'bs_navs.htm' import bs_navs with context -%}
     {{ bs_navs(navs=main_navs) }}
 {% endif -%}
-<div row class="welcome">
+<div id="welcome" row class="welcome">
 	<br/>
   <h3> Welcome to <span class="quorem">QUOREM.</span></h3>
 </div>
 <br>
-<div class="alert alert-primary" role="alert">
+<div id="prereleasealert" class="alert alert-primary" role="alert">
 <h5 class="alert-heading">QUOREM is in Prerelease</h5>
 Expect things to change or break. You may be required to wipe your data and re-ingest your files to upgrade to a future version. Be sure to keep local copies of your data for the time being.
 </div>
 <div class="alert alert-secondary" role="alert">
 	Help us out! File your <a href="https://github.com/mwhall/QUOREM/issues/">issues, bugs, and feature requests on our GitHub</a>!
 </div>
+<center><button id="intro_tour_button" type="button" class="btn btn-primary btn-lg" onclick="intro_tour.restart();">Start a Guided Tour of the Upload Process</button></center>
 <!-- Carousel -->
 <div id="object-carousel" class="carousel slide pt-4" data-ride="carousel">
     <!-- content -->
@@ -38,4 +39,8 @@ Expect things to change or break. You may be required to wipe your data and re-i
     <a class="carousel-control-next" href="#object-carousel" data-slide="next">
       &rsaquo;</a>
   </div>
+
 {% endblock main -%}
+
+{% block bottom_scripts -%}
+{% endblock bottom_scripts -%}
