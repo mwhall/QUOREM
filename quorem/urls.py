@@ -60,6 +60,7 @@ urlpatterns += [
     path('home/', HomePage.as_view(), name='homepage'),
     # Upload routing
     path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
+    path('upload/spreadsheet-simple', simple_sample_metadata_upload.as_view(), name='upload_simple_spreadsheet'),
     path('upload/artifact', artifact_upload.as_view(), name='upload_artifact'),
     #Upload list.
     re_path(r'upload/all/$', UploadList.as_view(), name='upload_all',
@@ -121,6 +122,9 @@ urlpatterns += [
     path('plot/bar/taxonomy/', TaxBarPlotView.as_view(), name='plot-tax-bar'),
     path('plot/tree/select/', TreeSelectView.as_view(), name='plot-tree-select'),
     path('plot/tree/', TreePlotView.as_view(), name='plot-tree'),
+
+    path('plot/correlation/select/', TaxCorrelationSelectView.as_view(), name='plot-tax-correlation-select'),
+    path('plot/correlation/', TaxCorrelationPlotView.as_view(), name='plot-tax-correlation'),
     ## Autocomplete Routing
     re_path(r'^value-autocomplete/$',
             ValueAutocomplete.as_view(),
@@ -159,6 +163,8 @@ urlpatterns += [
     path('data-spreadsheet/', spreadsheet_download_view, name='spreadsheet_download'),
     #redirect no-auth users to here
     path('no-auth/', no_auth_view, name='noauth'),
+    #django plotly dash, required. Name is arbitrary
+    #path('django_plotly_dash/', include('django_plotly_dash.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 for ObjA in Object.get_object_types():

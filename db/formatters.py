@@ -7,6 +7,7 @@
 from collections import defaultdict
 
 from .models.object import Object
+from .models import *
 
 import io
 import zipfile
@@ -15,13 +16,61 @@ import uuid
 import pandas as pd
 import numpy as np
 
-class TableParser(object):
+
+#TODO Remove deprecated code.
+#TODO add NaN cleaning to simple parser
+def simple_sample_metadata_parser(table_file, overwrite):
+    dataframe = parse_csv_or_tsv(table_file)
+    try:
+        assert dataframe.columns[0] in ['sample_name', 'sampleID', 'sample_id', 'sample']
+    except:
+        print("Format error: Simple parser accepts only sample metadata. First column must be one of 'sample_name', 'sample_id', 'sampleID', or 'sample'")
+        return None, None
+
+    #keep a list of not found samples.
+    success = []
+    not_found = []
+
+    name_column = dataframe.columns[0]
+    data_columns = [col for col in dataframe.columns if col != name_column]
+
+
+    formatted_data = []
+    for _, datum in dataframe.iterrows():
+        as_kv = {}
+        for i, value in enumerate(datum[data_columns]):
+            as_kv[data_columns[i]] = value
+        #list of (sample_name, {key:value}) tuples
+        formatted_data.append( (datum[name_column], as_kv) )
+
+    #iter formatted data. ONLY UPDATE SAMPLES, dont create any!
+    for pair in formatted_data:
+        try:
+            sample = Sample.objects.get(name=pair[0])
+        #pass if sample doesnt exist.
+        except:
+            not_found.append(pair[0])
+            continue
+
+        #create data.
+        for k, v in pair[1].items():
+            val = Value.get_or_create(k,v)[0]
+            #val.save()
+            sample_data_names = [v.signature.get().name for v in sample.values.all()]                
+            if overwrite or val.signature.get().name not in sample_data_names:
+                sample.values.add(val)
+        sample.save()
+    #return success and failure for user mail
+    return success, not_found
+
+#expects columns like object.field; e.g. sample.name
+class TableParser(Object):
     def __init__(self, table_file):
         self.table = parse_csv_or_tsv(table_file)
 
-    def initialize(self, object_name):
+    def initialize(self, object_name, Klass):
         dd = defaultdict(list)
-        data = self.table[[x for x in self.table.columns if x.startswith(object_name) and (x.split(".")[0] in required_fields())]]
+        data = self.table[[x for x in self.table.columns if x.startswith(object_name) and (x.split(".")[1] in required_fields(Klass))]]
         data = data.melt().dropna().drop_duplicates().to_records(index=False)
         for field, datum in data:
             if datum not in dd[field.split(".")[0]]:
@@ -32,14 +81,14 @@ class TableParser(object):
         # Grabs the data necessary for Object.initialize(data)
         # Sorts it into objects so they can be initialized in dependency order
         for Obj in Object.get_object_types():
-            data = self.initialize(Obj.base_name)
+            data = self.initialize(Obj.base_name, Obj)
             if data:
                 yield (Obj, data)
 
-    def update(self, object_name):
+    def update(self, object_name, Klass):
         # Retain ID fields from all objects in case they are needed to be passed
         # on for proxies
-        table = self.table[[x for x in self.table.columns if (x.startswith(object_name)) or (x.split(".")[0] in id_fields())]]
+        table = self.table[[x for x in self.table.columns if (x.startswith(object_name)) or (x.split(".")[0] in Klass.id_fields())]]
         if table.empty:
             return {}
         table = table.drop_duplicates()
@@ -55,13 +104,13 @@ class TableParser(object):
 
     def update_generator(self):
         for Obj in Object.get_object_types():
-            for data in self.update(Obj.base_name):
+            for data in self.update(Obj.base_name, Obj):
                 yield (Obj, data)
 
     def value_table(self):
         value_targets = self.table[self.table.columns[self.table.columns.str.startswith("value_target")]].drop_duplicates().values.flatten()
         table = self.table[[x for x in self.table.columns if ((x.split("_")[0] in value_targets) and (x.split(".")[0] in id_fields())) or (x.split(".")[0] not in all_fields())]]
-        table = table.melt(var_name="value_name", 
+        table = table.melt(var_name="value_name",
                            id_vars=[y for y in table.columns if (y.split(".")[0] in id_fields()) or (y == "value_type") or (y.startswith("value_target"))])
         table = table.dropna(subset=["value"]).drop_duplicates()
         return table

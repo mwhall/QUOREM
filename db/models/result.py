@@ -54,8 +54,8 @@ class Result(Object):
     def get_parameters(self, step_field="pk"):
         Parameter = apps.get_model("db.Parameter")
         step = self.source_step
-        res_params = dict([(x.signature.get().name, 
-                           (x, 'result')) 
+        res_params = dict([(x.signature.get().name,
+                           (x, 'result'))
                             for x in self.values.instance_of(Parameter).filter(steps=step)])
         anal_params = self.analysis.get_parameters(steps=step.qs())[step.pk]
         anal_params.update(res_params)
@@ -136,17 +136,22 @@ class Result(Object):
         class ResultCrudForm(CrudForm):
             class Meta:
                 model = cls
-                exclude = ['search_vector', 'values', 'samples', 
+                exclude = ['search_vector', 'values', 'samples',
                            'features', 'upstream', 'all_upstream']
         return ResultCrudForm
 
     @classmethod
     def update_search_vector(cls):
-        cls.objects.update(
-            search_vector= (SearchVector('source', weight='A') +
-                            SearchVector('type', weight='B') +
-                            SearchVector('uuid', weight='C'))
+        sv = (SearchVector('name', weight='A') +
+                SearchVector('source_step__name', weight='B') +
+                SearchVector('values__signature__name', weight='C') +
+                SearchVector('values__signature__data', weight='D')
+
         )
+        cls.objects.update(
+            search_vector= sv
+        )
+
 
     def related_samples(self, upstream=False):
         samples = self.samples.all()

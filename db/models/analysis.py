@@ -25,8 +25,13 @@ class Analysis(Object):
 
     @classmethod
     def update_search_vector(cls):
+        sv = (SearchVector('name', weight='A') +
+                        SearchVector('values__signature__name', weight='B') +
+                        SearchVector('values__signature__data', weight='C')
+
+        )
         cls.objects.update(
-            search_vector= (SearchVector('location', weight='A'))
+            search_vector= sv
         )
 
     def get_parameters(self, steps=None, step_field="pk"):
@@ -73,7 +78,7 @@ class Analysis(Object):
                 super().__init__(*args, **kwargs)
                 self.fields.move_to_end("value_accordion")
         return DisplayForm
-  
+
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
         samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())

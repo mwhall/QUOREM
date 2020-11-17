@@ -46,6 +46,7 @@ from .models.object import Object
 from .forms import *
 from .utils import barchart_html, trendchart_html, value_table_html
 
+
 def reverse(*args, **kwargs):
     get = kwargs.pop('get', {})
     post = kwargs.pop('post', {})
@@ -386,6 +387,12 @@ class TreeSelectView(FormView):
     def post(self, request, *args, **kwargs):
         return redirect(reverse('plot-tree', post=request.POST))
 
+#For feature correlation, re-use taxbar form.
+class TaxCorrelationSelectView(FormView):
+    form_class = TaxBarSelectForm
+    template_name = 'analyze/correlation.htm'
+    def post(self, request, *args, **kwargs):
+        return redirect(reverse('plot-tax-correlation', post=request.POST))
 
 ###############################################################################
 ### SEARCH AND QUERY BASED VIEWS                                            ####
@@ -692,6 +699,26 @@ class TaxBarPlotView(TemplateView):
         context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()
         return context
 
+#plots correlation bewtween sample values and tax features.
+class TaxCorrelationPlotView(TemplateView):
+    template_name = "plot/taxcorrelationplot.htm"
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tr = self.request.GET.get('taxonomy_result','')
+        cmr = self.request.GET.get('count_matrix','')
+        tl = self.request.GET.get('taxonomic_level','').lower()
+        relative = self.request.GET.get('relative','')
+        opt_kwargs = {}
+        if tl != '':
+            opt_kwargs["level"] = tl
+        if relative != '':
+            opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
+        plot_html = tax_correlation_plot(tr,cmr,**opt_kwargs)
+        context["plot_html"] = plot_html
+        context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
+        context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()
+        return context
+
 ###############################################################################
 ### Trend Analysis Views                                                    ###
 ###############################################################################
@@ -908,6 +935,30 @@ class spreadsheet_upload(CreateView):
     def get_success_url(self):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
+class simple_sample_metadata_upload(CreateView):
+    form_class = SimpleMetadataUploadForm
+    template_name = 'core/uploadcard-simple.htm'
+
+    def get_form_kwargs(self, *args, **kwargs):
+        kwargs = super(simple_sample_metadata_upload, self).get_form_kwargs(*args, **kwargs)
+        kwargs['userprofile'] = UserProfile.objects.get(user=self.request.user)
+        return kwargs
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        user = self.request.user
+        userprofile = UserProfile.objects.get(user=user)
+        self.object.userprofile = userprofile
+        self.object.upload_type = "M"
+        self.object.save()
+        current_app.send_task('db.tasks.react_to_file', args=(self.object.pk,),
+        kwargs={'overwrite':form.cleaned_data['overwrite']})
+        return HttpResponseRedirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
+                                                                    'new':"new"})
+
 
 class artifact_upload(CreateView):
     form_class = ArtifactUploadForm
@@ -1095,3 +1146,7 @@ def artifact_download_view(request):
         response = HttpResponse(artifact.file, content_type='zip/qza')
         response['Content-Disposition'] = 'attachment; filename="%s"' % (filename,)
         return response
+
+
+## DASH APPS
+# These need to be here or in urls.py apparently.
