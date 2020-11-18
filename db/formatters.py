@@ -6,6 +6,7 @@
 ####
 from collections import defaultdict
 
+
 from .models.object import Object
 from .models import *
 
@@ -38,8 +39,8 @@ def simple_sample_metadata_parser(table_file, overwrite):
     formatted_data = []
     for _, datum in dataframe.iterrows():
         as_kv = {}
-        for i, value in enumerate(datum[data_columns]):
-            as_kv[data_columns[i]] = value
+        for i, val in enumerate(datum[data_columns]):
+            as_kv[data_columns[i]] = val
         #list of (sample_name, {key:value}) tuples
         formatted_data.append( (datum[name_column], as_kv) )
 
@@ -53,13 +54,29 @@ def simple_sample_metadata_parser(table_file, overwrite):
             continue
 
         #create data.
+        #print("OVERWRITE")
+        #print(overwrite)
         for k, v in pair[1].items():
-            val = Value.get_or_create(k,v)[0]
-            #val.save()
-            sample_data_names = [v.signature.get().name for v in sample.values.all()]                
-            if overwrite or val.signature.get().name not in sample_data_names:
-                sample.values.add(val)
-        sample.save()
+            dtype = Data.infer_type(v).type_name
+            valtype = Value
+            valdict = {'value_type': value.Value,
+                       'name': k,
+                       'data': v,
+                       'data_type': dtype,
+                       'samples': Sample.objects.filter(name=sample.name)}
+
+            valqs = Value.get(**valdict)
+            data = [v.data.get().value for v in valqs]
+            if valdict['data'] in data:
+                print("Already exists exactly")
+                continue
+            else:
+                samplevals = sample.values.filter(signature__name=valdict['name'])
+                if overwrite or len(samplevals) == 0:
+                    for v in samplevals:
+                        v.delete()
+                    val = Value.create(**valdict)
+                    sample.save()
     #return success and failure for user mail
     return success, not_found
 
