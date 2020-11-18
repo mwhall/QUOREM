@@ -381,11 +381,13 @@ class TaxBarSelectView(FormView):
     form_class = TaxBarSelectForm
     template_name = 'core/taxbarselect.htm'
     def post(self, request, *args, **kwargs):
-        # Dict is immutable, so must copy
-        request.POST = request.POST.copy()
-        # For some reason, any multi-selects lose all but the last element, 
-        # so we pass it as a single string
-        request.POST['samples'] = ",".join(request.POST.getlist('samples'))
+        samples = request.POST.getlist('samples','')
+        if samples is not '':
+            # Dict is immutable, so must copy
+            request.POST = request.POST.copy()
+            # For some reason, any multi-selects lose all but the last element, 
+            # so we pass it as a single string
+            request.POST['samples'] = ",".join(request.POST.getlist('samples'))
         return redirect(reverse('plot-tax-bar', post=request.POST))
 
 class TreeSelectView(FormView):
@@ -695,14 +697,15 @@ class TaxBarPlotView(TemplateView):
         cmr = self.request.GET.get('count_matrix','')
         tl = self.request.GET.get('taxonomic_level','').lower()
         relative = self.request.GET.get('relative','')
-        samples = self.request.GET.get('samples','').split(",")
+        samples = self.request.GET.get('samples','')
         opt_kwargs = {}
+        if samples != '':
+            samples = samples.split(",")
+            opt_kwargs["samples"] = [int(x) for x in samples]
         if tl != '':
             opt_kwargs["level"] = tl
         if relative != '':
             opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
-        if samples != '':
-            opt_kwargs["samples"] = samples
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
