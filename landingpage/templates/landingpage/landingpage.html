@@ -3,12 +3,11 @@
   {% block content %}
 
     <div class="header-text">
-	    <h2>QUOREM at <a style="color: black" href="http://geno-mic.ca">geno-MIC</a></h2>
-      <h3>Database for the Study of Microbiologically Influenced Corrosion</h3>
+      <h2>QUOREM | Database for Microbial Ecology Data</h2>
       {% if user.is_authenticated and user.has_access %}
       <p><h3> Welcome back!</h3></p>
-      <p><a style="color: black" href="/home">QUOREM Database</a></p>
-      <p><a style="color: black" href="/wiki">QUOREM Wiki</a></p>
+      <p><a href="/home">QUOREM Database</a></p>
+      <p><a href="/wiki">QUOREM Wiki</a></p>
       {% elif user.is_authenticated %}
       <p><h3>Sorry, you don't have access yet.</h3></p>
       <p>To gain access to QUOREM, ask your superuser to toggle login to the admin panel and toggle your permission settings.</p>
