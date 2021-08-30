@@ -1,5 +1,3 @@
-[![CircleCI](https://circleci.com/gh/alexmanuele/QUOREM/tree/master.svg?style=svg)](https://circleci.com/gh/alexmanuele/QUOREM/tree/master)
-
 ## Requirements
 Python3 + Postgres + Redis + Celery
 
