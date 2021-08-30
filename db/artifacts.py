@@ -192,18 +192,19 @@ class ArtifactIterator:
                 yield {"step_name": step_name}
                 yield {"result_name": uuid,
                        "result_step": step_name}
-                for item in yf['action']['manifest']:
-                    for prop, val in item.items():
-                        if prop == 'name':
-                            if re.compile('.*_S.*_L001_R[12]_001.fastq.gz').match(val):
-                                val = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
-                                yield {"result_name": uuid,
-                                       "sample_name": val, 
-                                       "sample_step": step_name,
-                                       "result_sample": val,
-                                       "result_step": step_name}
-                                yield {"result_name": self.base_uuid,
-                                       "result_sample": val}
+                if 'manifest' in yf['action']:
+                    for item in yf['action']['manifest']:
+                        for prop, val in item.items():
+                            if prop == 'name':
+                                if re.compile('.*_S.*_L001_R[12]_001.fastq.gz').match(val):
+                                    val = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
+                                    yield {"result_name": uuid,
+                                           "sample_name": str(val), 
+                                           "sample_step": step_name,
+                                           "result_sample": val,
+                                           "result_step": step_name}
+                                    yield {"result_name": self.base_uuid,
+                                           "result_sample": val}
 
         if self.scraper:
             for record in self.scraper.iter_objects(update=update):
@@ -243,26 +244,27 @@ class ArtifactIterator:
 
             elif yf['action']['type'] == 'import':
                 step_name = "qiime2_import"
-                for item in yf['action']['manifest']:
-                    if "name" in item:
-                        val = item["name"]
-                        for direc, num in [("forward", 1), ("reverse", 2)]:
-                            if re.compile('.*_S.*_L001_R%d_001.fastq.gz'%(num,)).match(val):
-                                sample_name = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
-                                yield {"sample_name": sample_name,
-                                        "value_object": "sample",
-                                          "value_name": "%s_filename" % (direc,),
-                                          "value_type": "file",
-                                          "data_type": "str",
-                                          "value_data": val}
-                                if ("md5sum" in item):
-                                    val = item["md5sum"]
+                if 'manifest' in yf['action']:
+                    for item in yf['action']['manifest']:
+                        if "name" in item:
+                            val = item["name"]
+                            for direc, num in [("forward", 1), ("reverse", 2)]:
+                                if re.compile('.*_S.*_L001_R%d_001.fastq.gz'%(num,)).match(val):
+                                    sample_name = str(re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val))
                                     yield {"sample_name": sample_name,
-                                              "value_name": "%s_file_md5sum" % (direc,),
-                                              "value_object": "sample",
-                                              "value_type": "value",
-                                              "value_data": val,
-                                              "data_type": "str"}
+                                            "value_object": "sample",
+                                              "value_name": "%s_filename" % (direc,),
+                                              "value_type": "file",
+                                              "data_type": "str",
+                                              "value_data": val}
+                                    if ("md5sum" in item):
+                                        val = item["md5sum"]
+                                        yield {"sample_name": sample_name,
+                                                  "value_name": "%s_file_md5sum" % (direc,),
+                                                  "value_object": "sample",
+                                                  "value_type": "value",
+                                                  "value_data": val,
+                                                  "data_type": "str"}
             yield {"result_name": uuid,
                       "value_object": "result",
                       "value_name": "runtime",
@@ -370,7 +372,7 @@ class Dada2DenoiseStats(ArtifactDataScraper):
 
     def iter_objects(self, update=True):
         for index, row in self.tf.iterrows():
-            yield {"sample_name": index,
+            yield {"sample_name": str(index),
                    "result_name": self.uuid,
                    "sample_result": self.uuid}
 
@@ -382,7 +384,7 @@ class Dada2DenoiseStats(ArtifactDataScraper):
                         "value_data": count,
                         "value_type": "measure",
                         "data_type": "int",
-                        "sample_name": index,
+                        "sample_name": str(index),
                         "value_object": "result",
                         "value_object.1": "sample"}
 
@@ -398,7 +400,7 @@ class PhylogeneticTree(ArtifactDataScraper):
 
     def iter_objects(self, update=True):
         for leaf in self.tree.iter_leaves():
-            yield {"feature_name": leaf.name.strip("'"),
+            yield {"feature_name": str(leaf.name.strip("'")),
                    "result_name": self.uuid,
                    "feature_result": self.uuid}
 
@@ -421,7 +423,7 @@ class BetaDiversity(ArtifactDataScraper):
 
     def iter_objects(self, update=True):
         for index, row in self.tf.iterrows():
-            yield {"sample_name": index,
+            yield {"sample_name": str(index),
                    "result_name": self.uuid,
                    "sample_result": self.uuid}
 
@@ -430,8 +432,8 @@ class BetaDiversity(ArtifactDataScraper):
             for col, dist in row.iteritems():
                 if index != col: # Don't store identities
                     yield {"result_name": self.uuid,
-                           "sample_name": index,
-                           "sample_name.1": col,
+                           "sample_name": str(index),
+                           "sample_name.1": str(col),
                            "value_data": dist,
                            "data_type": "float",
                            "value_name": "beta_diversity",
@@ -461,14 +463,14 @@ class AlphaDiversity(ArtifactDataScraper):
                    "value_name": "alpha_diversity",
                    "value_type": "measure",
                    "value_data": row[measure],
-                   "sample_name": index,
+                   "sample_name": str(index),
                    "value_object": "result",
                    "value_object.1": "sample",
                    "data_type": "float"}
 
     def iter_objects(self, update=True):
         for index, row in self.tf.iterrows():
-            yield {"sample_name": index,
+            yield {"sample_name": str(index),
                    "result_name": self.uuid,
                    "sample_result": self.uuid}
 
@@ -495,7 +497,7 @@ class Taxonomy(ArtifactDataScraper):
             yield {"result_name": self.uuid,
                    "value_object": "result",
                    "value_object.1": "feature",
-                   "feature_name": feat,
+                   "feature_name": str(feat),
                    "value_type": "measure",
                    "value_name": "taxonomic_classification",
                    "value_data": tax,
@@ -503,7 +505,7 @@ class Taxonomy(ArtifactDataScraper):
             yield {"result_name": self.uuid,
                    "value_object": "result",
                    "value_object.1": "feature",
-                   "feature_name": feat,
+                   "feature_name": str(feat),
                    "value_type": "measure",
                    "value_name": "confidence",
                    "value_data": conf,
@@ -547,7 +549,7 @@ class FeatureTable(ArtifactDataScraper):
         yield record
         if update:
             for sample in self.samples.all():
-                record = {"sample_name": sample.name}
+                record = {"sample_name": str(sample.name)}
                 features_present = self.coo_mat.getcol(sample.pk).tocoo().row
                 record.update({"sample_feature.%d" % (idx,): feature_dict[pk] for idx, pk in enumerate(features_present)})
                 yield record
@@ -564,7 +566,7 @@ class FeatureTable(ArtifactDataScraper):
                   "value_type": "matrix",
                   "data_type": "coomatrix",
                   "value_data": self.coo_mat}
-        record.update({"sample_name.%d" % (idx,): sample.name for idx, sample in enumerate(self.samples)})
+        record.update({"sample_name.%d" % (idx,): str(sample.name) for idx, sample in enumerate(self.samples)})
         record.update({"feature_name.%d" % (idx,): feature.name for idx, feature in enumerate(self.features)})
         yield record
 
@@ -579,6 +581,8 @@ class FeatureTable(ArtifactDataScraper):
             indices = tf['observation/matrix/indices'][:]
             sample_ids = tf['sample/ids'][:]
             feature_ids = tf['observation/ids'][:]
+        feature_ids = [x.decode() for x in feature_ids]
+        sample_ids = [x.decode() for x in sample_ids]
         csr_mat = csr_matrix((data,indices,indptr))
         # We have to convert the names in the BIOM files to database PKs for the
         # matrix

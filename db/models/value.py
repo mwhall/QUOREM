@@ -489,3 +489,9 @@ class Tree(Value):
     plural_name = "trees"
 
     str_description = "A Tree is an acyclic graph where nodes and edges model ancestry"
+
+class Sequence(Value):
+    base_name = "sequence"
+    plural_name = "sequences"
+
+    str_description = "A text field for DNA or RNA sequences."

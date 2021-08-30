@@ -38,10 +38,9 @@ class Investigation(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
-            sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
+            sample_accordion = forms.CharField(label="Samples")
             node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls

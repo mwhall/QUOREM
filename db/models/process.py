@@ -98,10 +98,9 @@ class Process(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
-            step_accordion = forms.CharField(widget=DisplayText(), label="Steps")
+            step_accordion = forms.CharField(label="Steps")
             node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
@@ -111,6 +110,7 @@ class Process(Object):
                     kwargs['initial'] = OrderedDict()
                     kwargs['initial']['step_accordion'] = mark_safe(kwargs['instance'].html_steps())
                 super().__init__(*args, **kwargs)
+                self.fields = OrderedDict(self.fields)
                 self.fields.move_to_end("value_accordion")
                 self.fields.move_to_end("graph")
         return DisplayForm

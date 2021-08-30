@@ -1,8 +1,12 @@
 from collections import OrderedDict, defaultdict
 import string
+import time
 import ast
 import urllib
+from pathlib import Path
+from datetime import datetime
 
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic.edit import CreateView
@@ -18,8 +22,8 @@ from django.core.paginator import(
     PageNotAnInteger,
 )
 from django.db.models import F, Q
-from django.views.generic.edit import FormView
 from django.views.generic.base import TemplateView
+from django.template.response import TemplateResponse
 
 ###Stuff for searching
 from django.contrib.postgres.search import (
@@ -27,14 +31,17 @@ from django.contrib.postgres.search import (
 )
 ###django pandas
 from django_pandas import io as django_pd
+import django_filters
 import tempfile
 from io import BytesIO
-
-
-from django_jinja_knockout.views import (
-        BsTabsMixin, ListSortingView, InlineCreateView, InlineCrudView, InlineDetailView,
-        ViewmodelView, BaseFilterView
-)
+from dal import autocomplete
+#from django_jinja_knockout.views import (
+#        page_context_decorator, BsTabsMixin, ListSortingView, InlineCreateView, InlineUpdateView, InlineDetailView,
+#        ViewmodelView, BaseFilterView, PageContextMixin
+#)
+from django.views.generic.edit import FormView, CreateView, UpdateView
+from django.views.generic.detail import DetailView
+from django.views.generic.list import ListView
 
 import pandas as pd
 import numpy as np
@@ -59,53 +66,62 @@ def reverse(*args, **kwargs):
         url += '?' + urllib.parse.urlencode(postcopy)
     return url
 
-def value_filter_view_factory(object_class):
-
-    class ValueFilterView(BaseFilterView):
-        # This is from django_jinja_knockout.views.base
-        # We need to override a bunch of functions to allow the filters
-        # to support our complex polymorphic Value fields
-        # TODO: Figure out how to wire this up completely
-
-        def __init__(self, *args, **kwargs):
-            field_set = set()
-            field_names = object_class.get_all_value_fields()
-            for value_type in field_names:
-                for name in field_names[value_type]:
-                    field_set.add(name+"_"+value_type)
-            self.field_names = list(field_set)
-            super().__init__(*args, **kwargs)
-
-        def get_field_verbose_name(self, field_name):
-            # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
-            if field_name in self.field_names:
-                return field_name
-            return super().get_field_verbose_name(field_name)
-
-        def get_related_fields(self, query_fields=None):
-            if query_fields is None:
-                query_fields = self.get_all_fieldnames() + self.field_names
-            return list(set(self.get_grid_fields_attnames()) - set(query_fields))
-
-        def get_all_fieldnames(self):
-            return super().get_all_fieldnames() + self.field_names
-
-    return ValueFilterView
+#def value_filter_view_factory(object_class):
+#
+#    class ValueFilterView(BaseFilterView):
+#        # This is from django_jinja_knockout.views.base
+#        # We need to override a bunch of functions to allow the filters
+#        # to support our complex polymorphic Value fields
+#        # TODO: Figure out how to wire this up completely
+#
+#        def __init__(self, *args, **kwargs):
+#            field_set = set()
+#            field_names = object_class.get_all_value_fields()
+#            for value_type in field_names:
+#                for name in field_names[value_type]:
+#                    field_set.add(name+"_"+value_type)
+#            self.field_names = list(field_set)
+#            super().__init__(*args, **kwargs)
+#
+#        def get_field_verbose_name(self, field_name):
+#            # str() is used to avoid "<django.utils.functional.__proxy__ object> is not JSON serializable" error.
+#            if field_name in self.field_names:
+#                return field_name
+#            return super().get_field_verbose_name(field_name)
+#
+#        def get_related_fields(self, query_fields=None):
+#            if query_fields is None:
+#                query_fields = self.get_all_fieldnames() + self.field_names
+#            return list(set(self.get_grid_fields_attnames()) - set(query_fields))
+#
+#        def get_all_fieldnames(self):
+#            return super().get_all_fieldnames() + self.field_names
+#
+#    return ValueFilterView
 
 ###############################################################################
 ### Database Browse DJK views                                              ####
 ###############################################################################
-class HomePage(BsTabsMixin, ViewmodelView):
-    format_view_title=True
-    template_name= "core/homepage.htm"
-    # get an object list to populate the carousel
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ob_list = [{'name': ob.base_name.capitalize(), 'info': ob.info(), 'link': ob.base_name + "/all/"} for ob in Object.get_object_types()]
+class HomePageView(TemplateView):
+    template_name= "homepage.htm"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['obj_list'] = self.ob_list
+        context['feature_count'] = Feature.objects.count()
+        context['sample_count'] = Sample.objects.count()
+        context['result_count'] = Result.objects.count()
         return context
+
+def main_page(request, **kwargs):
+    return TemplateResponse(request, 'main.htm')
+
+#    # get an object list to populate the carousel
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+#        self.ob_list = [{'name': ob.base_name.capitalize(), 'info': ob.info(), 'link': ob.base_name + "/all/"} for ob in Object.get_object_types()]
+#    def get_context_data(self, **kwargs):
+#        context = super().get_context_data(**kwargs)
+#        context['obj_list'] = self.ob_list
+#        return context
 
 ## LIST VIEWS ##################################################################
 #  These list *all* the objects of a given type                               ##
@@ -122,7 +138,7 @@ class HomePage(BsTabsMixin, ViewmodelView):
 #                                                                             ##
 ################################################################################
 
-class UploadList(ListSortingView):
+class UploadList(ListView):
     model = UploadFile
     allowed_sort_orders = '__all__'
     template_name = 'core/custom_cbv_list.htm'
@@ -198,10 +214,9 @@ class UploadList(ListSortingView):
 #  values either here or there.                                               ##
 ################################################################################
 
-class UploadFileDetail(InlineDetailView):
+class UploadFileDetail(DetailView):
     is_new = False
     pk_url_kwarg = 'uploadfile_id'
-    form_with_inline_formsets = FileDisplayWithInlineErrors
     format_view_title = True
 
     def get_context_data(self, **kwargs):
@@ -212,6 +227,188 @@ class UploadFileDetail(InlineDetailView):
 
     def get_heading(self):
         return "Upload File Details"
+
+## LIST VIEWS ##################################################################
+###############################################################################
+
+#Generic FilteredListView from caktusgroup.com/blog/2018/10/18/filtering-and-pagination-django/
+class FilteredListView(ListView):
+    filterset_class = None
+    paginate_by = 20
+    model = Object
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs.distinct()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filterset'] = self.filterset
+        context['base_name'] = self.model.base_name
+        context['plural_name'] = self.model.plural_name
+        return context
+
+def filter_feature_by_taxonomy(queryset, name, value):
+    # Start with a bunch of Features and reduce them to the ones that have a "taxonomic_classification" StrDatum attached with the matching query
+    queryset = queryset.filter(values__in=Value.objects.filter(measure__data__in=StrDatum.objects.filter(value__icontains=value), 
+                                                               signature__name="taxonomic_classification"))
+    return queryset
+
+class FeatureFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    taxonomy = django_filters.CharFilter(label="Taxonomic Classification Contains", field_name="taxonomy", method=filter_feature_by_taxonomy)
+    analysis = django_filters.ModelMultipleChoiceFilter(queryset=Analysis.objects.all(), label="Related Analysis (results must be in at least one)", to_field_name="pk", field_name="results__analysis", 
+                                                        widget=autocomplete.ModelSelect2Multiple(url='object-analysis-autocomplete',
+                                                                                         attrs={"data-allow-clear": "true", 
+                                                                                                "style": "flex-grow: 1;",
+                                                                                                "class": "form-control", 
+                                                                                                "data-html": True}))
+    class Meta:
+        model = Feature
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class FeatureFilterListView(FilteredListView):
+    filterset_class = FeatureFilterSet
+    template_name = "list.htm"
+    model = Feature
+    paginate_by = 15
+#    def get_context_data(self, **kwargs):
+#        context = super().get_context_data(**kwargs)
+#        context['base_name'] = self.model.base_name
+        
+#        return context
+class SampleFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    analysis = django_filters.ModelMultipleChoiceFilter(queryset=Analysis.objects.all(), label="Related Analysis (results must be in at least one)", to_field_name="pk", field_name="results__analysis", 
+                                                        widget=autocomplete.ModelSelect2Multiple(url='object-analysis-autocomplete',
+                                                                                         attrs={"data-allow-clear": "true", 
+                                                                                                "style": "flex-grow: 1",
+                                                                                                "class": "form-control", 
+                                                                                                "data-html": True})) 
+    class Meta:
+        model = Sample
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class SampleFilterListView(FilteredListView):
+    filterset_class = SampleFilterSet
+    template_name = "list.htm"
+    model = Sample
+    paginate_by = 15
+
+class StepFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    class Meta:
+        model = Step
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class StepFilterListView(FilteredListView):
+    filterset_class = StepFilterSet
+    template_name = "list.htm"
+    model = Step
+    paginate_by = 15
+
+class InvestigationFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    class Meta:
+        model = Investigation
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class InvestigationFilterListView(FilteredListView):
+    filterset_class = InvestigationFilterSet
+    template_name = "list.htm"
+    model = Investigation
+    paginate_by = 15
+
+class ProcessFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    class Meta:
+        model = Process
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class ProcessFilterListView(FilteredListView):
+    filterset_class = ProcessFilterSet
+    template_name = "list.htm"
+    model = Process
+    paginate_by = 15
+
+class AnalysisFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    class Meta:
+        model = Analysis
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class AnalysisFilterListView(FilteredListView):
+    filterset_class = AnalysisFilterSet
+    template_name = "list.htm"
+    model = Analysis
+    paginate_by = 15
+
+class ResultFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains', label="Name Contains")
+    analysis = django_filters.ModelMultipleChoiceFilter(queryset=Analysis.objects.all(), label="Related Analysis (results must be in at least one)", to_field_name="pk", field_name="analysis", 
+                                                        widget=autocomplete.ModelSelect2Multiple(url='object-analysis-autocomplete',
+                                                                                         attrs={"data-allow-clear": "true", 
+                                                                                                "style": "flex-grow: 1",
+                                                                                                "class": "form-control", 
+                                                                                                "data-html": True}))
+ 
+    class Meta:
+        model = Result
+        fields = ['name']
+    def __init__(self, data, *args, **kwargs):
+        data = data.copy()
+        #Put defaults in here
+        super().__init__(data, *args, **kwargs)
+        for visible in self.form.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class ResultFilterListView(FilteredListView):
+    filterset_class = ResultFilterSet
+    template_name = "list.htm"
+    model = Result
+    paginate_by = 15
 
 
 ## CREATE VIEWS ################################################################
@@ -232,25 +429,16 @@ class UploadFileDetail(InlineDetailView):
 #    - Result (/result/create)                                                ##
 #                                                                             ##
 ################################################################################
-
-
-class InvestigationCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    form = InvestigationForm
-    template_name = "core/custom_cbv_edit_inline.htm"
+class InvestigationCreate(CreateView):
+    form_class = InvestigationCreateForm
+    model = Investigation
+    template_name = "create.htm"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['active_page'] = "create"
+        context['base_name'] = "investigation"
         return context
 
-    def get_heading(self):
-        return "Create New Investigation"
-    def get_bs_form_opts(self):
-        return {'submit_text': 'Save Investigation'}
-    def get_success_url(self):
-        return reverse('investigation_detail', kwargs={'investigation_id': self.object.pk})
-
-class SampleCreate(BsTabsMixin, InlineCreateView):
+class SampleCreate(CreateView):
     format_view_title = True
     form = SampleForm
     template_name = "core/custom_cbv_edit_inline.htm"
@@ -263,7 +451,7 @@ class SampleCreate(BsTabsMixin, InlineCreateView):
     def get_heading(self):
         return "Create New Sample"
 
-class FeatureCreate(BsTabsMixin, InlineCreateView):
+class FeatureCreate(CreateView):
     format_view_title = True
     form = FeatureForm
     template_name = "core/custom_cbv_edit_inline.htm"
@@ -276,22 +464,16 @@ class FeatureCreate(BsTabsMixin, InlineCreateView):
     def get_heading(self):
         return "Create New Feature"
 
-class AnalysisCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    form = AnalysisForm
-    template_name = "core/custom_cbv_edit_inline.htm"
+class AnalysisCreate(CreateView):
+    form_class = AnalysisCreateForm
+    model = Analysis
+    template_name = "create.htm"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['active_page'] = "create"
+        context['base_name'] = "analysis"
         return context
-    def get_bs_form_opts(self):
-        return {'submit_text': 'Save Analysis'}
-    def get_heading(self):
-        return "Create New Analysis"
-    def get_success_url(self):
-        return reverse('analysis_detail', kwargs={'analysis_id': self.object.pk})
 
-class StepCreate(BsTabsMixin, InlineCreateView):
+class StepCreate(CreateView):
     format_view_title = True
     form = StepForm
     template_name = "core/custom_cbv_edit_inline.htm"
@@ -304,28 +486,19 @@ class StepCreate(BsTabsMixin, InlineCreateView):
     def get_heading(self):
         return "Create New Step"
 
-class ProcessCreate(BsTabsMixin, InlineCreateView):
-    format_view_title = True
-    form = ProcessForm
-    template_name = "core/custom_cbv_edit_inline.htm"
+class ProcessCreate(CreateView):
+    form_class = ProcessCreateForm
+    model = Process
+    template_name = "create.htm"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['active_page'] = "create"
+        context['base_name'] = "process"
         return context
-    def get_heading(self):
-        return "Create New Process"
-    def get_bs_form_opts(self):
-        return {
-            'title': 'Create Process',
-            'submit_text': 'Save Process',
-            'inline_title': 'Process Steps'
-        }
-    def get_success_url(self):
-        return reverse('process_detail', kwargs={'process_id': self.object.pk})
 
 
 
-class InvestigationUpdate(BsTabsMixin, InlineCrudView):
+
+class InvestigationUpdate(UpdateView):
     format_view_title = True
     pk_url_kwarg = 'investigation_id'
     form = InvestigationForm
@@ -335,7 +508,7 @@ class InvestigationUpdate(BsTabsMixin, InlineCrudView):
             'submit_text': 'Save Investigation'
         }
 
-class SampleUpdate(BsTabsMixin, InlineCrudView):
+class SampleUpdate(UpdateView):
     format_view_title = True
     pk_url_kwarg = 'sample_id'
     form = SampleForm
@@ -345,7 +518,7 @@ class SampleUpdate(BsTabsMixin, InlineCrudView):
             'submit_text': 'Save Sample'
         }
 
-class StepUpdate(BsTabsMixin, InlineCrudView):
+class StepUpdate(UpdateView):
     format_view_title = True
     pk_url_kwarg = 'step_id'
     form = StepForm
@@ -360,7 +533,7 @@ class StepUpdate(BsTabsMixin, InlineCrudView):
 
 
 
-class ProcessUpdate(BsTabsMixin, InlineCrudView):
+class ProcessUpdate(UpdateView):
     format_view_title = True
     pk_url_kwarg = 'process_id'
     form = ProcessForm
@@ -372,6 +545,16 @@ class ProcessUpdate(BsTabsMixin, InlineCrudView):
 
     def get_success_url(self):
         return reverse('process_detail', kwargs={'process_id': self.object.pk})
+
+class AnalysisSelectView(FormView):
+    form_class = AnalysisSelectForm
+    template_name = 'analysis_select.htm'
+    def form_valid(self, form):
+        self.analysis_pk = self.request.POST.get("analysis")
+        return HttpResponseRedirect(self.get_success_url())
+    def get_success_url(self):
+        return reverse('upload_to_analysis', kwargs={"analysis_id": self.analysis_pk})
+
 
 ###############################################################################
 ### PLOT REDIRECTS                                                          ###
@@ -392,7 +575,7 @@ class TaxBarSelectView(FormView):
 
 class TreeSelectView(FormView):
     form_class = TreeSelectForm
-    template_name = 'core/treeselect.htm'
+    template_name = 'treeselect.htm'
     def post(self, request, *args, **kwargs):
         return redirect(reverse('plot-tree', post=request.POST))
 
@@ -698,6 +881,7 @@ class TaxBarPlotView(TemplateView):
         tl = self.request.GET.get('taxonomic_level','').lower()
         relative = self.request.GET.get('relative','')
         samples = self.request.GET.get('samples','')
+        plot_height = self.request.GET.get('plot_height','')
         opt_kwargs = {}
         if samples != '':
             samples = samples.split(",")
@@ -706,6 +890,8 @@ class TaxBarPlotView(TemplateView):
             opt_kwargs["level"] = tl
         if relative != '':
             opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
+        if plot_height != '':
+            opt_kwargs["plot_height"] = int(plot_height)
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
@@ -972,10 +1158,47 @@ class simple_sample_metadata_upload(CreateView):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 
+class FileFieldView(FormView):
+    form_class = FileFieldForm
+    template_name = 'upload.htm'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['analysis_name'] = Analysis.objects.get(pk=self.kwargs['analysis_id']).name
+        context['analysis_id'] = self.kwargs['analysis_id']
+        return context
+    def post(self, request, *args, **kwargs):
+        analysis = Analysis.objects.get(pk=self.kwargs['analysis_id'])
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        files = request.FILES.getlist('file')
+        if form.is_valid():
+            user = User.objects.get(pk=self.request.user.pk)
+            user_profile = UserProfile.objects.get(user=user)
+            upload_time = datetime.datetime.now().strftime("%d_%b_%Y_%H%-M-%S")
+            save_dir = Path(settings.MEDIA_ROOT + "/artifacts/" + str(user.username) + "/" + str(upload_time) +"/")
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_dir = save_dir.resolve()
+            for f in files:
+                file_path = str(save_dir) + "/" + f.name
+                print("User %s requesting to upload %s at time %s to Analysis '%s', placing in directory %s" % (user.username, f.name, upload_time, analysis.name, save_dir))
+                with open(file_path, 'wb+') as destination:
+                    for chunk in f.chunks():
+                        destination.write(chunk)
+                print("File successfully uploaded and stored on server, integrating into database...")
+                #Save as a File object
+                upload_file = UploadFile(upload_file=file_path, userprofile=user_profile, upload_type='A')
+                upload_file.save()
+                print("File stored as UploadFile")
+                current_app.send_task('db.tasks.react_to_file', (upload_file.pk,),
+                                      kwargs={'analysis_pk': analysis.id})
+                print("File sent to Celery for processing, standby for update...")
+            return JsonResponse({'form': True, 'message': 'Success!', 'status':'success'})
+        else:
+            return JsonResponse({'form': False})
 
 class artifact_upload(CreateView):
     form_class = ArtifactUploadForm
-    template_name = 'core/uploadcard_artifact.htm'
+    template_name = 'upload_artifact.htm'
 
     def get_form_kwargs(self, *args, **kwargs):
         kwargs = super(artifact_upload, self).get_form_kwargs(*args, **kwargs)
@@ -995,7 +1218,7 @@ class artifact_upload(CreateView):
 
     def get_success_url(self):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
-                                                                    'new':"new"})
+                                                                           'new':"new"})
 ################################################################################
 ## onto testing                                                              ###
 ###############################################################################

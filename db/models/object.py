@@ -3,6 +3,10 @@ from textwrap import fill, wrap
 import string
 
 from django import forms
+from django.forms import ModelForm 
+from django.views.generic.detail import DetailView
+from django.views.generic.list import ListView
+from django.views.generic.edit import UpdateView, CreateView
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -13,7 +17,7 @@ from django.contrib.contenttypes.models import ContentType
 #for searching
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
-
+from django.shortcuts import render
 from combomethod import combomethod
 
 import pandas as pd
@@ -95,7 +99,7 @@ class Object(models.Model):
         data_pk = self.values.values_list("data__pk", flat=True)
         for Val in apps.get_model("db.Value").get_value_types():
             vals = Val.objects.filter(data__pk__in=data_pk)
-            for name in vals.values_list("name", flat=True):
+            for name in vals.values_list("signature__name", flat=True):
                 field_values[Val.base_name].add(name)
         return field_values
 
@@ -375,6 +379,7 @@ class Object(models.Model):
                     continue
             Field = getattr(self, field)
             if hasattr(Field, 'add'):
+                print("Adding to field '%s' data '%s'" % (field, str(data)))
                 Field.add(*data)
             else:
                 setattr(self, field, data)
@@ -441,21 +446,22 @@ class Object(models.Model):
         return cls._meta.model.objects.filter(**kwargs)
 
     @classmethod
-    def get_crud_form(cls):
-        from django_jinja_knockout.forms import BootstrapModelForm
-        from django_jinja_knockout.widgets import DisplayText
-        class CrudForm(BootstrapModelForm):
-            class Meta:
-                model = cls
-                exclude = ['search_vector', 'values']
-                if cls.has_upstream:
-                    exclude += ['all_upstream', 'upstream']
-        return CrudForm
+    def get_create_view(cls, as_view=False):
+        class ObjectCreateView(CreateView):
+            model = cls
+            fields = [cls.heading_to_field(x[0]) for x in cls.column_headings() if x[1]]
+            template_name = "create.htm"
+            def get_context_data(self,*args, **kwargs):
+                context = super().get_context_data(*args,**kwargs)
+                context['base_name'] = cls.base_name
+                return context
+        if as_view:
+            return ObjectCreateView.as_view()
+        return ObjectCreateView
 
     @classmethod
     def get_update_view(cls, as_view=False):
-        from django_jinja_knockout.views import InlineCrudView
-        class CrudView(InlineCrudView):
+        class ObjectUpdateView(UpdateView):
             pk_url_kwarg = cls.base_name + '_id'
             form = cls.get_crud_form()
             template_name = "core/custom_cbv_edit_inline.htm"
@@ -467,141 +473,81 @@ class Object(models.Model):
                 return reverse('%s_detail' % (cls.base_name,),
                                kwargs = {'%s_id' % (cls.base_name,): self.object.pk})
 
-        CrudView.__module__ = cls.base_name
-        CrudView.__name__ = cls.__name__
-        CrudView.__qualname__ = CrudView.__name__
+        ObjectUpdateView.__module__ = cls.base_name
+        ObjectUpdateView.__name__ = cls.__name__
+        ObjectUpdateView.__qualname__ = ObjectUpdateView.__name__
         if as_view:
-            return CrudView.as_view()
+            return ObjectUpdateView.as_view()
         else:
-            return CrudView
+            return ObjectUpdateView
 
     @classmethod
     def get_display_form(cls):
-        # Causes issues if these are above before a DB exists
-        from django_jinja_knockout.forms import BootstrapModelForm, DisplayModelMetaclass
-        from django_jinja_knockout.widgets import DisplayText
-        class DisplayForm(BootstrapModelForm,
-                          metaclass=DisplayModelMetaclass):
-            value_accordion = forms.CharField(widget=DisplayText(), label="Values")
-#            node = forms.CharField(widget=DisplayText())
-            if cls.has_upstream:
-                graph = forms.CharField(widget=DisplayText())
+#        # Causes issues if these are above before a DB exists
+        class DisplayForm(ModelForm):
+#            value_accordion = forms.CharField(label="Values")
+##            node = forms.CharField(widget=DisplayText())
+#            if cls.has_upstream:
+#                graph = forms.CharField()
             class Meta:
                 model = cls
                 exclude = ['search_vector', 'values']
-                if cls.has_upstream:
-                    exclude += ['all_upstream']
-            def __init__(self, *args, **kwargs):
-                if kwargs.get('instance'):
-                    if 'initial' in kwargs:
-                        initial = kwargs['initial']
-                    else:
-                        kwargs['initial'] = OrderedDict()
-                        initial = kwargs['initial']
-#                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
-                    initial['value_accordion'] = mark_safe(kwargs['instance'].html_values())
-                    if cls.has_upstream:
-                        initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
-                super().__init__(*args, **kwargs)
+#                if cls.has_upstream:
+#                    exclude += ['all_upstream']
+#            def __init__(self, *args, **kwargs):
+#                if kwargs.get('instance'):
+#                    if 'initial' in kwargs:
+#                        initial = kwargs['initial']
+#                    else:
+#                        kwargs['initial'] = OrderedDict()
+#                        initial = kwargs['initial']
+##                    initial['node'] = mark_safe(kwargs['instance'].get_node(show_values=True).pipe().decode().replace("\n",""))
+#                    initial['value_accordion'] = mark_safe(kwargs['instance'].html_values())
+#                    if cls.has_upstream:
+#                        initial['graph'] = mark_safe(kwargs['instance'].get_stream_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
+#                super().__init__(*args, **kwargs)
         return DisplayForm
 
     @classmethod
     def get_detail_view(cls, as_view=False):
-        from django_jinja_knockout.views import InlineDetailView
-        class DetailView(InlineDetailView):
+        class ObjectDetailView(DetailView):
             pk_url_kwarg = cls.base_name + '_id'
             form = cls.get_display_form()
-            template_name = "core/custom_cbv_edit_inline.htm"
-            def get_heading(self):
-                return "%s Detail" % (cls.base_name.capitalize(),)
+            queryset = cls.objects.all()
+            template_name = "detail.htm"
+            def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                #Add to context dict to make available in template
+                obj = self.get_object()
+                if len(obj.get_value_counts())>0:
+                    context['values_html'] = mark_safe(self.get_object().html_values())
+                return context
 
-        DetailView.__module__ = cls.base_name
-        DetailView.__name__ = cls.__name__
-        DetailView.__qualname__ = DetailView.__name__
+        ObjectDetailView.__module__ = cls.base_name
+        ObjectDetailView.__name__ = cls.__name__
+        ObjectDetailView.__qualname__ = DetailView.__name__
         if as_view:
-            return DetailView.as_view()
+            return ObjectDetailView.as_view()
         else:
-            return DetailView
+            return ObjectDetailView
 
-    @classmethod
-    def get_list_view(cls, as_view=False):
-        from django_jinja_knockout.views import ListSortingView, FoldingPaginationMixin
-        from ..views import value_filter_view_factory
-        base_name = cls.base_name
-        VFilterView = value_filter_view_factory(cls)
-        class ObjectListView(ListSortingView, VFilterView, FoldingPaginationMixin):
-            model = cls
-            template_name = "core/custom_cbv_list.htm"
-            grid_fields = cls.grid_fields
-            allowed_filter_fields = OrderedDict()
-
-            @classmethod
-            def reset_filter_link(clss):
-                return reverse("%s_all" % (base_name,))
-
-            @classmethod
-            def object_filter_fields(clss):
-                ff = [x for x in clss.allowed_filter_fields]
-                letters = string.ascii_uppercase[0:len(ff)]
-                return [(idx,x) for idx, x in zip(letters, ff) if (x in clss.allowed_filter_fields)]
-
-            def get_heading(self):
-                return "%s List" % (base_name.capitalize(),)
-
-            @classmethod
-            def update_list_filters(clss):
-                return cls.get_filters()
-
-            @classmethod
-            def as_view(clss, *args, **kwargs):
-                clss.allowed_filter_fields = clss.update_list_filters()
-                return super().as_view(**kwargs)
-
-            def get_display_value(self, obj, field):
-                if hasattr(cls, 'get_display_value'):
-                    return cls.get_display_value(obj, field)
-                field = cls._meta.get_field(field)
-                if field.name == "name":
-                    return mark_safe(obj.get_detail_link())
-                if field.is_relation and field.many_to_many:
-                    return getattr(obj, field.name).count()
-                elif field.is_relation:
-                    return mark_safe(getattr(obj, field.name).get_detail_link())
-                else:
-                    return getattr(obj, field.name)
-
-            def get_sort_order_link(self, sort_order, kwargs=None, query: dict = None, text=None, viewname=None):
-                if text is None:
-                    text = sort_order
-                return super().get_sort_order_link(sort_order, kwargs, query, text, viewname)
-
-            def get_cell_attrs(self, obj, column, row_idx, col_idx):
-                attrs = {}
-                if len(self.cycler) > 0:
-                    idx = row_idx if self.cycler_direction == 1 else col_idx
-                    attrs['class'] = self.cycler[idx % len(self.cycler)]
-                if self.data_caption:
-                    if isinstance(column, list):
-                        verbose_name = ' / '.join([field for field in column])
-                    else:
-                        verbose_name = column
-                    attrs['data-caption'] = verbose_name
-                return attrs
-
-            def get_table_attrs(self):
-                return {
-                    'class': 'table table-bordered table-collapse display-block-condition custom-table',
-                    'id' : 'object_table',
-                }
-
-        ObjectListView.__module__ = 'db.models.%s' % (cls.base_name,)
-        ObjectListView.__name__ = cls.__name__
-        ObjectListView.__qualname__ = ObjectListView.__name__
-        if as_view:
-            return ObjectListView.as_view()
-        else:
-            return ObjectListView
-
+#    @classmethod
+#    def get_list_view(cls):
+#        base_name = cls.base_name
+#        def object_list_view(request):
+#            object_list = cls.objects.all()
+#            return render(request, 'list.htm')
+##        class ObjectListView(ListView):
+##            model = cls
+##            paginate_by = 20
+##            template_name = "list.htm"
+##            def get_context_data(self, **kwargs):
+##                context = super().get_context_data(**kwargs)
+##                context['list_url'] = base_name+"_all"
+##                context['base_name'] = base_name
+##                return context
+#        return object_list_view
+#
     @classmethod
     def get_filters(cls):
         return OrderedDict()
@@ -620,6 +566,9 @@ class Object(models.Model):
             samples = samples | apps.get_model("db", "Sample").objects.filter(pk__in=samples.values("all_upstream").distinct())
         return samples
 
+    def related_samples_count(self, upstream=False):
+        return self.related_samples(upstream).count()
+
     def related_processes(self, upstream=False):
         processes = apps.get_model("db", "Process").objects.filter(pk__in=self.related_steps(upstream=upstream).values("processes").distinct())
         if upstream:
@@ -628,6 +577,9 @@ class Object(models.Model):
 
     def related_features(self):
         return apps.get_model("db", "Feature").objects.filter(samples__in=self.related_samples()).distinct()
+
+    def related_features_count(self):
+        return self.related_features().count()
 
     def related_steps(self, upstream=False):
         # Return the source_step for each sample
@@ -638,6 +590,11 @@ class Object(models.Model):
 
     def related_analyses(self):
         return apps.get_model("db", "Analysis").objects.filter(results__in=self.related_results()).distinct()
+    def related_analysis_badges(self):
+        html_val = ""
+        for anal in self.related_analyses():
+            html_val += '<a class="badge badge-secondary" href="/analysis/%d/">%s</a>&nbsp;' % (anal.pk, anal.name,)
+        return mark_safe(html_val)
 
     def related_results(self, upstream=False):
         results = apps.get_model("db", "Result").objects.filter(samples__in=self.related_samples(upstream=upstream)).distinct()
@@ -661,6 +618,9 @@ class Object(models.Model):
         if object_name in ["samples", "steps", "processes", "results"]:
             kwargs["upstream"] = upstream
         return name_map[object_name](**kwargs)
+
+    def get_absolute_url(self):
+        return "/%s/%i/" % (self.base_name, self.pk)
 
     @combomethod
     def get_detail_link(receiver):
@@ -710,7 +670,7 @@ class Object(models.Model):
         attrs = self.gv_node_style.copy()
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
-        attrs["fontname"] = "FreeSans"
+        attrs["fontname"] = "Arial"
         attrs["href"] = reverse(self.base_name + "_detail",
                                 kwargs={self.base_name+"_id":self.pk})
         if not highlight:
@@ -753,9 +713,9 @@ class Object(models.Model):
                 if ds_pk in all_pks:
                     edges.add((str(obj.pk), str(ds_pk)))
         dot.edges(list(edges))
-        dim = max(14,int(nnodes/2.0))
-        dim = min(dim, 10)
-        dot.attr(size="%d,%d!" % (dim,2*dim))
+#        dim = max(14,int(nnodes/2.0))
+#        dim = min(dim, 10)
+#        dot.attr(size="%d,%d!" % (dim,2*dim))
         return dot
 
 ##Function for search.

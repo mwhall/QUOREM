@@ -1,0 +1,28 @@
+{% extends 'base.htm' %}
+
+{% block title %}
+<title>{{object.base_name|capfirst}} Detail: {{object.name}}</title>
+{% endblock title %}
+
+{% block main %}
+
+<a class="btn btn-primary" href="/analysis/all/">
+            <i class="fas fa-angle-left"></i> Back to All Analyses
+</a>
+<div class="float-right"><a href='/analysis/{{ object.id }}/upload' type="button" class="btn btn-primary"><i class="fa fa-upload" aria-hidden="true"></i> Upload Results to Analysis</a></div>
+<br/><br/>
+<div class="card card-header">
+<h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
+</div>
+<div class="card-body">
+<h3>Results</h3>
+{{ object.html_results_list }}
+</div>
+<br/>
+<br/>
+
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

@@ -12,7 +12,8 @@ from django.utils.timezone import make_aware
 from polymorphic.models import PolymorphicModel
 
 #import django.contrib.gis.db.models as gismodels # For very advanced GIS features
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField
+from django.db.models import JSONField
 
 from django_pandas.managers import DataFrameQuerySet
 

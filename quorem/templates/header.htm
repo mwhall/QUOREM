@@ -1,0 +1,110 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-info">
+  <a class="navbar-brand" href="{% url 'homepage' %}">QUOREM</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse"
+  data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+  aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav mr-auto">
+      <li id="database" class="nav-item dropdown">
+         <a class="nav-link dropdown-toggle" href="#" id="databaseDropdown"
+         role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         Database</a>
+         <div class="dropdown-menu" aria-labelledby="databaseDropdown">
+           <a class="dropdown-item" href="/feature/all">Features</a>
+           <a class="dropdown-item" href="/sample/all">Samples</a>
+           <a class="dropdown-item" href="/result/all">Results</a>
+           <a class="dropdown-item" href="/analysis/all">Analyses</a>
+           <a class="dropdown-item" href="/investigation/all">Investigations</a>
+           <a class="dropdown-item" href="/process/all">Processes</a>
+           <a class="dropdown-item" href="/step/all">Steps</a>
+         </div>
+      </li>
+      <li id="create" class="nav-item dropdown">
+         <a class="nav-link dropdown-toggle" href="#" id="createDropdown"
+         role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         Create</a>
+         <div id="createDropped" class="dropdown-menu" aria-labelledby="createDropdown">
+           <a class="dropdown-item" href="/process/create">Process</a>
+           <a id="createAnalysis" class="dropdown-item" href="/analysis/create">Analysis</a>
+           <a class="dropdown-item" href="/investigation/create">Investigation</a>
+         </div>
+      </li>
+      <li id="upload" class="nav-item dropdown">
+         <a class="nav-link dropdown-toggle" href="#" id="uploadDropdown"
+         role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         Upload</a>
+         <div id="uploadDropped" class="dropdown-menu" aria-labelledby="uploadDropdown">
+           <a class="dropdown-item" href="/analysis/upload">Archive Artifact</a>
+         </div>
+      </li>
+
+      <!--li id="search" class="nav-item{% if 'search' == active_page %}active{% endif %}">
+        <a class="nav-link " href="/search/">Search</a>
+      </li>
+      <li id="analyze" class="nav-item{% if 'analyze' == active_page %}active{% endif %}">
+        <a class="nav-link " href="/analyze/">Analyze</a>
+      </li>
+
+    <li class="nav-item">
+      <a class="nav-link" href="/wiki/">Wiki</a>
+    </li-->
+
+  </ul>
+  <ul class="navbar-nav ml-auto">
+    <!-- li id="mail" class="nav-item {% if active_page == 'mail' %} active {% endif %}">
+      <a class="nav-link" href="{% url 'mail' %}">
+	              {\\{ '0'|show_inbox(request.user) }\\} 
+        <span class="fa fa-envelope"></span>
+      </a>
+    </li-->
+    <!--form class="form-inline my-2 my-lg-0" action="/search/" method="GET">
+      <input name="q" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search" value="">
+      <input class="btn btn-success my-2 my-sm-0" type="submit" name="search">
+    </form-->
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a>
+    </li>
+  </ul>
+  </div>
+</nav>
+<!-- LOADING WHEEL STUFF -->
+<style>
+  #overlay{
+  	position: fixed;
+  	top: 0;
+  	z-index: 100;
+  	width: 100%;
+  	height:100%;
+  	display: none;
+  	background: rgba(0,0,0,0.6);
+  }
+  .cv-spinner {
+  	height: 100%;
+  	display: flex;
+  	justify-content: center;
+  	align-items: center;
+  }
+  .spinner {
+  	width: 40px;
+  	height: 40px;
+  	border: 4px #ddd solid;
+  	border-top: 4px #2e93e6 solid;
+  	border-radius: 50%;
+  	animation: sp-anime 0.8s infinite linear;
+  }
+  @keyframes sp-anime {
+  	100% {
+  		transform: rotate(360deg);
+  	}
+  }
+  .is-hide{
+  	display:none;
+  }
+</style>
+<div id="overlay">
+	<div class="cv-spinner">
+		<span class="spinner"></span>
+	</div>
+</div>

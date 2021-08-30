@@ -1,0 +1,37 @@
+{% extends 'base.htm' %}
+
+{% block title %}
+<title>{{object.base_name|capfirst}} Detail: {{object.name}}</title>
+{% endblock title %}
+
+{% block main %}
+
+<a class="btn btn-primary" href="/{{object.base_name}}/all/">
+            <i class="fas fa-angle-left"></i> Back to All {{object.plural_name|capfirst}}
+</a>
+<br/><br/>
+<div class="card card-header">
+<h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
+</div>
+<div class="card-body">
+
+{% if values_html %}
+<h3>Metadata</h3>
+{{ values_html }}
+{% endif %}
+{% if samples_html %}
+<br/>
+<h3>Samples</h3>
+{{ samples_html }}
+{% endif %}
+{% if features_html %}
+<br/>
+<h3>Features</h3>
+{{ features_html }}
+{% endif %}
+</div>
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

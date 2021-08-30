@@ -5,6 +5,7 @@ from collections import OrderedDict
 from django.db import models
 from django.apps import apps
 from django import forms
+from django.views.generic.detail import DetailView
 
 #for searching
 from django.contrib.postgres.search import SearchVector
@@ -14,7 +15,6 @@ from django.urls import reverse
 from db.models.object import Object
 from db.models.value import Value
 from django.utils.html import format_html, mark_safe
-
 
 class Feature(Object):
     base_name = "feature"
@@ -43,15 +43,17 @@ class Feature(Object):
             else:
                 return mark_safe("<BR/>".join([str(x) for x in obj.samples.all()]))
 
-    @classmethod
-    def add_to_annotations(cls, name, value_type=None):
-        if value_type is None:
-            value_type = Value # This will add all subclasses of Values too, I think
-        else:
-            value_type = Value.get_value_types(type_name=value_type)
-        signatures = DataSignature.objects.filter(name=name, value_type=ContentType.objects.get_for_model(value_type))
-        for feat in features:
-            feat.annotations.add(*feat.values.instance_of(value_type).prefetch_related("signature").filter(signature__name=name))
+    def taxonomy_badges(self):
+        html_val = ""
+        tab = self.dataframe(value_names=["taxonomic_classification"], additional_fields=["results__pk"])
+        for row in tab[['value_data','results__pk']].iterrows():
+            tax=row[1]['value_data']
+            last_tax = tax.split(";")[-1]
+            if len(last_tax) <= 4:
+                last_tax = tax.split(";")[-2]
+            html_val += '<a class="badge badge-light" data-toggle="tooltip" data-placement="top" title="%s" href="/result/%d/">%s</a>&nbsp;' % (tax, row[1]["results__pk"], last_tax,)
+        return mark_safe(html_val)
+
 
     def related_samples(self, upstream=False):
         #SQL Depth: 1
@@ -119,21 +121,20 @@ class Feature(Object):
         return attrs
 
     @classmethod
-    def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
-        ParentDisplayForm = super().get_display_form()
-        class DisplayForm(ParentDisplayForm):
-            sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
-            node = None #Cheating way to override parent's Node and hide it
-            class Meta:
-                model = cls
-                exclude = ['search_vector', 'values']
-            def __init__(self, *args, **kwargs):
-                if kwargs.get('instance'):
-                    kwargs['initial'] = OrderedDict()
-                    kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
-                super().__init__(*args, **kwargs)
-                self.fields.move_to_end("value_accordion")
-        return DisplayForm
-    
-    
+    def get_detail_view(cls, as_view=False):
+        class FeatureDetailView(DetailView):
+            pk_url_kwarg = 'feature_id'
+            form = cls.get_display_form()
+            queryset = cls.objects.all()
+            template_name = "feature_detail.htm"
+            def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                #Add to context dict to make available in template
+                context['samples_html'] = mark_safe(self.get_object().html_samples())
+                context['values_html'] = mark_safe(self.get_object().html_values())
+                return context
+        if as_view:
+            return FeatureDetailView.as_view()
+        else:
+            return FeatureDetailView
+

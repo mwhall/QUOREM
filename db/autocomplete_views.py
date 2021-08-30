@@ -85,6 +85,8 @@ class TreeResultAutocomplete(autocomplete.Select2QuerySetView):
         if self.q:
             qs = qs.filter(name__icontains=self.q)
         return qs.distinct()
+    def get_result_label(self, item):
+        return mark_safe(format_html('<b>Result {}</b>, UUID {}, <b>Analysis</b>: {}, <b>Source Step</b>: {}', item.pk, item.name, item.analysis.name, item.source_step.name))
 
 class TaxonomyResultAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):

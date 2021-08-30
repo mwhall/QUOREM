@@ -1,0 +1,135 @@
+{% extends 'base.htm' %}
+{% load quorem_tags %}
+
+
+{% block title %}
+<title>{{base_name|capfirst}} List</title>
+{% endblock title %}
+
+{% block main %}
+<script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+<style>
+.tooltip-inner {
+	    max-width: 1200px;
+	        /* If max-width does not work, try using width instead */
+/*	        width: 150px; */
+}
+   table td { max-width:400px; word-wrap:anywhere;}
+.jumbotron {
+    padding-top: 7px;
+    padding-bottom: 5px;
+    max-height: 200px;
+}
+.form-control {
+	padding: 0rem 0.5rem;
+	height: auto;
+}
+</style>
+<div class="jumbotron jumbotron-fluid bg-info text-light">
+  <div class="container">
+    <h1 class="display-4">{{base_name|capfirst }} List</h1>
+    <p class="lead">This is a filterable list of all of the {{plural_name|capfirst}} stored on the server.</p>
+  </div>
+</div>
+<div class="card">
+ <button class="btn btn-outline-info" type="button" data-toggle="collapse" data-target="#collapseFilter" aria-expanded="false" aria-controls="collapseFilter">
+    Show Filter Options
+  </button>
+<div class="collapse" id="collapseFilter">
+<div class="card card-body">
+
+<form method="get">
+        {{ filterset.form.as_p }}
+        <button class="btn btn-primary" type="submit" >Filter&nbsp;<i class="fas fa-filter"></i></button>
+</form>
+</div>
+</div>
+</div>
+<br/>
+<table class="table table-sm table-hover">
+  <thead>
+     <tr>
+	     <th scope="col">Name</th>
+    {% if base_name == 'feature' %}
+      <th scope="col">Related Analyses</th>
+      <th scope="col">Taxonomic Classifications</th>
+    {% elif base_name == 'sample' %}
+      <th scope="col">Related Analyses</th>
+      <th scope="col" class="text-right">Number of Features</th>
+    {% elif base_name == 'result' %}
+      <th scope="col">Type</th>
+      <th scope="col">Related Analyses</th>
+      <th scope="col">Uploaded By</th>
+      <th scope="col" class="text-right">Artifact Download</th>
+    {% elif base_name == 'analysis' %}
+      <th scope="col">Number of Related Samples</th>
+      <th scope="col">Number of Related Features</th>
+      <th scope="col" class="text-right">Number of Results</th>
+    {% endif %}
+    </tr>
+
+  </thead>
+  <tbody>
+{% for obj in page_obj %}
+    <tr>
+      <td scope="col">{{ obj.get_detail_link }}</td>
+    {% if base_name == 'feature' %}
+      <td scope="col">{{ obj.related_analysis_badges }}</td>
+      <td scope="col">{{ obj.taxonomy_badges }}</td>
+    {% elif base_name == 'sample' %}
+    <td scope="col">{{ obj.related_analysis_badges }}</td>
+    <td scope="col" class="text-right">{{ obj.features.count }}</td>
+     {% elif base_name == 'result' %}
+    <td scope="col">{{ obj.human_short }}</td>
+    <td scope="col">{{ obj.related_analysis_badges }}</td>
+    <td scope="col">{{ obj.get_artifact_uploader }}</td>
+    <td scope="col" class="text-right">{{ obj.get_artifact_badge }} </td>
+     {% elif base_name == 'analysis' %}
+     <td scope="col"><a href="/sample/all/?analysis={{obj.pk}}">{{ obj.related_samples_count }}</a></td>
+    <td scope="col"><a href="/feature/all/?analysis={{obj.pk}}">{{ obj.related_features_count }}</a></td>
+    <td scope="col" class="text-right"><a href="/result/all/?analysis={{obj.pk}}">{{ obj.results.count }}</a></td>
+ {% endif %}
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+{{ filterset.form.media }}
+{% endblock main %}
+
+{% block pagination %}
+ <ul class="pagination justify-content-center flex-wrap mt-2 mb-4">
+    <nav aria-label="Page navigation">   <ul class="pagination">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% param_replace page=1 %}" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+        <span class="sr-only">begin</span>
+      </a>
+    </li>   {% endif %}
+    {% for n in page_obj.paginator.page_range %}
+      {% if page_obj.number == n %}
+        <li class="page-item active">
+          <span class="page-link">{{ n }}<span class="sr-only">(current)</span></span>
+        </li>
+      {% elif n > page_obj.number|add:'-3' and n < page_obj.number|add:'3' %}
+        <li class="page-item"><a class="page-link" href="?{% param_replace page=n %}">{{ n }}</a></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?{% param_replace page=page_obj.paginator.num_pages %}" aria-label="Next">
+          <span aria-hidden="true">&raquo;</span>
+          <span class="sr-only">end</span>
+        </a>
+      </li>
+      {% endif %}   </ul> </nav>
+</ul>
+{% endblock pagination %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

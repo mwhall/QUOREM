@@ -1,0 +1,69 @@
+{% extends 'base.htm' %}
+
+{% block title %}
+<title>{{object.base_name|capfirst}} Detail: {{object.name}}</title>
+{% endblock title %}
+
+{% block main %}
+
+<a  class="btn btn-primary" href="/analysis/{{ object.analysis.pk }}/">
+	    <i class="fas fa-angle-left"></i> Back to Analysis
+</a>
+       <div class="btn-group dropleft float-right" role="group">
+          <button id="btnDownloadGroup" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <i class="fas fa-download"></i> Download As...
+          </button>
+       <div class="dropdown-menu" aria-labelledby="btnDownloadGroup">
+                     <a class="dropdown-item" href="/data-spreadsheet/?format=csv&object={{object.base_name}}&id={{object.pk}}">.csv (Tall)</a>
+                     <a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{object.base_name}}&id={{object.pk}}">.xls (Tall)</a>
+                     <a class="dropdown-item" href="/data-spreadsheet/?format=csv&object={{object.base_name}}&id={{object.pk}}&wide=true">.csv (Wide)</a>
+                     <a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{object.base_name}}&id={{object.pk}}&wide=true">.xls (Wide)</a>
+              {% if has_uploaded_artifact %}
+                  {% if q2type == "Visualization" %}
+                     <a class="dropdown-item" href="/data-artifact?result_id={{ object.pk }}">.qzv (Visualization)</a>
+                  </div>
+                  <div class="btn-group" role="group" style="display: flex; justify-content: flex-end">
+			  <a href="https://view.qiime2.org/visualization/?type=html&src=https://oceanman.research.cs.dal.ca/data-artifact?result_id={{ object.pk }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
+                  </div>
+                 {% else %}
+                     <a class="dropdown-item" href="/data-artifact?result_id={{ object.pk }}">.qza (Artifact)</a>
+                  </div>
+                  {% endif %}
+	      {% else %}
+	      </div>
+              {% endif %}
+	      </div>
+	      <br/><br/>
+	      <div class="card card-header">
+<h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
+	      </div>
+	      <br/>
+<div class="card card-body mx-auto">
+	<b>Provenance Graph</b>
+<figure class="mx-auto">
+<div class="mx-auto">
+{{ stream_graph }}
+</div>
+</figure>
+</div>
+<br/>
+<div class="card card-body mx-auto">
+	<b>Result Information</b>
+<figure>
+<div>
+{{ provenance_graph }}
+</div>
+</figure>
+</div>
+<br/>
+
+<br/>
+<h3>Samples</h3>
+{{ samples_html }}
+<br/>
+<br/>
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

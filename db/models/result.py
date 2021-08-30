@@ -10,6 +10,7 @@ from django.urls import reverse
 #for searching
 from django.contrib.postgres.search import SearchVector
 from django.contrib.contenttypes.models import ContentType
+from django.views.generic.detail import DetailView
 
 from django.apps import apps
 
@@ -49,7 +50,7 @@ class Result(Object):
         return mark_safe(format_html('<a{}>{}</a>',
                          flatatt({'href': reverse(self.base_name + '_detail',
                                  kwargs={self.base_name + '_id': self.pk})}),
-                                 self.name + " from " + self.source_step.name))
+                                 self.name))
 
     def get_parameters(self, step_field="pk"):
         Parameter = apps.get_model("db.Parameter")
@@ -85,6 +86,107 @@ class Result(Object):
 #                                             'active_choices': []}),
                                            ])
 
+    def get_artifact_url(self):
+        if self.has_value("uploaded_artifact", "file"):
+            return self.get_value("uploaded_artifact", "file").upload_file.url
+        else:
+            return None
+
+    def get_artifact_badge(self):
+        if self.has_value('uploaded_artifact'):
+            href = 'href="/data-artifact?result_id=%d"' % (self.pk,)
+            badge_type = 'success'
+        else:
+            href='href="#"'
+            badge_type = 'secondary'
+        html_val = '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
+        return mark_safe(html_val)
+
+    def get_artifact_uploader(self):
+        if self.has_value('uploaded_artifact', "file"):
+            username = Result.objects.get(pk=self.pk).get_value("uploaded_artifact","file").userprofile.user.username
+            return username
+        else:
+            return ""
+
+    def get_result_type(self):
+        if self.has_value("qiime2_type", "value"):
+            return self.get_value("qiime2_type", "value")
+        else:
+            return "Unknown Result Type"
+
+    def human_short(self):
+        q2_type = self.get_result_type()
+        #Do your best to find the most sensible string to describe the Result at hand
+        if q2_type == "FeatureData[Sequence]":
+            if self.source_step.name in ["dada2__denoise_paired", "dada2__denoise_single"]:
+                return "Representative Sequences from DADA2"
+            elif self.source_step.name in ["rescript__dereplicate","rescript__filter_seqs_length_by_taxon","rescript__cull_seqs"]:
+                return "Reference Sequence File from qiime2 Plugin Rescript"
+            else:
+                return q2_type
+        elif q2_type == "FeatureData[RNASequence]":
+            if self.source_step.name == "rescript__get_silva_data":
+                return "SILVA Reference RNA"
+            else:
+                return q2_type
+        elif q2_type == "FeatureTable[Frequency]":
+            if self.source_step.name == "taxa__collapse":
+                return "Table Collapsed by Taxonomy"
+            elif self.source_step.name in ["dada2__denoise_paired", "dada2__denoise_single"]:
+                return "ASV Table from DADA2"
+            elif self.source_step.name == "feature-table__filter_samples":
+                source_table = self.upstream.first().human_short()
+                return "Filtered %s" % (source_table,)
+            else:
+                return q2_type
+        elif q2_type == "FeatureData[Taxonomy]":
+            if self.source_step.name == "feature-classifier__classify_sklearn":
+                return "Predicted Taxonomic Classifications"
+            elif self.source_step.name == "rescript__dereplicate":
+                return "Reference Taxonomy File from qiime2 Plugin Rescript"
+            elif self.source_step.name == "rescript__get_silva_data":
+                return "SILVA Reference Taxonomy"
+            else:
+                return q2_type
+        elif q2_type == "SampleData[PairedEndSequencesWithQuality]":
+            if self.source_step.name == "qiime2_import":
+                return "Paired-End Sequences Imported to qiime2"
+            else:
+                return q2_type
+        elif q2_type == "Phylogeny[Rooted]":
+            if self.source_step.name == "qiime2_import":
+                return "Phylogenetic Tree Imported to qiime2"
+            else:
+                return q2_type
+        elif q2_type == "FeatureData[SILVATaxidMap]":
+            return "SILVA Reference Map"
+        elif q2_type == "FeatureData[SILVATaxonomy]":
+            return "SILVA Reference Taxonomy"
+        elif q2_type == "FeatureData[Taxonomy]":
+            if self.source_step.name == "qiime2_import":
+                return "Taxonomic Reference Imported to qiime2"
+            else:
+                return q2_type
+        elif q2_type == "TaxonomicClassifier":
+            if self.source_step.name == "rescript__evaluate_fit_classifier":
+                return "Taxonomic Classifier from qiime2 Plugin Rescript"
+            elif self.source_step.name == "feature-classifier__fit_classifier_naive_bayes":
+                return "Taxonomic Classifier from qiime2 Feature Classifier"
+            else:
+                return q2_type
+        elif q2_type == "SampleData[DADA2Stats]":
+            return "DADA2 Denoise Statistics File"
+        elif q2_type == "Visualization":
+            if self.source_step.name == "feature-table__summarize":
+                return "Table Summary Visualization"
+            elif self.source_step.name == "demux__summarize":
+                return "Quality Summary Visualization"
+            else:
+                return "%s from %s" % (q2_type, self.source_step.name)
+        else:
+            return q2_type
+
     def html_features(self):
         feature_count = self.features.count()
         accordions = {'features': {'heading': format_html('Show Features ({})', str(feature_count))}}
@@ -105,13 +207,12 @@ class Result(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
-            parameters = forms.CharField(widget=DisplayText(), label="Parameters (non-default if bold)")
-            provenance = forms.CharField(max_length=4096, widget=DisplayText())
-            sample_accordion = forms.CharField(widget=DisplayText(), label="Samples")
-            feature_accordion = forms.CharField(widget=DisplayText(), label="Features")
+            parameters = forms.CharField(label="Parameters (non-default if bold)")
+            provenance = forms.CharField(max_length=4096)
+            sample_accordion = forms.CharField(label="Samples")
+            feature_accordion = forms.CharField(label="Features")
             node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
@@ -119,7 +220,7 @@ class Result(Object):
             def __init__(self, *args, **kwargs):
                 if kwargs.get('instance'):
                     kwargs['initial'] = OrderedDict()
-                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
+                    kwargs['initial']['provenance'] = mark_safe(kwargs['instance'].simple_provenance_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n","").replace('pt"','"'))
                     kwargs['initial']['sample_accordion'] = mark_safe(kwargs['instance'].html_samples())
                     kwargs['initial']['feature_accordion'] = mark_safe(kwargs['instance'].html_features())
                     kwargs['initial']['parameters'] = mark_safe("<BR>".join([format_html("<b>{}: {} (set by {})</b>" if dat[1]=="result" else "{}: {} (set by {})", name, str(dat[0].data.get().get_value()), dat[1].capitalize()) for name, dat in kwargs['instance'].get_parameters()[kwargs['instance'].source_step.pk].items()]))
@@ -129,6 +230,30 @@ class Result(Object):
                 self.fields["upstream"].label = "Input Results"
                 self.fields["source_step"].label = "Output By Step"
         return DisplayForm
+
+    @classmethod
+    def get_detail_view(cls, as_view=False):
+        class ResultDetailView(DetailView):
+            pk_url_kwarg = 'result_id'
+            form = cls.get_display_form()
+            queryset = cls.objects.all()
+            template_name = "result_detail.htm"
+            def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                #Add to context dict to make available in template
+                obj = self.get_object()
+                context['samples_html'] = mark_safe(obj.html_samples())
+#                context['features_html'] = mark_safe(obj.html_features())
+                context['provenance_graph'] = mark_safe(obj.simple_provenance_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n",""))
+                context['stream_graph'] = mark_safe(obj.get_stream_graph().pipe().decode().replace("<svg ", "<svg class=\"img-fluid\" ").replace("\n", ""))
+#                context['values_html'] = mark_safe(obj.html_values())
+                context['has_uploaded_artifact'] = obj.get_artifact_url()
+                context['q2type'] = obj.get_result_type()
+                return context
+        if as_view:
+            return ResultDetailView.as_view()
+        else:
+            return ResultDetailView
 
     @classmethod
     def get_crud_form(cls):
@@ -187,7 +312,8 @@ class Result(Object):
         input_parameters = ""
 
     def get_node_attrs(self, show_values=True, highlight=False, value_counts=None):
-        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
+        htm = "<<table border=\"0\">"
+#        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
         if not show_values:
            sep = ""
         else:
@@ -199,12 +325,12 @@ class Result(Object):
             except:
                 pass
         if "qiime2_type" in values:
-            htm += "<tr><td colspan=\"2\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, values["qiime2_type"])
-        if "qiime2_format" in values:
-            htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (values["qiime2_format"],)
+            htm += "<tr><td colspan=\"3\" %s><b><font point-size=\"18\">%s</font></b></td></tr>" % (sep, self.human_short(),)#values["qiime2_type"])
+#        if "qiime2_format" in values:
+#            htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (values["qiime2_format"],)
         if "uploaded_artifact" in values:
-            htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (values["uploaded_artifact"].upload_file.name,)
-        htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (str(getattr(self, self.id_field)),)
+            htm += "<tr><td colspan=\"3\"><font point-size=\"14\">Artifact Available</font></td></tr>"
+#        htm += "<tr><td colspan=\"2\"><font point-size=\"14\">%s</font></td></tr>" % (str(getattr(self, self.id_field)),)
         if show_values and value_counts is None:
             val_counts = self.get_value_counts()[self.pk]
         elif show_values and value_counts:
@@ -225,7 +351,7 @@ class Result(Object):
         attrs = self.gv_node_style.copy()
         attrs["name"] = str(self.pk)
         attrs["label"] = htm
-        attrs["fontname"] = "FreeSans"
+        attrs["fontname"] = "Arial"
         attrs["href"] = reverse(self.base_name + "_detail",
                                 kwargs={self.base_name+"_id":self.pk})
         if not highlight:
@@ -242,7 +368,7 @@ class Result(Object):
         dot = gv.Digraph("provenance", format='svg')
         dot.graph_attr.update(compound='true')
         dot.graph_attr.update(rankdir="LR")
-        dot.graph_attr.update(size="10,10!")
+#        dot.graph_attr.update(size="10,10!")
         rn=self.get_node_attrs(highlight=True)
         rn['name']="R"
         an=self.analysis.get_node_attrs()
@@ -256,40 +382,42 @@ class Result(Object):
         dot.node(**an)
         dot.node(**pn)
         dot.edges(["PA","AS","SR"])
-        samplegraph = gv.Digraph("cluster0")
-        sample_name = None
-        nsamples = self.samples.count()
-        for sample in self.samples.all()[0:3]:
-            attrs = sample.get_node_attrs(show_values=False)
-            attrs['name'] = "S%d" % (sample.pk,)
-            sample_name = attrs['name']
-            samplegraph.node(**attrs)
-        if nsamples>3:
-            nmore = nsamples - 3
-            attrs = sample.get_node_attrs(highlight=False, show_values=False)
-            attrs['fontname'] = 'FreeSans'
-            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
-            attrs['name'] = "SX"
-            samplegraph.node(**attrs)
-        featuregraph = gv.Digraph("cluster1")
-        feature_name = None
-        nfeatures = self.features.count()
-        for feature in self.features.all()[0:3]:
-            attrs = feature.get_node_attrs(show_values=False)
-            attrs['name'] = "F%d" % (feature.pk,)
-            feature_name = attrs['name']
-            featuregraph.node(**attrs)
-        if nfeatures>3:
-            nmore = nfeatures - 3
-            attrs = feature.get_node_attrs(highlight=False, show_values=False)
-            attrs['fontname'] = 'FreeSans'
-            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
-            attrs['name'] = "FX"
-            featuregraph.node(**attrs)
-        dot.subgraph(featuregraph)
-        dot.subgraph(samplegraph)
-        if sample_name is not None:
-            dot.edge(sample_name, "R", ltail="cluster0")
-        if feature_name is not None:
-            dot.edge(feature_name, "R", ltail="cluster1")
+#        samplegraph = gv.Digraph("cluster0")
+#        sample_name = None
+#        nsamples = self.samples.count()
+#        for sample in self.samples.all()[0:3]:
+#            attrs = sample.get_node_attrs(show_values=False)
+#            attrs['name'] = "S%d" % (sample.pk,)
+#            attrs['fontname'] = 'Arial'
+#            sample_name = attrs['name']
+#            samplegraph.node(**attrs)
+#        if nsamples>3:
+#            nmore = nsamples - 3
+#            attrs = sample.get_node_attrs(highlight=False, show_values=False)
+#            attrs['fontname'] = 'Arial'
+#            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("SAMPLE",nmore)
+#            attrs['name'] = "SX"
+#            samplegraph.node(**attrs)
+#        featuregraph = gv.Digraph("cluster1")
+#        feature_name = None
+#        nfeatures = self.features.count()
+#        for feature in self.features.all()[0:3]:
+#            attrs = feature.get_node_attrs(show_values=False)
+#            attrs['name'] = "F%d" % (feature.pk,)
+#            attrs['fontname'] = 'Arial'
+#            feature_name = attrs['name']
+#            featuregraph.node(**attrs)
+#        if nfeatures>3:
+#            nmore = nfeatures - 3
+#            attrs = feature.get_node_attrs(highlight=False, show_values=False)
+#            attrs['fontname'] = 'Arial'
+#            attrs['label'] = "<<table border=\"0\"><tr><td colspan=\"3\"><b>%s</b></td></tr><tr><td colspan=\"3\"><b>%d more...</b></td></tr></table>>" % ("FEATURE",nmore)
+#            attrs['name'] = "FX"
+#            featuregraph.node(**attrs)
+#        dot.subgraph(featuregraph)
+#        dot.subgraph(samplegraph)
+#        if sample_name is not None:
+#            dot.edge(sample_name, "R", ltail="cluster0")
+#        if feature_name is not None:
+#            dot.edge(feature_name, "R", ltail="cluster1")
         return dot

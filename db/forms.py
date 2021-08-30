@@ -12,13 +12,13 @@ from .models import (
     UploadFile, UserProfile, UploadMessage
 )
 from .models.object import Object
-from django_jinja_knockout.forms import (
-    DisplayModelMetaclass, FormWithInlineFormsets, BootstrapModelForm,
-    ko_inlineformset_factory, #ko_generic_inlineformset_factory,
-    WidgetInstancesMixin,
-    BootstrapModelForm
-)
-from django_jinja_knockout.widgets import DisplayText
+#from django_jinja_knockout.forms import (
+#    DisplayModelMetaclass, FormWithInlineFormsets, ModelForm,
+#    ko_inlineformset_factory, #ko_generic_inlineformset_factory,
+#    WidgetInstancesMixin,
+#    ModelForm
+#)
+#from django_jinja_knockout.widgets import DisplayText
 
 from django.forms import inlineformset_factory, ModelForm
 
@@ -77,25 +77,26 @@ Django-Jinja-Knockout Forms
 
 #Base Forms and Display Forms
 
-class UserProfileForm(BootstrapModelForm):
+class UserProfileForm(ModelForm):
     #ModelForm will auto-generate fields which dont already exist
     #Therefore, creating fields prevents auto-generation.
     class Meta:
         model = UserProfile
         fields = ['user']
 
+class FileFieldForm(forms.Form):
+    file = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
 
-
-class UploadForm(WidgetInstancesMixin, BootstrapModelForm):
+class UploadForm(ModelForm):
     class Meta:
         model = UploadFile
         fields = ['upload_file']
 
-UserUploadFormset = ko_inlineformset_factory(UserProfile,
-                                             UploadFile,
-                                             form=UploadForm,
-                                             extra=0,
-                                             min_num=1)
+#UserUploadFormset = ko_inlineformset_factory(UserProfile,
+#                                             UploadFile,
+#                                             form=UploadForm,
+#                                             extra=0,
+#                                             min_num=1)
 
 ################ Upload Forms
 class ArtifactUploadForm(ModelForm):
@@ -130,38 +131,27 @@ class SimpleMetadataUploadForm(ModelForm):
 
 
 #This form used only for display purposes
-class UploadFileDisplayForm(WidgetInstancesMixin,
-                                BootstrapModelForm,
-                                metaclass=DisplayModelMetaclass):
+class UploadFileDisplayForm(ModelForm):
         class Meta:
             model=UploadFile
             fields = '__all__'
 
-class ErrorDisplayForm(WidgetInstancesMixin, BootstrapModelForm,
-                        metaclass=DisplayModelMetaclass):
+class ErrorDisplayForm(ModelForm):
     class Meta:
         model = UploadMessage
         fields = '__all__'
 
-FileDisplayErrorFormset = ko_inlineformset_factory(
-                                                UploadFile,
-                                                UploadMessage,
-                                                form=ErrorDisplayForm,
-                                                extra=0,
-                                                min_num=0,
-                                                can_delete=False)
-
-class FileDisplayWithInlineErrors(FormWithInlineFormsets):
-    FormClass = UploadFileDisplayForm
-    FormsetClasses =[FileDisplayErrorFormset]
-    def get_formset_inline_title(self, formset):
-        return "Status Messages"
-
-class UserWithInlineUploads(FormWithInlineFormsets):
-    FormClass = UserProfileForm
-    FormsetClasses = [UserUploadFormset]
-    def get_formset_inline_title(self, formset):
-        return "User Uploads"
+#class FileDisplayWithInlineErrors(FormWithInlineFormsets):
+#    FormClass = UploadFileDisplayForm
+#    FormsetClasses =[FileDisplayErrorFormset]
+#    def get_formset_inline_title(self, formset):
+#        return "Status Messages"
+#
+#class UserWithInlineUploads(FormWithInlineFormsets):
+#    FormClass = UserProfileForm
+#    FormsetClasses = [UserUploadFormset]
+#    def get_formset_inline_title(self, formset):
+#        return "User Uploads"
 
 class NameLabelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
@@ -169,7 +159,7 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 
 #### Investigation Forms
 
-class InvestigationForm(BootstrapModelForm):
+class InvestigationForm(ModelForm):
     #value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()],
     #                               required=False,
     #                               widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
@@ -177,20 +167,29 @@ class InvestigationForm(BootstrapModelForm):
         model = Investigation
         exclude = ['search_vector', 'values', 'value_type']
 
-class InvestigationDisplayForm(BootstrapModelForm,
-                               metaclass=DisplayModelMetaclass):
+class InvestigationCreateForm(forms.ModelForm):
+    class Meta:
+        model = Investigation
+        fields = ['name']
+    def __init__(self, *args, **kwargs):
+        super(InvestigationCreateForm, self).__init__(*args, **kwargs)
+        for visible in self.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+class InvestigationDisplayForm(ModelForm):
     class Meta:
         model = Investigation
         exclude = ['search_vector', 'values']
 
-class SampleForm(BootstrapModelForm):
+class SampleForm(ModelForm):
 #    investigations = NameLabelChoiceField(queryset = Investigation.objects.all())
     class Meta:
         model = Sample
         exclude = ['search_vector', 'values', 'investigations', 'features', 'upstream', 'all_upstream']
 
 def get_step_link(form, value):
-    if (value is None) or (value is ""):
+    if (value == None) or (value == ""):
         return ""
     if isinstance(value, int):
         name = Step.objects.get(pk=value).name
@@ -198,14 +197,14 @@ def get_step_link(form, value):
     else:
         return Step.objects.get(name=value).get_detail_link()
 
-class FeatureForm(BootstrapModelForm):
+class FeatureForm(ModelForm):
     class Meta:
         model = Feature
         exclude = ['search_vector', 'values', 'annotations']
 
-class FeatureDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    measures = forms.CharField(max_length=4096, label="Measures", widget=DisplayText())
-    metadata = forms.CharField(max_length=4096, label="Metadata", widget=DisplayText())
+class FeatureDisplayForm(ModelForm):
+    measures = forms.CharField(max_length=4096, label="Measures")
+    metadata = forms.CharField(max_length=4096, label="Metadata")
     class Meta:
         model = Feature
         exclude = ['search_vector', 'values']
@@ -216,14 +215,25 @@ class FeatureDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Dis
             initial['metadata'] = mark_safe("<br/>".join([str(x) for x in kwargs['instance'].values.filter(type="metadata") ]))
         super(FeatureDisplayForm, self).__init__(*args, **kwargs)
 
-class ProcessForm(BootstrapModelForm):
+class ProcessForm(ModelForm):
     class Meta:
         model = Process
         exclude = ['search_vector', 'values', 'upstream', 'all_upstream']
 
-class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps", widget=DisplayText(get_text_method=get_step_link))
-    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
+class ProcessCreateForm(forms.ModelForm):
+    class Meta:
+        model = Process
+        fields = ['name']
+    def __init__(self, *args, **kwargs):
+        super(ProcessCreateForm, self).__init__(*args, **kwargs)
+        for visible in self.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
+
+
+class ProcessDisplayForm(ModelForm):
+    steps = forms.ModelMultipleChoiceField(queryset=Step.objects.all(), label="Steps")
+    default_parameters = forms.CharField(max_length=4096)
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
@@ -238,7 +248,7 @@ class ProcessDisplayForm(BootstrapModelForm, metaclass=DisplayModelMetaclass):
         model = Process
         exclude = ['search_vector', 'values']
 
-class StepForm(BootstrapModelForm):
+class StepForm(ModelForm):
     class Meta:
         model = Step
         exclude = ('search_vector','values', 'upstream', 'all_upstream', 'processes')
@@ -248,11 +258,11 @@ class StepForm(BootstrapModelForm):
         super(StepForm, self).__init__(*args, **kwargs)
 #        self.fields['values'].label = "Default Parameters"
 
-class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_step_link))
-    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
-    node = forms.CharField(max_length=4096, widget=DisplayText())
-    graph = forms.CharField(max_length=4096, widget=DisplayText())
+class StepDisplayForm(ModelForm):
+    downstream = forms.ModelMultipleChoiceField(queryset=Step.objects.none(), label="Downstream")
+    default_parameters = forms.CharField(max_length=4096)
+    node = forms.CharField(max_length=4096)
+    graph = forms.CharField(max_length=4096)
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
@@ -270,16 +280,16 @@ class StepDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Displa
         exclude = ('search_vector', 'values')
         def get_process_link(self, value):
             return Process.objects.get(name=value).get_detail_link()
-        widgets = {'upstream': DisplayText(get_text_method=get_step_link),
-                   'processes': DisplayText(get_text_method=get_process_link)}
+#        widgets = {'upstream': DisplayText(get_text_method=get_step_link),
+#                   'processes': DisplayText(get_text_method=get_process_link)}
 
 # No ResultForm, we don't need to edit that one manually. Results come in with Upload Files
 
-class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    parameters = forms.CharField(max_length=4096, widget=DisplayText())
+class ResultDisplayForm(ModelForm):
+    parameters = forms.CharField(max_length=4096)
     def get_upstream_link(self, value):
        return Result.objects.get(uuid=value).get_detail_link()
-    downstream = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Downstream", widget=DisplayText(get_text_method=get_upstream_link))
+    downstream = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Downstream")
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
@@ -298,23 +308,23 @@ class ResultDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Disp
             return Result.objects.get(uuid=value).get_detail_link()
         def get_analysis_link(self, value):
             return Analysis.objects.get(name=value).get_detail_link()
-        widgets = {'upstream' : DisplayText(get_text_method=get_upstream_link),
-                   'all_upstream': DisplayText(get_text_method=get_upstream_link),
-                   'downstream': DisplayText(get_text_method=get_upstream_link),
-                   'features': DisplayText(get_text_method=get_feature_link),
-                   'source_step': DisplayText(get_text_method=get_step_link),
-                   'analysis': DisplayText(get_text_method=get_analysis_link)}
+#        widgets = {'upstream' : DisplayText(get_text_method=get_upstream_link),
+#                   'all_upstream': DisplayText(get_text_method=get_upstream_link),
+#                   'downstream': DisplayText(get_text_method=get_upstream_link),
+#                   'features': DisplayText(get_text_method=get_feature_link),
+#                   'source_step': DisplayText(get_text_method=get_step_link),
+#                   'analysis': DisplayText(get_text_method=get_analysis_link)}
 
-class AnalysisForm(BootstrapModelForm):
+class AnalysisForm(ModelForm):
     class Meta:
         model = Analysis
         exclude = ('search_vector','values','extra_steps')
 
-class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=DisplayModelMetaclass):
-    default_parameters = forms.CharField(max_length=4096, widget=DisplayText())
+class AnalysisDisplayForm(ModelForm):
+    default_parameters = forms.CharField(max_length=4096)
     def get_result_link(self, value):
         return Result.objects.get(uuid=value).get_detail_link()
-    results = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Results", widget=DisplayText(get_text_method=get_result_link))
+    results = forms.ModelMultipleChoiceField(queryset=Result.objects.none(), label="Results")
     def __init__(self, *args, **kwargs):
         if kwargs.get('instance'):
             initial=kwargs.setdefault('initial',{})
@@ -329,8 +339,8 @@ class AnalysisDisplayForm(WidgetInstancesMixin, BootstrapModelForm, metaclass=Di
             return Result.objects.get(uuid=value).get_detail_link()
         def get_process_link(self, value):
             return Process.objects.get(name=value).get_detail_link()
-        widgets = {'process': DisplayText(get_text_method=get_process_link),
-                   'results': DisplayText(get_text_method=get_result_link)}
+#        widgets = {'process': DisplayText(get_text_method=get_process_link),
+#                   'results': DisplayText(get_text_method=get_result_link)}
 
 
 ##### Plot Option Select Form
@@ -357,8 +367,29 @@ class TaxBarSelectForm(forms.Form):
                                                                                    forward=('count_matrix',),
                                                                                    attrs={"data-allow-clear": "true", "style": "flex-grow: 1", 'data-html': True}))
     taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", "data-placeholder": "Genus", 'data-html': True}))
+    plot_height = forms.IntegerField(initial=750)
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+#        self.fields['plot_height'].widget.attrs.update({'placeholder': 750,'default':750})
 
 
+class AnalysisSelectForm(forms.Form):
+    analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(),
+                                      label="Analysis",
+                                      widget=autocomplete.ModelSelect2(url='object-analysis-autocomplete',
+                                                                       attrs={"data-allow-clear": "true", "style": "flex-grow: 1", "data-html": True}))
+
+class AnalysisCreateForm(forms.ModelForm):
+    class Meta:
+        model = Analysis
+        fields = ['name','process']
+        widgets = {'process': autocomplete.ModelSelect2(url='object-process-autocomplete',
+                                                        attrs={"data-allow-clear": "true", "style": "flex-grow: 1", "data-html": True})}
+    def __init__(self, *args, **kwargs):
+        super(AnalysisCreateForm, self).__init__(*args, **kwargs)
+        for visible in self.visible_fields():
+            #Simple way to bootstrapify the input
+            visible.field.widget.attrs['class'] = 'form-control'
 
 ##### Search form
 class SearchBarForm(forms.Form):

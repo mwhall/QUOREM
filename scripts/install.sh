@@ -1,6 +1,6 @@
 #!/bin/bash
 
-eval "$(conda shell.bash hook)"
+#eval "$(conda shell.bash hook)"
 
 echo -e "The script will create and configure a database.\n"
 echo -e "This requires Anaconda and PostgreSQL be installed.\n"
@@ -18,7 +18,7 @@ fi
 
 conda create --name $venv python=3.6
 conda activate $venv
-conda env update --file scripts/qiime2-2019.10-py36-linux-conda.yml
+conda env update --file scripts/qiime2/qiime2-2019.10-py36-linux-conda.yml
 pip install -r requirements.txt
 echo "Sudo password required to act as postgres user"
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
@@ -26,7 +26,7 @@ sudo -u postgres createdb --owner=$pguname $dbname
 python ./scripts/config.py $dbname $pguname $pswd1 `pwd`
 
 #Seems like this is necessary
-./extenddb.sh $venv
+./scripts/extenddb.sh $venv
 
 python manage.py makemigrations
 python manage.py migrate

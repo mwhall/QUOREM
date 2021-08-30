@@ -9,7 +9,7 @@ import ete3
 from .models import *
 
 
-def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=True, jupyter=False):
+def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, level=6, relative=True, jupyter=False):
     linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
     if level in linnean_levels:
         level = linnean_levels[level]
@@ -42,9 +42,8 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
             return "; ".join([x[tax_index-1], x[tax_index]])
         else:
             return x[tax_index]
-    tax_df["value_data"] = tax_df["value_data"].str.split("; ").apply(format_taxonomy)
+    tax_df["value_data"] = tax_df["value_data"].str.split(";").apply(format_taxonomy)
     tax_merge = tax_df.groupby("value_data").apply(lambda x: x['features__pk'].unique())
-    """
     data = []
     for tax, merge in tax_merge.items():
         data.append(go.Bar(name=tax,
@@ -55,16 +54,16 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
     fig = go.Figure(data=data)
     # Change the bar mode
     fig.update_layout(barmode='stack',
-                     legend_orientation='h',
-                     legend=dict(x=0,y=-1.7),
-                     height=750)
+                     legend_orientation='v',
+                     legend=dict(yanchor="top", x=0, y=-0.5),
+                     height=plot_height)
     """
     #change structure a bit to let plotly express do the plot. This makes dash
     # interactivty easier for later.
     sample_df = pd.DataFrame({'sample':sample_names})
 
     for tax, merge in tax_merge.items():
-        y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0],
+        y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
         sample_df[tax] = y[0]
     #px.bar can handle long or wide data. here, we use wide.
     x_column = 'sample'
@@ -74,7 +73,8 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, samples=None, level=6, relative=Tr
                         legend=dict(x=0,y=-1.7),
                         xaxis_title=None,
                         yaxis_title=None,
-                        height=1140)
+                        height=plot_height)
+    """
     if jupyter:
         return plt.iplot(fig)
     return plt.plot(fig, output_type="div")

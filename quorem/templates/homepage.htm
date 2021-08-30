@@ -1,0 +1,71 @@
+{% extends 'base.htm' %}
+{% load static %}
+{% load humanize %}
+{% block main %}
+<title>QUOREM Database Home</title>
+<div id="welcome" row class="welcome">
+  <h3> Welcome to QUOREM</h3>
+</div>
+<br>
+<div id="prereleasealert" class="alert alert-primary alert-dismissible fade show" role="alert">
+<h5 class="alert-heading">QUOREM is in Prerelease</h5>
+Expect things to change or break. You may be required to wipe your data and re-ingest your files to upgrade to a future version. Be sure to keep local copies of your data for the time being.
+</div>
+<!--div class="alert alert-secondary" role="alert">
+	Help us out! File your <a href="https://github.com/mwhall/QUOREM/issues/">issues, bugs, and feature requests on our GitHub</a>!
+</div-->
+
+<div class="card">
+<div class="card-header text-light bg-info">Database Summary</div>
+<div class"card-body">
+<div class="card-group">
+  <div class="card">
+    <div class="card-header"><h4>Features</h4></div>
+    <div class="card-body bg-light text-dark text-nowrap"><h1>{{ feature_count|intcomma }} <i class="fa fa-bacteria"></i></h1><small class="text-muted"> features in database</small><a class="stretched-link text-light" href="/feature/all/"></a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h4>Samples</h4></div>
+    <div class="card-body bg-light text-dark"><h1>{{ sample_count|intcomma }} <i class="fa fa-vials"></i></h1><small class="text-muted">samples in database</small><a class="stretched-link text-light" href="/sample/all/"></a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h4>Results</h4></div>
+    <div class="card-body bg-light text-dark"><h1>{{ result_count|intcomma }} <i class="fa fa-boxes"></i></h1><small class="text-muted">results in database</small><a class="stretched-link text-light" href="/result/all/"></a>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+<br/>
+<div class="card">
+  <div class="card-header bg-info text-light">
+    What's New!
+  </div>
+  <div class="card-body">
+    <h5 class="card-title">Recent QUOREM Changes</h5>
+    <hr/>
+    <p class="card-text">
+    August 30, 2021:
+    <ul>
+	    <li>Added 'What's New!' and 'Database Summary' sections to landing page (here!)</li>
+    <li>All object list pages now have a filter on the "Name" field</li>
+    <li><a href="/feature/all/">Feature List</a> page now lists related Analyses and Taxonomic Classifications</li>
+    <li><a href="/feature/all/">Feature List</a> can now filter by name, related analysis, and taxonomic classification</li>
+    <li><a href="/sample/all/">Sample List</a> page now lists related Analyses and number of Features in each Sample</li>
+    <li><a href="/result/all/">Result List</a> page now lists related Analyses, type of Result in Human English (as opposed to QIIME2 English), uploader, and a link to the Artifact download, if possible</li>
+    <li><a href="/analysis/all/">Analysis List</a> page now lists the # of related Samples, Features, and Results</li>
+    <li>Provenance graphs on Result detail pages are now simplified</li>
+    <li>Download buttons are present on each Result detail page, and an Artifact/Visualization link will be present if a file exists</li>
+    <li>Analysis detail pages now list all Results, with Results in green being available for download and/or visualization</li>
+    <li>Visual tweaks for autofill dropdowns to avoid graphical glitches with various screen widths</li>
+    </ul>
+    <hr/>
+</p>
+</div>
+</div>
+<br/>
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}

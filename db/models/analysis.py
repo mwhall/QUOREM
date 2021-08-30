@@ -6,9 +6,11 @@ from django.utils.html import mark_safe, format_html
 #for searching
 from django.contrib.postgres.search import SearchVector
 from django.contrib.contenttypes.models import ContentType
-
+from django.views.generic.detail import DetailView
+from django.views.generic.edit import FormView
 from db.models.object import Object
 from combomethod import combomethod
+
 class Analysis(Object):
     base_name = "analysis"
     plural_name = "analyses"
@@ -63,10 +65,9 @@ class Analysis(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
-            result_accordion = forms.CharField(widget=DisplayText(), label="Results")
+            result_accordion = forms.CharField(label="Results")
             node = None #Cheating way to override parent's Node and hide it
             class Meta:
                 model = cls
@@ -102,3 +103,49 @@ class Analysis(Object):
         results = self.results.all()
         if upstream:
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
+
+    def html_results_list(self):
+        html_val = '<ul class="list-group">'
+        for result in self.results.all():
+            step_name = result.source_step.name
+            if result.has_value('uploaded_artifact'):
+                href = 'href="/data-artifact?result_id=%d"' % (result.pk,)
+                badge_type = 'success'
+                button_class = "btn-outline-success"
+                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">qiime2 Artifact</a>, a %s from Step %s, is archived and available for download' % (result.pk, result.get_result_type(),step_name)
+            else:
+                href='href="#"'
+                badge_type = 'secondary'
+                button_class = "btn-outline-secondary"
+                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">qiime2 Artifact</a>, a %s from Step %s, has not been archived. It has been inferred from QIIME2 provenance data.' % (result.pk, result.get_result_type(), step_name)
+            html_val += '<li class="list-group-item d-flex justify-content-between align-items-center">'
+            html_val += '<div>'
+            html_val += '<button class="btn %s" type="button" data-toggle="collapse" data-target="#result%s" aria-expanded="false" aria-controls="result%s">%s &nbsp; <i class="fas fa-chevron-down"></i></button><br/>' % (button_class, result.name, result.name, result.human_short())
+            html_val += '<div class="collapse" id="result%s">' % (result.name,)
+            html_val += '<div class="card-body">'
+            html_val += available_str
+            html_val += '</div></div></div>'
+            html_val += '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
+        html_val += "</ul>"
+        return mark_safe(html_val)
+
+    @classmethod
+    def get_detail_view(cls, as_view=False):
+        class AnalysisDetailView(DetailView):
+            pk_url_kwarg = 'analysis_id'
+            form = cls.get_display_form()
+            queryset = cls.objects.all()
+            template_name = "analysis_detail.htm"
+            def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                #Add to context dict to make available in template
+                context['results_html'] = mark_safe(self.get_object().html_results())
+                context['values_html'] = mark_safe(self.get_object().html_values())
+                return context
+        if as_view:
+            return AnalysisDetailView.as_view()
+        else:
+            return AnalysisDetailView
+
+
+

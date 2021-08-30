@@ -1,0 +1,27 @@
+{% extends 'base.htm' %}
+
+{% block title %}
+<title>{{object.base_name|capfirst}} Detail: {{object.name}}</title>
+{% endblock title %}
+
+{% block main %}
+
+<a class="btn btn-primary" href="/feature/all/">
+            <i class="fas fa-angle-left"></i> Back to All Features
+</a>
+<br/><br/>
+<div class="card card-header">
+<h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
+</div>
+<div class="card-body">
+<h3>Taxonomic Classifications</h3>
+{{ object.taxonomy_badges }}
+</div>
+<br/>
+<br/>
+
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

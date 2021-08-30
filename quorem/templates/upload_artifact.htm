@@ -1,0 +1,35 @@
+{% extends 'base.htm' %}
+{% load static %}
+
+{% block title %}
+<title>Upload Artifact</title>
+{% endblock title %}
+
+{% block main %}
+<div class="card">
+  <div class="card-header">
+           <span class="badge badge-pill badge-dark float-right"  data-toggle="tool-tip" data-placement="right" title="Upload a QIIME2 artifact (.qza) or visualization (.qzv) file.">
+            <span class="iconui iconui-question-sign"></span>
+          </span>
+    <card-title>Upload Artifact</card-title>
+  </div>
+  <div class="card-body">
+    <form enctype="multipart/form-data" action="/upload/artifact" method="post" class="dropzone">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    {% for field in form %}
+    <div class="row form-group pt-3">
+      <label class="control-label col-md-3 required">{{ field.label_tag }}</label>
+      <div class="field col-md-7">
+        {{ field }}
+      </div>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block bottom_scripts %}
+<script src="{% static 'js/dropzone.js' %}"></script>
+{% endblock %}

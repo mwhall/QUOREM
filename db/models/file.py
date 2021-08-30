@@ -27,7 +27,7 @@ class UploadFile(models.Model):
         ('S', 'Spreadsheet'),
         ('A', 'Artifact'))
     userprofile = models.ForeignKey("UserProfile", on_delete=models.CASCADE, verbose_name='Uploader')
-    upload_file = models.FileField(upload_to="upload/")
+    upload_file = models.FileField(upload_to="uploaddata/")
     logfile = models.OneToOneField("LogFile", on_delete=models.CASCADE, related_name="file")
     upload_status = models.CharField(max_length=1, choices=STATUS_CHOICES)
     upload_type = models.CharField(max_length=1, choices=TYPE_CHOICES)

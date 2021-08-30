@@ -16,20 +16,20 @@ def initialize_documentation(root):
         URLPath.get_by_path("use")
     except:
         URLPath.create_urlpath(root, slug="use", 
-                                 title="Using QUOR'em",
-                                 content=get_content_from_file("quorem/static/docs/use.md"))
+                                 title="Using QUOREM",
+                                 content=get_content_from_file("quorem/static/markdown/docs/use.md"))
     try:
         URLPath.get_by_path("develop")
     except:
         URLPath.create_urlpath(root, slug="develop",
-            title="Developing QUOR'em",
-            content=get_content_from_file("quorem/static/docs/develop.md"))
+            title="Developing QUOREM",
+            content=get_content_from_file("quorem/static/markdown/docs/develop.md"))
     try:
         URLPath.get_by_path("deploy")
     except:
         URLPath.create_urlpath(root, slug="deploy",
-            title="Deploying QUOR'em",
-            content=get_content_from_file("quorem/static/docs/deploy.md"))
+            title="Deploying QUOREM",
+            content=get_content_from_file("quorem/static/markdown/docs/deploy.md"))
 
 #Wire up the reports here so that it can all be imported in one function
 def get_wiki_report(report_name, **kwargs):
@@ -141,10 +141,10 @@ def initialize_wiki():
         root = URLPath.root()
     except NoRootURL:
         print("Root URL not found, creating...")
-        root = URLPath.create_root(title="QUOR'EM Wiki",
-                                   content=get_content_from_file("quorem/static/docs/root.md"))
+        root = URLPath.create_root(title="QUOREM Wiki",
+                                   content=get_content_from_file("quorem/static/markdown/docs/root.md"))
     article_revision = ArticleRevision(title=root.article.current_revision.title,
-                                                   content=get_content_from_file("quorem/static/docs/root.md"))
+                                                   content=get_content_from_file("quorem/static/markdown/docs/root.md"))
     root.article.add_revision(article_revision)
     try:
         investigation = URLPath.get_by_path("investigation")
@@ -153,7 +153,7 @@ def initialize_wiki():
         URLPath.create_urlpath(root, slug="investigation", 
                                      title="List of Investigations",
                                      content="""This page lists the 
-        investigations that are present in your QUOR'EM database. You may
+        investigations that are present in your QUOREM database. You may
         edit anything on this page, except the Automated Report 
         section.\r\n\r\n""")
 
@@ -164,7 +164,7 @@ def initialize_wiki():
         URLPath.create_urlpath(root, slug="protocol", 
                                      title="List of Protocols",
                                      content="""This page lists the 
-        protocols that are present in your QUOR'EM database. You may
+        protocols that are present in your QUOREM database. You may
         edit anything on this page, except the Automated Report 
         section.\r\n\r\n""")
 
@@ -175,7 +175,7 @@ def initialize_wiki():
         URLPath.create_urlpath(root, slug="pipeline", 
                                      title="List of Pipelines",
                                      content="""This page lists the 
-        pipelines that are present in your QUOR'EM database. You may
+        pipelines that are present in your QUOREM database. You may
         edit anything on this page, except the Automated Report 
         section.\r\n\r\n""")
     try:
@@ -184,7 +184,7 @@ def initialize_wiki():
         print("Sample page not found, creating...")
         URLPath.create_urlpath(root, slug="sample",
                                      title="List of Samples",
-                                     content="This page lists the samples that are present in your QUOR'EM database. You may edit anything on this page, except the Automated Report section.\r\n\r\n")
+                                     content="This page lists the samples that are present in your QUOREM database. You may edit anything on this page, except the Automated Report section.\r\n\r\n")
 
     initialize_documentation(root)
 

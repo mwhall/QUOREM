@@ -3,6 +3,8 @@ from django.apps import apps
 from django import forms
 from django.utils.html import mark_safe, format_html
 
+from django.views.generic.detail import DetailView
+
 #for searching
 from django.contrib.postgres.search import SearchVector
 from collections import OrderedDict
@@ -74,10 +76,9 @@ class Sample(Object):
 
     @classmethod
     def get_display_form(cls):
-        from django_jinja_knockout.widgets import DisplayText
         ParentDisplayForm = super().get_display_form()
         class DisplayForm(ParentDisplayForm):
-            feature_accordion = forms.CharField(widget=DisplayText(), label="Features")
+            feature_accordion = forms.CharField(label="Features")
             node = None #Cheating way to override parent's Node and hide it
             graph = None
             class Meta:
@@ -89,3 +90,21 @@ class Sample(Object):
                 super().__init__(*args, **kwargs)
                 self.fields.move_to_end("value_accordion")
         return DisplayForm
+
+    @classmethod
+    def get_detail_view(cls, as_view=False):
+        class SampleDetailView(DetailView):
+            pk_url_kwarg = 'sample_id'
+            form = cls.get_display_form()
+            queryset = cls.objects.all()
+            template_name = "detail.htm"
+            def get_context_data(self, **kwargs):
+                context = super().get_context_data(**kwargs)
+                #Add to context dict to make available in template
+                context['features_html'] = mark_safe(self.get_object().html_features())
+                context['values_html'] = mark_safe(self.get_object().html_values())
+                return context
+        if as_view:
+            return SampleDetailView.as_view()
+        else:
+            return SampleDetailView

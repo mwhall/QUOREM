@@ -22,27 +22,28 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '4pmq)x=1c+b8*am8ok9xc!-tt-3=_1&rjp!i^o-bvebehf8m3y'
+SECRET_KEY = 'O^9ddo1PymK=7+>GxBXFS8+vnfaJ!5Jc3cItEH&skHQI+6)JGr'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'quoc.ca']
-
-# Django-jinja2-knockout'd packages
-DJK_APPS = ['quorem', 'db']
+ALLOWED_HOSTS = ['localhost', 'oceanman.research.cs.dal.ca']
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Application definition
 
 INSTALLED_APPS = [
+    'quorem',
+    'db',
     'accounts',
     'landingpage',
     'dal',
     'dal_select2',
-    'dal_queryset_sequence',
+    'fontawesome_free',
+#    'dal_queryset_sequence',
     #postgres, needed for search functionality
     'django.contrib.postgres',
-#    'database_size',
     #'import_export',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -52,15 +53,6 @@ INSTALLED_APPS = [
     'django.contrib.sites.apps.SitesConfig',
     'django.contrib.humanize.apps.HumanizeConfig',
     'django.contrib.staticfiles',
-    'django_jinja',
-    'django_jinja.contrib._humanize',
-    'djk_ui',
-    'django_jinja_knockout',
-    ##django-plotly-dash###################
-    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
-
-    ######################################
-
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
     ##########
@@ -77,11 +69,9 @@ INSTALLED_APPS = [
     'wiki.plugins.links.apps.LinksConfig',
     'wiki.plugins.help.apps.HelpConfig',
     'polymorphic',
-] + DJK_APPS
+]
 # Below line is needed for d-p-dash if we upgrade to django 3.0
 X_FRAME_OPTIONS = 'SAMEORIGIN'
-
-DJK_MIDDLEWARE = 'django_jinja_knockout.middleware.ContextMiddleware'
 
 MIDDLEWARE = [
     ###########################################CORS Stuff
@@ -95,10 +85,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'quorem.middleware.UserAccessMiddleware',
-
-    'django_plotly_dash.middleware.BaseMiddleware',
-
-    DJK_MIDDLEWARE,
     ]
 
 
@@ -113,26 +99,13 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
-    "http://localhost:8000",
+    "https://oceanman.research.cs.dal.ca",
 ]
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 TEMPLATES = [
-        {
-          "BACKEND": "django_jinja.backend.Jinja2",
-          "APP_DIRS": True,
-          "OPTIONS": {
-            "match_extension": ".htm",
-            "app_dirname": "jinja2",
-            'context_processors': [
-                'django.template.context_processors.i18n',
-                'django_jinja_knockout.context_processors.template_context_processor'
-            ],
-            'environment': 'quorem.jinja2.environment',
-
-          },
-        },
-        { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
-          'DIRS': ['templates', 'quorem/templates'],
+    { 'BACKEND': 'django.template.backends.django.DjangoTemplates',
+          'DIRS': ['templates', 'quorem/templates/'],
           'APP_DIRS': True,
           'OPTIONS': {
             'context_processors': [
@@ -151,7 +124,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'quorem.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
@@ -200,7 +172,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'quorem.team@gmail.com'
 EMAIL_HOST_PASSWORD = 'gvwusszwfjgthnzt'
-DEFAULT_FROM_EMAIL = 'QUOREM Team <quotem.team@gmail.com>'
+DEFAULT_FROM_EMAIL = 'QUOREM Team <quorem.team@gmail.com>'
 
 
 # Internationalization
@@ -216,7 +188,6 @@ USE_L10N = True
 
 USE_TZ = False
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
@@ -229,7 +200,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = []
 
 hash_obj = hashlib.md5(BASE_DIR.encode('utf-8'))
-SESSION_COOKIE_NAME = 'djk_sessionid_{}'.format(hash_obj.hexdigest())
+SESSION_COOKIE_NAME = 'quorem_sessionid_{}'.format(hash_obj.hexdigest())
 
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = False
 ALLAUTH_DJK_URLS = True
@@ -239,7 +210,7 @@ ALLAUTH_DJK_URLS = True
 #s.t. the appropriate webserver serves files.
 MEDIA_ROOT = os.path.join(BASE_DIR)
 #media url needs to end in a slash.
-MEDIA_URL = "media/"
+MEDIA_URL = "/uploaddata/"
 
 LOG_ROOT = os.path.join(BASE_DIR, "logs")
 

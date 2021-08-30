@@ -1,2 +1,2 @@
 #!/bin/bash
-celery -A quorem worker --concurrency 3
+celery -A quorem worker --concurrency 1

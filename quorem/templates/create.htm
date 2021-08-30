@@ -1,0 +1,39 @@
+{% extends 'base.htm' %}
+
+{% block main %}
+<style>
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+	    margin-top: 2px !important;
+}
+.select2-container .select2-selection--single .select2-container .select2-container--default .select2-container--below .select2-container--focus {
+    width: auto;
+}
+</style>
+
+
+<div class="card">
+<div class="card-header">Create New {{ base_name|capfirst }}</div>
+
+
+<form method="post" class="form-contact">
+{% csrf_token %}
+<div class="card-body">
+<card-default  class="formsets default-padding">
+{% for field in form %}
+<div class="row form-group">
+  <label class="col-sm-2 col-form-label required" for="id_{{ field.name }}">{{ field.label }}</label>
+<div class="field col-lg-9">
+{{ field }}
+       </div>
+</div>
+{% endfor %}
+<input class="btn btn-primary" type="submit" value="Create">
+</div>
+</form>
+</div>
+{{ form.media }}
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+
