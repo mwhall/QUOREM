@@ -21,13 +21,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'O^9ddo1PymK=7+>GxBXFS8+vnfaJ!5Jc3cItEH&skHQI+6)JGr'
+# SECURITY WARNING: keep the secret key used in production secrets
+SECRET_KEY = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.115', 'quoc.ca', '198.84.174.81']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
@@ -99,7 +99,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
-    "https://quoc.ca",
+    "https://oceanman.research.cs.dal.ca",
 ]
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -132,10 +132,11 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'qdb',
-        'USER': 'quser',
-        'PASSWORD': 'abc123def4',
-        'HOST': '127.0.0.1',
+        'NAME': 'xxxxxx',
+        'USER': 'xxxxx',
+        'PASSWORD': 'xxxxxx',
+        'HOST': 'xxxxxx',
+        'PORT': '5432',
     }
 }
 
@@ -170,13 +171,13 @@ AUTH_PASSWORD_VALIDATORS = [
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'quorem.team@gmail.com'
-EMAIL_HOST_PASSWORD = 'gvwusszwfjgthnzt'
-DEFAULT_FROM_EMAIL = 'QUOREM Team <quorem.team@gmail.com>'
+EMAIL_HOST_USER = 'xxxxxxxxxxxxxxx'
+EMAIL_HOST_PASSWORD = 'xxxxxxxxxxxx'
+DEFAULT_FROM_EMAIL = 'xxxxxxxxxxxxxxx'
 
 NOTEBOOK_ARGUMENTS = [
     # exposes IP and port
-    '--ip=192.168.1.115',
+#    '--ip=192.168.1.115',
     '--port=8888',
     # disables the browser
     '--no-browser',

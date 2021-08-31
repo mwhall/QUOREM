@@ -69,6 +69,8 @@ $(function () {
       <th scope="col">Number of Related Samples</th>
       <th scope="col">Number of Related Features</th>
       <th scope="col" class="text-right">Number of Results</th>
+    {% elif base_name == 'step' %}
+      <th scope="col">Description from qiime2</th>
     {% endif %}
     </tr>
 
@@ -92,7 +94,9 @@ $(function () {
      <td scope="col"><a href="/sample/all/?analysis={{obj.pk}}">{{ obj.related_samples_count }}</a></td>
     <td scope="col"><a href="/feature/all/?analysis={{obj.pk}}">{{ obj.related_features_count }}</a></td>
     <td scope="col" class="text-right"><a href="/result/all/?analysis={{obj.pk}}">{{ obj.results.count }}</a></td>
- {% endif %}
+      {% elif base_name == 'step' %}
+      <td scope="col">{{ obj|get_value:"from_qiime2" }}</td>
+{% endif %}
     </tr>
 {% endfor %}
   </tbody>
