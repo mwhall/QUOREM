@@ -11,7 +11,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic.edit import CreateView
 from django.http import JsonResponse
-from django.urls import reverse as django_reverse
+from django.urls import reverse as django_reverse, reverse_lazy
 from django.utils.html import format_html, mark_safe
 from django.db import models, utils
 from django.http import Http404
@@ -564,13 +564,16 @@ class TaxBarSelectView(FormView):
     form_class = TaxBarSelectForm
     template_name = 'core/taxbarselect.htm'
     def post(self, request, *args, **kwargs):
+        request.POST = request.POST.copy()
         samples = request.POST.getlist('samples','')
         if samples is not '':
             # Dict is immutable, so must copy
-            request.POST = request.POST.copy()
             # For some reason, any multi-selects lose all but the last element, 
             # so we pass it as a single string
             request.POST['samples'] = ",".join(request.POST.getlist('samples'))
+        metadata_sort_by = request.POST.getlist('metadata_sort_by','')
+        if metadata_sort_by is not '':
+            request.POST['metadata_sort_by'] = ",".join(request.POST.getlist('metadata_sort_by'))
         return redirect(reverse('plot-tax-bar', post=request.POST))
 
 class TreeSelectView(FormView):
@@ -879,9 +882,12 @@ class TaxBarPlotView(TemplateView):
         tr = self.request.GET.get('taxonomy_result','')
         cmr = self.request.GET.get('count_matrix','')
         tl = self.request.GET.get('taxonomic_level','').lower()
+        samples_from_investigation = self.request.GET.get('samples_from_investigation','')
         relative = self.request.GET.get('relative','')
         samples = self.request.GET.get('samples','')
+        metadata_sort_by = self.request.GET.get('metadata_sort_by','')
         plot_height = self.request.GET.get('plot_height','')
+        n_taxa = self.request.GET.get('n_taxa','')
         opt_kwargs = {}
         if samples != '':
             samples = samples.split(",")
@@ -892,6 +898,13 @@ class TaxBarPlotView(TemplateView):
             opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
         if plot_height != '':
             opt_kwargs["plot_height"] = int(plot_height)
+        if n_taxa != '':
+            opt_kwargs["n_taxa"] = int(n_taxa)
+        if samples_from_investigation != '':
+            opt_kwargs["samples_from_investigation"] = int(samples_from_investigation)
+        if metadata_sort_by != "":
+            metadata_sort_by = metadata_sort_by.split(",")
+            opt_kwargs["metadata_sort_by"] = [int(x) for x in metadata_sort_by]
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()

@@ -9,16 +9,10 @@ from .models import (
     Result,
     Sample, Feature,
     Value, Parameter, Matrix,
+    DataSignature,
     UploadFile, UserProfile, UploadMessage
 )
 from .models.object import Object
-#from django_jinja_knockout.forms import (
-#    DisplayModelMetaclass, FormWithInlineFormsets, ModelForm,
-#    ko_inlineformset_factory, #ko_generic_inlineformset_factory,
-#    WidgetInstancesMixin,
-#    ModelForm
-#)
-#from django_jinja_knockout.widgets import DisplayText
 
 from django.forms import inlineformset_factory, ModelForm
 
@@ -28,6 +22,14 @@ from django.forms.models import ModelFormOptions
 from dal import autocomplete
 #import dal_queryset_sequence
 #import dal_select2_queryset_sequence
+
+
+class OrderedModelMultipleChoiceField(forms.ModelMultipleChoiceField):
+
+    def clean(self, value):
+        qs = super(OrderedModelMultipleChoiceField, self).clean(value)
+        preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(value)])
+        return qs.filter(pk__in=value).order_by(preserved)
 
 """
 Custom Form Classes
@@ -360,6 +362,13 @@ class TaxBarSelectForm(forms.Form):
                                           widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
                                           forward=("taxonomy_result",),
                                           attrs={"style": "flex-grow: 1", 'data-html': True}))
+    samples_from_investigation = forms.ModelChoiceField(queryset=Investigation.objects.all(),
+                                                        required=False,
+                                                        label="Select Samples from Investigation",
+                                                        widget=autocomplete.ModelSelect2(url='object-investigation-autocomplete',
+                                                                                                 attrs={"data-allow-clear":"true",
+                                                                                                        "style": "flex-grow: 1",
+                                                                                                        "data-html": True}))
     samples = forms.ModelMultipleChoiceField(queryset=Sample.objects.all(),
                                           required=False,
                                           label="Samples",
@@ -371,7 +380,15 @@ class TaxBarSelectForm(forms.Form):
 #    def __init__(self, *args, **kwargs):
 #        super().__init__(*args, **kwargs)
 #        self.fields['plot_height'].widget.attrs.update({'placeholder': 750,'default':750})
-
+    metadata_sort_by = OrderedModelMultipleChoiceField(queryset=DataSignature.objects.all(),
+                                                      label="Metadata for Sort",
+                                                      required=False,
+                                                      widget=autocomplete.ModelSelect2Multiple(url='data-signature-autocomplete',
+                                                                                               attrs={"data-allow-clear": "true",
+                                                                                                      "style": "flex-grow: 1",
+                                                                                                      "data-html": True}))
+    plot_height = forms.IntegerField(initial=750, label="Height (px)")
+    n_taxa = forms.IntegerField(initial=25, label="Plot N Most Abundant Taxa")
 
 class AnalysisSelectForm(forms.Form):
     analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(),

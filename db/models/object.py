@@ -50,11 +50,11 @@ class Object(models.Model):
 
     gv_node_style = {}
     node_height = 2
-    node_width = 2
+    node_width = 3
 
     search_vector = SearchVectorField(blank=True,null=True)
 
-    objects = DataFrameManager()
+#    objects = DataFrameManager()
     content_type_id_to_name = {}
 
     class Meta:
@@ -213,7 +213,10 @@ class Object(models.Model):
         vals=self.values.values("signature__name", "data__pk", "signature__value_type__model")
         out_str = ""
         for val in vals:
-            data = apps.get_model("db.Data").objects.get(pk=val['data__pk'])
+            try:
+                data = apps.get_model("db.Data").objects.get(pk=val['data__pk'])
+            except:
+                pass
             yield {"name": val['signature__name'],
                    "data": str(data),
                    "type": val['signature__value_type__model'].capitalize()}
@@ -291,7 +294,17 @@ class Object(models.Model):
         if additional_fields:
             fieldnames += additional_fields
         objs_kwargs = [x.plural_name for x in Object.get_object_types() if x.plural_name in kwargs]
-        fkwargs = {x+"__in":kwargs[x] for x in objs_kwargs}
+        fkwargs = {}
+        #Deal with the case where we're given ints (PKs), strings (names), or other (likely QuerySets)
+        for obj in objs_kwargs:
+            if type(kwargs[obj][0]) == int:
+                kw = obj+"__in"
+            
+            elif type(kwargs[obj][0]) == str:
+                kw = obj+"__name__in"
+            else:
+                kw = obj+"__in"
+            fkwargs[kw] = kwargs[obj]
         if 'value_names' in kwargs:
             fkwargs['signature__name__in'] = kwargs['value_names']
         if 'only_types' in kwargs:
@@ -685,8 +698,8 @@ class Object(models.Model):
 
     def get_node(self, show_values=True, highlight=False, format='svg'):
         dot = gv.Digraph("nodegraph_%s_%d" % (self.base_name, self.pk), format=format)
-        dot.attr(size="%d,%d!" % (self.node_height, self.node_width))
-        dot.node(**self.get_node_attrs(show_values=show_values))
+        #dot.attr(size="%d,%d!" % (self.node_height, self.node_width))
+        dot.node(**self.get_node_attrs(show_values=show_values, highlight=highlight))
         return dot
 
     def get_stream_graph(self, show_values=False, format='svg'):

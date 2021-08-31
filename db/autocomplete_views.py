@@ -112,6 +112,13 @@ class CountMatrixAutocomplete(autocomplete.Select2QuerySetView):
     def get_result_label(self, item):
         return mark_safe(format_html('<b>Result {}</b>, UUID {}, Produced by {}', item.pk, item.name, item.source_step.name))
 
+class DataSignatureAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        qs = DataSignature.objects.all()
+        if self.q:
+            qs = qs.filter(name__icontains=self.q)
+        return qs.distinct()
+
 class TaxonomicLevelAutocomplete(autocomplete.Select2ListView):
     def get_list(self):
         return [x.capitalize() for x in ["kingdom","phylum","class","order","family","genus","species"]]

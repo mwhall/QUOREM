@@ -27,7 +27,7 @@ SECRET_KEY = 'O^9ddo1PymK=7+>GxBXFS8+vnfaJ!5Jc3cItEH&skHQI+6)JGr'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', 'oceanman.research.cs.dal.ca']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.115', 'quoc.ca', '198.84.174.81']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
@@ -99,7 +99,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
-    "https://oceanman.research.cs.dal.ca",
+    "https://quoc.ca",
 ]
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -132,9 +132,9 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'quorem',
-        'USER': 'alex',
-        'PASSWORD': '15fdnigp',
+        'NAME': 'qdb',
+        'USER': 'quser',
+        'PASSWORD': 'abc123def4',
         'HOST': '127.0.0.1',
     }
 }
@@ -174,7 +174,13 @@ EMAIL_HOST_USER = 'quorem.team@gmail.com'
 EMAIL_HOST_PASSWORD = 'gvwusszwfjgthnzt'
 DEFAULT_FROM_EMAIL = 'QUOREM Team <quorem.team@gmail.com>'
 
-
+NOTEBOOK_ARGUMENTS = [
+    # exposes IP and port
+    '--ip=192.168.1.115',
+    '--port=8888',
+    # disables the browser
+    '--no-browser',
+]
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 

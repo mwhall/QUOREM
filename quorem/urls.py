@@ -154,6 +154,9 @@ urlpatterns += [
     re_path(r'^taxonomic-level-autocomplete/$',
             TaxonomicLevelAutocomplete.as_view(),
             name='taxonomic-level-autocomplete'),
+    re_path(r'^data-signature-autocomplete/$',
+            DataSignatureAutocomplete.as_view(),
+            name='data-signature-autocomplete'),
     ##onto test
     path('ontology/viewer/', onto_view, name='onto_view'),
     path('ajax/load-onto/', onto_json, name='onto_json'),

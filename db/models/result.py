@@ -368,7 +368,7 @@ class Result(Object):
         dot = gv.Digraph("provenance", format='svg')
         dot.graph_attr.update(compound='true')
         dot.graph_attr.update(rankdir="LR")
-#        dot.graph_attr.update(size="10,10!")
+        #dot.graph_attr.update(size="10,10!")
         rn=self.get_node_attrs(highlight=True)
         rn['name']="R"
         an=self.analysis.get_node_attrs()

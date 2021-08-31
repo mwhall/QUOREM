@@ -62,13 +62,16 @@ class Value(PolymorphicModel):
         return self._meta.model.objects.filter(pk=self.pk)
 
     @classmethod
-    def get_or_create(cls, name, data, signature=None, **kwargs):
+    def get_or_create(cls, name, data, signature=None, overwrite=False, **kwargs):
         kwargs["value_type"] = cls._clean_value_type(**kwargs)
         if kwargs["value_type"] != Matrix:
             vals = kwargs["value_type"].get(name=name, all_types=False, signature=signature, **kwargs)
         else:
             vals = Matrix.objects.none() #NOTE: I think skipping the get for Matrices saves a lot of time...
-        if not vals.exists():
+        if not vals.exists() or overwrite:
+            if overwrite and vals.exists():
+                #There should only be one Value
+                vals.get().delete()
             val = kwargs["value_type"].create(name, data, signature=signature, **kwargs)
             return kwargs["value_type"].objects.filter(pk=val.pk)
         else:

@@ -205,7 +205,6 @@ class ArtifactIterator:
                                            "result_step": step_name}
                                     yield {"result_name": self.base_uuid,
                                            "result_sample": val}
-
         if self.scraper:
             for record in self.scraper.iter_objects(update=update):
                 yield record
@@ -452,12 +451,14 @@ class AlphaDiversity(ArtifactDataScraper):
 
     def iter_values(self):
         measure = self.tf.columns[0]
-        yield {"result_name": self.uuid,
-               "value_name": "metric",
-               "value_type": "parameter",
-               "value_data": measure,
-               "value_object": "result",
-               "data_type": "str"}
+#        yield {"result_name": self.uuid,
+#               "step_name": "diversity__alpha",
+#               "value_object.1": "step",
+#               "value_name": "metric",
+#               "value_type": "parameter",
+#               "value_data": measure,
+#               "value_object": "result",
+#               "data_type": "str"}
         for index, row in self.tf.iterrows():
             yield {"result_name": self.uuid,
                    "value_name": "alpha_diversity",

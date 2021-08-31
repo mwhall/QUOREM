@@ -60,7 +60,7 @@
                      <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qzv (Visualization)</a>
                   </div>
                   <div class="btn-group btn-group-sm" role="group" style="display: flex; justify-content: flex-end">
-			  <a href="https://view.qiime2.org/visualization/?type=html&src=http://localhost:8000/{{ obj.get_value("uploaded_artifact", "file").upload_file.url }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
+			  <a href="https://view.qiime2.org/visualization/?type=html&src=https://quoc.ca/{{ obj.get_value("uploaded_artifact", "file").upload_file.url }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
                   </div>
                  {% else -%}
                      <a class="dropdown-item" href="/data-artifact?result_id={{ obj.pk }}">.qza (Artifact)</a>
@@ -108,5 +108,6 @@ $('.dropdown-menu a.dropdown-toggle').on('click', function(e) {
   return false;
 });
 </script>
+
 {% endblock bottom_scripts -%}
 

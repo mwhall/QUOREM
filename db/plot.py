@@ -5,11 +5,12 @@ import numpy as np
 import pandas as pd
 import plotly.offline as plt
 import plotly.express as px
+from itertools import cycle
 import ete3
 from .models import *
 
 
-def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, level=6, relative=True, jupyter=False):
+def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, level=6, n_taxa=25, samples_from_investigation=None, metadata_sort_by=None, relative=True, jupyter=False):
     linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
     if level in linnean_levels:
         level = linnean_levels[level]
@@ -27,8 +28,21 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, lev
     if samples:
         sample_pks = sample_pks.filter(pk__in=samples)
         sample_names = sample_names.filter(pk__in=samples)
+    if samples_from_investigation:
+        sample_pks = sample_pks.filter(investigations__pk=samples_from_investigation)
+        sample_names = sample_names.filter(investigations__pk=samples_from_investigation)
     sample_pks = list(sample_pks.values_list("pk",flat=True))
     sample_names = list(sample_names.values_list("name",flat=True))
+
+    if metadata_sort_by:
+        metadata_pks = metadata_sort_by
+        print(metadata_sort_by)
+        metadata_names = [DataSignature.objects.get(pk=x).name for x in metadata_sort_by]
+        print(metadata_names)
+        metadata_df = Sample.dataframe(samples=sample_names, value_names=metadata_names, wide=True)
+        metadata_df = metadata_df.sort_values(list(metadata_names))
+        sample_names = list(metadata_df.index)
+
     tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
                                   additional_fields=["features__pk"])
     def format_taxonomy(x):
@@ -45,18 +59,33 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, lev
     tax_df["value_data"] = tax_df["value_data"].str.split(";").apply(format_taxonomy)
     tax_merge = tax_df.groupby("value_data").apply(lambda x: x['features__pk'].unique())
     data = []
+    tax_abundance = {}
     for tax, merge in tax_merge.items():
-        data.append(go.Bar(name=tax,
-                           x=sample_names,
-                           y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0],
-                           text=tax,
-                          hoverinfo='x+text+y'))
+        tax_abundance[tax] = pd.DataFrame(matrix[merge]).sum().sum()
+    abundant_taxa = pd.Series(tax_abundance).sort_values(ascending=False).index[0:n_taxa].tolist()
+    others = {}
+    palette = cycle(px.colors.qualitative.Light24)
+    for tax, merge in tax_merge.items():
+        if tax in abundant_taxa:
+            data.append(go.Bar(name=tax,
+                               x=sample_names,
+                               y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0],
+                               text=tax,
+                               hoverinfo='x+text+y',
+                               marker_color=next(palette)))
+        else:
+            if tax in others:
+                others[tax] = others[tax] + matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
+            else:
+                others[tax] = matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
     fig = go.Figure(data=data)
     # Change the bar mode
     fig.update_layout(barmode='stack',
-                     legend_orientation='v',
-                     legend=dict(yanchor="top", x=0, y=-0.5),
-                     height=plot_height)
+                     legend_orientation='h',
+                     #y=-0.4 dodges it enough so that it usually doesn't overlap sample names
+                     legend=dict(yanchor='top', x=0,y=-0.5),
+                     height=plot_height,
+                     plot_bgcolor='rgba(0,0,0,0)')
     """
     #change structure a bit to let plotly express do the plot. This makes dash
     # interactivty easier for later.
@@ -74,7 +103,7 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, lev
                         xaxis_title=None,
                         yaxis_title=None,
                         height=plot_height)
-    """
+                        """
     if jupyter:
         return plt.iplot(fig)
     return plt.plot(fig, output_type="div")

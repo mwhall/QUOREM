@@ -16,9 +16,9 @@ then
 	exit 0
 fi
 
-conda create --name $venv python=3.6
+conda create --name $venv python=3.8.8
 conda activate $venv
-conda env update --file scripts/qiime2/qiime2-2019.10-py36-linux-conda.yml
+conda env update --file scripts/qiime2/qiime2-2021.4-py38-linux-conda.yml
 pip install -r requirements.txt
 echo "Sudo password required to act as postgres user"
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
@@ -32,6 +32,9 @@ python manage.py makemigrations
 python manage.py migrate
 python manage.py collectstatic
 python manage.py initialize
+
+#Until https://github.com/FortAwesome/Font-Awesome/issues/17801 is fixed, this has to be run on your conda path
+#mv miniconda3/envs/quorem/lib/python3.8/site-packages/fontawesome-free/ miniconda3/envs/quorem/lib/python3.8/site-packages/fontawesome_free/
 
 # Leave these links as optional
 #chmod 755 ./scripts/launchquorem.sh && sudo ln -s `pwd`/scripts/launchquorem.sh /usr/local/bin/launchquorem
