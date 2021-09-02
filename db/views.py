@@ -258,6 +258,12 @@ class FeatureFilterSet(django_filters.FilterSet):
                                                                                                 "style": "flex-grow: 1;",
                                                                                                 "class": "form-control", 
                                                                                                 "data-html": True}))
+    sample = django_filters.ModelMultipleChoiceFilter(queryset=Sample.objects.all(), label="Related Samples (results must be in at least one)", to_field_name="pk", field_name="samples", 
+                                                        widget=autocomplete.ModelSelect2Multiple(url='object-sample-autocomplete',
+                                                                                         attrs={"data-allow-clear": "true", 
+                                                                                                "style": "flex-grow: 1;",
+                                                                                                "class": "form-control", 
+                                                                                                "data-html": True}))
     class Meta:
         model = Feature
         fields = ['name']
