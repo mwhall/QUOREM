@@ -106,9 +106,11 @@ class Analysis(Object):
 
     def html_results_list(self):
         html_val = '<ul class="list-group">'
+        artifact_html = {True:'', False:''}
         for result in self.results.all():
             step_name = result.source_step.name
-            if result.has_value('uploaded_artifact'):
+            has_artifact = result.has_value('uploaded_artifact')
+            if has_artifact:
                 href = 'href="/data-artifact?result_id=%d"' % (result.pk,)
                 badge_type = 'success'
                 button_class = "btn-outline-success"
@@ -118,14 +120,16 @@ class Analysis(Object):
                 badge_type = 'secondary'
                 button_class = "btn-outline-secondary"
                 available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">qiime2 Artifact</a>, a %s from Step %s, has not been archived. It has been inferred from QIIME2 provenance data.' % (result.pk, result.get_result_type(), step_name)
-            html_val += '<li class="list-group-item d-flex justify-content-between align-items-center">'
-            html_val += '<div>'
-            html_val += '<button class="btn %s" type="button" data-toggle="collapse" data-target="#result%s" aria-expanded="false" aria-controls="result%s">%s &nbsp; <i class="fas fa-chevron-down"></i></button><br/>' % (button_class, result.name, result.name, result.human_short())
-            html_val += '<div class="collapse" id="result%s">' % (result.name,)
-            html_val += '<div class="card-body">'
-            html_val += available_str
-            html_val += '</div></div></div>'
-            html_val += '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
+            artifact_html[has_artifact] += '<li class="list-group-item d-flex justify-content-between align-items-center">'
+            artifact_html[has_artifact] += '<div>'
+            artifact_html[has_artifact] += '<button class="btn %s" type="button" data-toggle="collapse" data-target="#result%s" aria-expanded="false" aria-controls="result%s">%s &nbsp; <i class="fas fa-chevron-down"></i></button><br/>' % (button_class, result.name, result.name, result.human_short())
+            artifact_html[has_artifact] += '<div class="collapse" id="result%s">' % (result.name,)
+            artifact_html[has_artifact] += '<div class="card-body">'
+            artifact_html[has_artifact] += available_str
+            artifact_html[has_artifact] += '</div></div></div>'
+            artifact_html[has_artifact] += '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
+        html_val += artifact_html[True]
+        html_val += artifact_html[False]
         html_val += "</ul>"
         return mark_safe(html_val)
 
