@@ -35,10 +35,6 @@ import django_filters
 import tempfile
 from io import BytesIO
 from dal import autocomplete
-#from django_jinja_knockout.views import (
-#        page_context_decorator, BsTabsMixin, ListSortingView, InlineCreateView, InlineUpdateView, InlineDetailView,
-#        ViewmodelView, BaseFilterView, PageContextMixin
-#)
 from django.views.generic.edit import FormView, CreateView, UpdateView
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
