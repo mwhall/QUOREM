@@ -123,8 +123,17 @@ class Result(Object):
                 return "Representative Sequences from DADA2"
             elif self.source_step.name in ["rescript__dereplicate","rescript__filter_seqs_length_by_taxon","rescript__cull_seqs"]:
                 return "Reference Sequence File from qiime2 Plugin Rescript"
+            elif self.source_step.name == "qiime2_import":
+                return "Feature Sequences imported to qiime2"
             else:
                 return q2_type
+        elif q2_type == "FeatureData[AlignedSequence]":
+            if self.source_step.name == "alignment__mask":
+                return "Masked Aligned Sequences"
+            elif self.source_step.name == "alignment__mafft":
+                return "Sequences Aligned by MAFFT"
+            else:
+                return "Aligned Sequences"
         elif q2_type == "FeatureData[RNASequence]":
             if self.source_step.name == "rescript__get_silva_data":
                 return "SILVA Reference RNA"
@@ -138,6 +147,10 @@ class Result(Object):
             elif self.source_step.name == "feature-table__filter_samples":
                 source_table = self.upstream.first().human_short()
                 return "Filtered %s" % (source_table,)
+            elif self.source_step.name == "diversity__core_metrics":
+                return "Intermediate Table from Diversity Pipeline"
+            elif self.source_step.name == "feature-table__rarefy":
+                return "Rarefied Table"
             else:
                 return q2_type
         elif q2_type == "FeatureData[Taxonomy]":
@@ -147,6 +160,8 @@ class Result(Object):
                 return "Reference Taxonomy File from qiime2 Plugin Rescript"
             elif self.source_step.name == "rescript__get_silva_data":
                 return "SILVA Reference Taxonomy"
+            elif self.source_step.name == "qiime2_import":
+                return "Taxonomy File imported to qiime2"
             else:
                 return q2_type
         elif q2_type == "SampleData[PairedEndSequencesWithQuality]":
@@ -157,8 +172,15 @@ class Result(Object):
         elif q2_type == "Phylogeny[Rooted]":
             if self.source_step.name == "qiime2_import":
                 return "Phylogenetic Tree Imported to qiime2"
+            elif self.source_step.name == "phylogeny__midpoint_root":
+                return "Rooted Phylogenetic Tree"
             else:
-                return q2_type
+                return "Rooted Phylogenetic Tree"
+        elif q2_type == "Phylogeny[Unrooted]":
+            if self.source_step.name == "phylogeny__fasttree":
+                return "Unrooted Phylogenetic Tree from FastTree"
+            else:
+                return "Unrooted Phylogenetic Tree"
         elif q2_type == "FeatureData[SILVATaxidMap]":
             return "SILVA Reference Map"
         elif q2_type == "FeatureData[SILVATaxonomy]":
@@ -177,11 +199,17 @@ class Result(Object):
                 return q2_type
         elif q2_type == "SampleData[DADA2Stats]":
             return "DADA2 Denoise Statistics File"
+        elif q2_type == "SampleData[AlphaDiversity]":
+            return "Alpha Diversity Values"
+        elif q2_type == "SampleData[AlphaDiversity] % Properties(['phylogenetic'])":
+            return "Alpha Diversity Values, Phylogenetic"
         elif q2_type == "Visualization":
             if self.source_step.name == "feature-table__summarize":
                 return "Table Summary Visualization"
             elif self.source_step.name == "demux__summarize":
                 return "Quality Summary Visualization"
+            elif self.source_step.name == "taxa__barplot":
+                return "Taxonomic Barplot Visualization"
             else:
                 return "%s from %s" % (q2_type, self.source_step.name)
         else:
