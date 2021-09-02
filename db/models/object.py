@@ -726,9 +726,7 @@ class Object(models.Model):
                 if ds_pk in all_pks:
                     edges.add((str(obj.pk), str(ds_pk)))
         dot.edges(list(edges))
-#        dim = max(14,int(nnodes/2.0))
-#        dim = min(dim, 10)
-#        dot.attr(size="%d,%d!" % (dim,2*dim))
+        dot.attr(ratio="0.5")
         return dot
 
 ##Function for search.
