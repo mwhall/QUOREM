@@ -1,0 +1,22 @@
+{% extends 'base.htm' %}
+{% block main %}
+<div class="card">
+  <div class="card-header">
+    Plot Phylogenetic Tree
+  </div>
+  <div class="card-body">
+<form display="table">
+{% csrf_token %}
+{% for field in form.visible_fields %}
+<div class="input-group mb-3">
+<div class="input-group-prepend">
+	<span class="input-group-text" id="{{ field.name }}">{{field.label}}</span>
+</div>
+{{ field }}
+</div>
+{%  endfor %}
+<button type="submit" formmethod="post" class="btn btn-primary">Submit</a>
+</form>
+</div>
+{{ form.media }}
+{% endblock main %}
