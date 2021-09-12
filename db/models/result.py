@@ -282,11 +282,12 @@ class Result(Object):
                 obj = self.get_object()
                 context['samples_html'] = mark_safe(obj.html_samples())
 #                context['features_html'] = mark_safe(obj.html_features())
-                context['provenance_graph'] = mark_safe(obj.simple_provenance_graph().pipe().decode().replace("<svg ", "<svg id=\"provenancegraph\" class=\"img-fluid\" ").replace("\n",""))
-                context['stream_graph'] = mark_safe(obj.get_stream_graph().pipe().decode().replace("<svg ", "<svg id=\"streamgraph\" class=\"img-fluid\" ").replace("\n", ""))
-#                context['values_html'] = mark_safe(obj.html_values())
-                context['has_uploaded_artifact'] = obj.get_artifact_url()
-                context['q2type'] = obj.get_result_type()
+                if obj.has_value('qiime2_type'):
+                    context['provenance_graph'] = mark_safe(obj.simple_provenance_graph().pipe().decode().replace("<svg ", "<svg id=\"provenancegraph\" class=\"img-fluid\" ").replace("\n",""))
+                    context['stream_graph'] = mark_safe(obj.get_stream_graph().pipe().decode().replace("<svg ", "<svg id=\"streamgraph\" class=\"img-fluid\" ").replace("\n", ""))
+                context['values_html'] = mark_safe(obj.html_values())
+                context['has_uploaded_file'] = obj.has_value("uploaded_spreadsheet") | obj.has_value("uploaded_artifact")
+                context['filetype'] = obj.get_result_type()
                 return context
         if as_view:
             return ResultDetailView.as_view()

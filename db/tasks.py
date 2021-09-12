@@ -195,14 +195,14 @@ def report_success(upfile):
     #to trigger a file upload process.
     upfile.update()
     #update the search vectors
-    model_list = [Investigation, Sample, Feature, Process, Step, Analysis, Result, Value]
-    for model in model_list:
-        try:
-            model.update_search_vector()
-            print(model, " sv updated")
-        except Exception as e:
-            print(e)
-            print(model, " sv didn't work")
-            continue
+    #model_list = [Investigation, Sample, Feature, Process, Step, Analysis, Result, Value]
+    #for model in model_list:
+    #    try:
+    #        model.update_search_vector()
+    #        print(model, " sv updated")
+    #    except Exception as e:
+    #        print(e)
+    #        print(model, " sv didn't work")
+    #        continue
     errorMessage = UploadMessage(file=upfile, error_message="Uploaded Successfully")
     errorMessage.save()
