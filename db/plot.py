@@ -81,6 +81,7 @@ def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, lev
     fig = go.Figure(data=data)
     # Change the bar mode
     fig.update_layout(barmode='stack',
+                     yaxis_title="Relative Abundance",
                      legend_orientation='h',
                      #y=-0.4 dodges it enough so that it usually doesn't overlap sample names
                      legend=dict(yanchor='top', x=0,y=-0.5),

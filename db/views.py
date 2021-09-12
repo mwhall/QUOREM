@@ -564,7 +564,7 @@ class AnalysisSelectView(FormView):
 
 class TaxBarSelectView(FormView):
     form_class = TaxBarSelectForm
-    template_name = 'core/taxbarselect.htm'
+    template_name = 'taxbarselect.htm'
     def post(self, request, *args, **kwargs):
         request.POST = request.POST.copy()
         samples = request.POST.getlist('samples','')
@@ -878,7 +878,7 @@ class TreePlotView(TemplateView):
         return context
 
 class TaxBarPlotView(TemplateView):
-    template_name = "plot/taxbarplot.htm"
+    template_name = "taxbarplot.htm"
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         tr = self.request.GET.get('taxonomy_result','')
