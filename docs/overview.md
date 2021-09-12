@@ -40,21 +40,14 @@ Value
 
 
 ```{mermaid}
-sequenceDiagram
-  participant Feature
-  participant Sample
-  participant Result
-  participant Step
-  participant Process
-  participant Analysis
-  participant Investigation
-  Result->Feature
-  Result->Sample
-  Step->Result
-  Analysis->Result
-  Process->Analysis
-  Step->Process
-  Investigation->Analysis
+graph TD;
+    Result->Feature;
+    Result->Sample;
+    Step->Result;
+    Analysis->Result;
+    Process->Analysis;
+    Step->Process;
+    Investigation->Analysis;
 ```
 
 
