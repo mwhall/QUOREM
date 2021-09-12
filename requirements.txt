@@ -1,3 +1,4 @@
+python==3.8.8
 Django==3.1.13
 celery==5.1.2
 redis==3.5.3
