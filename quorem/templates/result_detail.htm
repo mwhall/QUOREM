@@ -18,13 +18,16 @@
                      <a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{object.base_name}}&id={{object.pk}}">.xls (Tall)</a>
                      <a class="dropdown-item" href="/data-spreadsheet/?format=csv&object={{object.base_name}}&id={{object.pk}}&wide=true">.csv (Wide)</a>
                      <a class="dropdown-item" href="/data-spreadsheet/?format=xls&object={{object.base_name}}&id={{object.pk}}&wide=true">.xls (Wide)</a>
-              {% if has_uploaded_artifact %}
-                  {% if q2type == "Visualization" %}
+              {% if has_uploaded_file %}
+                  {% if filetype == "Visualization" %}
                      <a class="dropdown-item" href="/data-artifact?result_id={{ object.pk }}">.qzv (Visualization)</a>
                   </div>
                   <div class="btn-group" role="group" style="display: flex; justify-content: flex-end">
-			  <a href="https://view.qiime2.org/visualization/?type=html&src=https://oceanman.research.cs.dal.ca/data-artifact?result_id={{ object.pk }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
+			  <a href="https://view.qiime2.org/visualization/?type=html&src=https://quoc.ca/data-artifact?result_id={{ object.pk }}" type="button" class="btn btn-primary">Visualize&nbsp;<i class="fas fa-chart-line"></i></a>
                   </div>
+		  {% elif filetype == "Uploaded Spreadsheet" %}
+                     <a class="dropdown-item" href="/data-spreadsheet?result_id={{ object.pk }}">Uploaded Spreadsheet</a>
+       </div>
                  {% else %}
                      <a class="dropdown-item" href="/data-artifact?result_id={{ object.pk }}">.qza (Artifact)</a>
                   </div>
@@ -38,6 +41,7 @@
 <h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
 	      </div>
 	      <br/>
+{% if has_uploaded_artifact %}
 <div class="card card-body mx-auto">
 	<b>Provenance Graph</b>
 <figure class="mx-auto">
@@ -56,11 +60,13 @@
 </figure>
 </div>
 <br/>
-
+{% endif %}
 <br/>
 <h3>Samples</h3>
 {{ samples_html }}
 <br/>
+<h3>Values</h3>
+{{values_html}}
 <br/>
 	<script>var panZoomSG = svgPanZoom('#streamgraph', {controlIconsEnabled: true})</script>
 {% endblock main %}

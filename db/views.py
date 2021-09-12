@@ -1173,9 +1173,9 @@ class simple_sample_metadata_upload(CreateView):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                     'new':"new"})
 
-class FileFieldView(FormView):
+class AnalysisFileFieldView(FormView):
     form_class = FileFieldForm
-    template_name = 'upload.htm'
+    template_name = 'analysis_upload.htm'
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['analysis_name'] = Analysis.objects.get(pk=self.kwargs['analysis_id']).name
@@ -1190,18 +1190,27 @@ class FileFieldView(FormView):
             user = User.objects.get(pk=self.request.user.pk)
             user_profile = UserProfile.objects.get(user=user)
             upload_time = datetime.datetime.now().strftime("%d_%b_%Y_%H%-M-%S")
-            save_dir = Path(settings.MEDIA_ROOT + "/artifacts/" + str(user.username) + "/" + str(upload_time) +"/")
-            save_dir.mkdir(parents=True, exist_ok=True)
-            save_dir = save_dir.resolve()
             for f in files:
-                file_path = str(save_dir) + "/" + f.name
+                # File type checking, crude for now
+                if f.name.endswith("qza") or f.name.endswith("qzv"):
+                    type_name = "artifacts"
+                    upload_type = "A"
+                elif f.name.endswith("csv") or f.name.endswith("tsv") or f.name.endswith("xls") or f.name.endswith("xlsx"):
+                    type_name = "spreadsheets"
+                    upload_type = "S"
+                else:
+                    return JsonResponse({"form": False})
+                save_dir = Path(settings.MEDIA_ROOT + "/" + type_name + "/" + str(user.username) + "/" + str(upload_time) +"/")
+                save_dir.mkdir(parents=True, exist_ok=True)
+                save_dir = save_dir.resolve()
                 print("User %s requesting to upload %s at time %s to Analysis '%s', placing in directory %s" % (user.username, f.name, upload_time, analysis.name, save_dir))
+                file_path = str(save_dir) + "/" + f.name
                 with open(file_path, 'wb+') as destination:
                     for chunk in f.chunks():
                         destination.write(chunk)
                 print("File successfully uploaded and stored on server, integrating into database...")
                 #Save as a File object
-                upload_file = UploadFile(upload_file=file_path, userprofile=user_profile, upload_type='A')
+                upload_file = UploadFile(upload_file=file_path, userprofile=user_profile, upload_type=upload_type)
                 upload_file.save()
                 print("File stored as UploadFile")
                 current_app.send_task('db.tasks.react_to_file', (upload_file.pk,),
@@ -1210,6 +1219,43 @@ class FileFieldView(FormView):
             return JsonResponse({'form': True, 'message': 'Success!', 'status':'success'})
         else:
             return JsonResponse({'form': False})
+
+class SpreadsheetFileFieldView(FormView):
+    form_class = FileFieldForm
+    template_name = 'spreadsheet_upload.htm'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        files = request.FILES.getlist('file')
+        if form.is_valid():
+            analysis = Analysis.objects.get(name="Spreadsheet Uploads")
+            user = User.objects.get(pk=self.request.user.pk)
+            user_profile = UserProfile.objects.get(user=user)
+            upload_time = datetime.datetime.now().strftime("%d_%b_%Y_%H%-M-%S")
+            save_dir = Path(settings.MEDIA_ROOT + "/spreadsheets/" + str(user.username) + "/" + str(upload_time) +"/")
+            save_dir.mkdir(parents=True, exist_ok=True)
+            save_dir = save_dir.resolve()
+            for f in files:
+                file_path = str(save_dir) + "/" + f.name
+                print("User %s requesting to upload %s at time %s, placing in directory %s" % (user.username, f.name, upload_time, save_dir))
+                with open(file_path, 'wb+') as destination:
+                    for chunk in f.chunks():
+                        destination.write(chunk)
+                print("File successfully uploaded and stored on server, integrating into database...")
+                #Save as a File object
+                upload_file = UploadFile(upload_file=file_path, userprofile=user_profile, upload_type='S')
+                upload_file.save()
+                print("File stored as UploadFile")
+                current_app.send_task('db.tasks.react_to_file', (upload_file.pk,),
+                        kwargs={'analysis_pk': analysis.pk})
+                print("File sent to Celery for processing, standby for update...")
+            return JsonResponse({'form': True, 'message': 'Success!', 'status':'success'})
+        else:
+            return JsonResponse({'form': False})
+
 
 class artifact_upload(CreateView):
     form_class = ArtifactUploadForm
@@ -1367,6 +1413,15 @@ def spreadsheet_download_view(request):
     obj = request.GET.get('object','')
     wide = request.GET.get('wide','')
     format = request.GET.get('format', 'csv')
+    result_id = request.GET.get('result_id', '')
+    if result_id:
+        result = Result.objects.get(pk=result_id)
+        assert result.has_value("uploaded_spreadsheet", "file")
+        artifact = result.get_value("uploaded_spreadsheet", "file").upload_file.file
+        filename = artifact.name.split("/")[-1]
+        response = HttpResponse(artifact.file, content_type='csv')
+        response['Content-Disposition'] = 'attachment; filename="%s"' % (filename,)
+        return response
     if str(wide).lower() in ["1", "true"]:
         wide = True
     else:

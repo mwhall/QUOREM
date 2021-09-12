@@ -88,8 +88,8 @@ $(function () {
      {% elif base_name == 'result' %}
     <td scope="col">{{ obj.human_short }}</td>
     <td scope="col">{{ obj.related_analysis_badges }}</td>
-    <td scope="col">{{ obj.get_artifact_uploader }}</td>
-    <td scope="col" class="text-right">{{ obj.get_artifact_badge }} </td>
+    <td scope="col">{{ obj.get_file_uploader }}</td>
+    <td scope="col" class="text-right">{{ obj.get_file_badge }} </td>
      {% elif base_name == 'analysis' %}
      <td scope="col"><a href="/sample/all/?analysis={{obj.pk}}">{{ obj.related_samples_count }}</a></td>
     <td scope="col"><a href="/feature/all/?analysis={{obj.pk}}">{{ obj.related_features_count }}</a></td>

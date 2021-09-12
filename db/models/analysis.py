@@ -109,25 +109,33 @@ class Analysis(Object):
         artifact_html = {True:'', False:''}
         for result in self.results.all():
             step_name = result.source_step.name
-            has_artifact = result.has_value('uploaded_artifact')
-            if has_artifact:
-                href = 'href="/data-artifact?result_id=%d"' % (result.pk,)
+            if result.has_value("uploaded_artifact"):
+                has_file = True
+                filetype = "artifact"
+            elif result.has_value("uploaded_spreadsheet"):
+                has_file = True
+                filetype = "spreadsheet"
+            else:
+                has_file = False
+                filetype = "artifact"
+            if has_file:
+                href = 'href="/data-%s?result_id=%d"' % (filetype, result.pk,)
                 badge_type = 'success'
                 button_class = "btn-outline-success"
-                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">qiime2 Artifact</a>, a %s from Step %s, is archived and available for download' % (result.pk, result.get_result_type(),step_name)
+                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">%s</a>, a %s from Step %s, is archived and available for download' % (result.pk, filetype.capitalize(), result.get_result_type(),step_name)
             else:
                 href='href="#"'
                 badge_type = 'secondary'
                 button_class = "btn-outline-secondary"
-                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">qiime2 Artifact</a>, a %s from Step %s, has not been archived. It has been inferred from QIIME2 provenance data.' % (result.pk, result.get_result_type(), step_name)
-            artifact_html[has_artifact] += '<li class="list-group-item d-flex justify-content-between align-items-center">'
-            artifact_html[has_artifact] += '<div>'
-            artifact_html[has_artifact] += '<button class="btn %s" type="button" data-toggle="collapse" data-target="#result%s" aria-expanded="false" aria-controls="result%s">%s &nbsp; <i class="fas fa-chevron-down"></i></button><br/>' % (button_class, result.name, result.name, result.human_short())
-            artifact_html[has_artifact] += '<div class="collapse" id="result%s">' % (result.name,)
-            artifact_html[has_artifact] += '<div class="card-body">'
-            artifact_html[has_artifact] += available_str
-            artifact_html[has_artifact] += '</div></div></div>'
-            artifact_html[has_artifact] += '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
+                available_str = 'This <a class="badge badge-primary badge-pill" href="/result/%d/">%s</a>, a %s from Step %s, has not been archived.' % (result.pk, filetype.capitalize(), result.get_result_type(), step_name)
+            artifact_html[has_file] += '<li class="list-group-item d-flex justify-content-between align-items-center">'
+            artifact_html[has_file] += '<div>'
+            artifact_html[has_file] += '<button class="btn %s" type="button" data-toggle="collapse" data-target="#result%s" aria-expanded="false" aria-controls="result%s">%s &nbsp; <i class="fas fa-chevron-down"></i></button><br/>' % (button_class, result.pk, result.name, result.human_short())
+            artifact_html[has_file] += '<div class="collapse" id="result%s">' % (result.pk,)
+            artifact_html[has_file] += '<div class="card-body">'
+            artifact_html[has_file] += available_str
+            artifact_html[has_file] += '</div></div></div>'
+            artifact_html[has_file] += '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
         html_val += artifact_html[True]
         html_val += artifact_html[False]
         html_val += "</ul>"

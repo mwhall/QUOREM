@@ -13,6 +13,7 @@ from .formatters import guess_filetype, parse_csv_or_tsv, TableParser
 from .formatters import simple_sample_metadata_parser
 from .models import *
 from .artifacts import ingest_artifact
+from .spreadsheets import ingest_spreadsheet
 
 import pandas as pd
 import io
@@ -38,7 +39,7 @@ def react_to_file(upload_file_id, **kwargs):
     try:
         #user will recieve mail to let them know the atstus of their upload.
         mail = UserMail(user=upfile.userprofile)
-
+        user = upfile.userprofile.user
         from_form = upfile.upload_type
         # S for Spreadsheet
         # A for Artifact
@@ -59,23 +60,11 @@ def react_to_file(upload_file_id, **kwargs):
 
         elif from_form == "S":
             mail.title="The spreadsheet you uploaded "
-            print("Processing table ...")
-            status = process_table(upfile)
+            print("Processing spreadsheet ...")
+            status = process_spreadsheet(upfile, kwargs["analysis_pk"])
             print(status)
 
         #Simple Sample
-        elif from_form == "M":
-                mail.title = "The metadata spreadsheet you uploaded "
-                print("Processing table. . . ")
-                status, samples_found, samples_not_found = process_simple_metadata(upfile, overwrite=kwargs['overwrite'])
-                if samples_found and samples_not_found:
-                    returned_samples = (samples_found, samples_not_found)
-                    simple_sample=True
-                else:
-                    simple_sample = False
-
-                print(status)
-
         else:
             mail.title="A rare error occurred with your upload."
             mail.message="The system was unable to recognize your upload file.\
@@ -141,8 +130,6 @@ def react_to_file(upload_file_id, **kwargs):
 @shared_task
 def process_table(upfile):
     infile = upfile.upload_file._get_file().open()
-    print("Getting logger")
-    lgr = upfile.logfile.get_logger()
     print("Getting parser")
     tp = TableParser(infile)
     print("Initializing")
@@ -172,6 +159,24 @@ def process_qiime_artifact(upfile, analysis_pk):
     print(time.time() - start_time)
     print("#\n#\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     return "Success", res[0]
+
+@shared_task
+def process_spreadsheet(upfile, analysis_pk):
+    infile = upfile.upload_file.name #This ought to be the path to the spreadsheet on disk...
+    analysis = Analysis.objects.get(pk=analysis_pk)
+    user = upfile.userprofile.user
+    upload_time = datetime.datetime.now().strftime("%d_%b_%Y_%H%-M-%S")
+    result_name = "Spreadsheet Upload by %s on %s" % (user.username, upload_time)
+    counter = 1
+    while Result.objects.filter(name=result_name).exists():
+        result_name = result_name + " (Sheet %d)" % (counter,)
+        counter+=1
+    res = Result.create(result_name, source_step=Step.get_or_create(name="spreadsheet_upload").first(),
+                                     analysis = analysis)
+    File.get_or_create(name="uploaded_spreadsheet", data=upfile,
+                       data_type="uploadfile", results=res)
+    ingest_spreadsheet(infile, user, res.get())
+    return "Success"
 
 @shared_task
 def process_simple_metadata(upfile, overwrite):

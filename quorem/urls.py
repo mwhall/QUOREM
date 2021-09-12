@@ -69,7 +69,8 @@ urlpatterns += [
 #    path('upload/spreadsheet', spreadsheet_upload.as_view(), name='upload_spreadsheet'),
 #    path('upload/spreadsheet-simple', simple_sample_metadata_upload.as_view(), name='upload_simple_spreadsheet'),
     re_path(r'^analysis/upload/$', login_required(AnalysisSelectView.as_view()), name='upload_analysis_select'),
-    re_path(r'^analysis/(?P<analysis_id>\d+)/upload$', login_required(FileFieldView.as_view()), name='upload_to_analysis'),
+    re_path(r'^analysis/(?P<analysis_id>\d+)/upload$', login_required(AnalysisFileFieldView.as_view()), name='upload_to_analysis'),
+    re_path(r'^upload/spreadsheet/$', login_required(SpreadsheetFileFieldView.as_view()), name="spreadsheet_upload"),
     #Upload list.
 #    re_path(r'upload/all/$', UploadList.as_view(), name='upload_all',
 #        kwargs={'view_title':"All Uploads"}),

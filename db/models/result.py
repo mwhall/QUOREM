@@ -92,9 +92,17 @@ class Result(Object):
         else:
             return None
 
-    def get_artifact_badge(self):
+    def get_file(self):
+        for upload_type in ["uploaded_artifact", "uploaded_spreadsheet"]:
+            if self.has_value(upload_type, "file"):
+                return self.get_value(upload_type,"file")
+
+    def get_file_badge(self):
         if self.has_value('uploaded_artifact'):
             href = 'href="/data-artifact?result_id=%d"' % (self.pk,)
+            badge_type = 'success'
+        elif self.has_value('uploaded_spreadsheet'):
+            href = 'href="/data-spreadsheet?result_id=%d"' % (self.pk,)
             badge_type = 'success'
         else:
             href='href="#"'
@@ -102,16 +110,18 @@ class Result(Object):
         html_val = '<a class="badge badge-%s badge-pill" %s><i class="fas fa-file-download"></i></a></li>' % (badge_type, href)
         return mark_safe(html_val)
 
-    def get_artifact_uploader(self):
-        if self.has_value('uploaded_artifact', "file"):
-            username = Result.objects.get(pk=self.pk).get_value("uploaded_artifact","file").userprofile.user.username
-            return username
-        else:
-            return ""
+    def get_file_uploader(self):
+        for upload_type in ['uploaded_artifact','uploaded_spreadsheet']:
+            if self.has_value(upload_type, "file"):
+                username = self.get_value(upload_type,"file").userprofile.user.username
+                return username
+        return ""
 
     def get_result_type(self):
         if self.has_value("qiime2_type", "value"):
             return self.get_value("qiime2_type", "value")
+        elif self.has_value("uploaded_spreadsheet", "file"):
+            return "Uploaded Spreadsheet"
         else:
             return "Unknown Result Type"
 

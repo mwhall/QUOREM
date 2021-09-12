@@ -199,7 +199,7 @@ class ArtifactIterator:
                                 if re.compile('.*_S.*_L001_R[12]_001.fastq.gz').match(val):
                                     val = re.sub("_S.*_L001_R[12]_001.fastq.gz", "", val)
                                     yield {"result_name": uuid,
-                                           "sample_name": str(val), 
+                                           "sample_name": val, 
                                            "sample_step": step_name,
                                            "result_sample": val,
                                            "result_step": step_name}

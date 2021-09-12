@@ -2,22 +2,22 @@
 {% load static %}
 
 {% block title %}
-<title>Upload Artifiact to Analysis "{{analysis_name}}"</title>
+<title>Upload Spreadsheet to QUOREM"</title>
 {% endblock title %}
 
 {% block main %}
 <br/>
-  <h3 class='display-8'>Upload to: {{ analysis_name }}</h3>
+  <h3 class='display-8'>Upload to QUOREM</h3>
 <br/>
-<a  class="btn btn-primary" href="/analysis/{{ analysis_id }}/">
-    <i class="fas fa-angle-left"></i> Back to Analysis
+<a  class="btn btn-primary" href="/">
+    <i class="fas fa-angle-left"></i> Back to Home
 </a>
 <br/><br/>
 <div class="alert alert-primary" role="alert">
-  <h4 class="alert-heading">Artifact Upload</h4>
+  <h4 class="alert-heading">Spreadsheet Upload</h4>
   <p></p>
   <hr>
-  <p class="mb-0">Drag and drop QIIME2 artifact files (.qza and .qzv) onto the grey box below to initiate upload to QUOREM.<br/><br/>
+  <p class="mb-0">Drag and drop spreadsheet files (.csv, .tsv, .xls) onto the grey box below to initiate upload to QUOREM.<br/><br/>
                   This saves a copy of the file on the server, and queues it for processing. Processing status will be updated to your messages.<br/><br/>
                   File size is limited to less than 1GB, and maximum 50 files at once.</p>
 </div>
@@ -53,7 +53,7 @@
     var csrftoken = getCookie('csrftoken');
     Dropzone.autoDiscover = false;
     $('#MultiFileUpload').dropzone({
-        url: "/analysis/{{ analysis_id }}/upload",
+        url: "/upload/spreadsheet/",
         crossDomain: false,
         paramName: "file",
         parallelUploads: 50,
@@ -62,7 +62,7 @@
         maxFilesize: 1000000,
         dictRemoveFileConfirmation: null,
         useFontAwesome: true, 
-	dictDefaultMessage: "<i class='fas fa-upload fa-5x'></i><br/><br/><h5>Upload QIIME2 Artifacts by dragging and dropping here</h5>",
+	dictDefaultMessage: "<i class='fas fa-upload fa-5x'></i><br/><br/><h5>Upload data in spreadsheets by dragging and dropping here</h5>",
         init: function () {
             this.on("uploadprogress", function (file, progress, bytesSent) {
                 progress = bytesSent / file.size * 100;
