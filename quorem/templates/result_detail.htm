@@ -41,7 +41,7 @@
 <h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
 	      </div>
 	      <br/>
-{% if has_uploaded_artifact %}
+{% if stream_graph %}
 <div class="card card-body mx-auto">
 	<b>Provenance Graph</b>
 <figure class="mx-auto">
@@ -50,7 +50,9 @@
 </div>
 </figure>
 </div>
+{% endif %}
 <br/>
+{% if provenance_graph %}
 <div class="card card-body mx-auto">
 	<b>Result Information</b>
 <figure>
