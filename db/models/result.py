@@ -64,6 +64,22 @@ class Result(Object):
             anal_params = {}
         return {getattr(step, step_field): anal_params}
 
+    def get_parameters_html(self):
+        html = "<ul>"
+        parameters = self.get_parameters(step_field="name")
+        for step in parameters:
+            for pname in parameters[step]:
+                parameter, source = parameters[step][pname]
+                html += "<li>"
+                if source != "step":
+                    html += "<b>" + parameter.signature.get().name + ": " + str(parameter.data.get())+ " (Set by %s)" % (source.capitalize(),) + "</b>"
+                else:
+                    html += parameter.signature.get().name + ": " + str(parameter.data.get())+ " (Default from Step)"
+                html += "</li>"
+        html += "</ul>"
+        return mark_safe(html)
+
+
     @classmethod
     def infer_step_upstream(self, results=None):
         if results is None:
@@ -284,8 +300,13 @@ class Result(Object):
 #                context['features_html'] = mark_safe(obj.html_features())
                 if obj.has_value('qiime2_type'):
                     context['provenance_graph'] = mark_safe(obj.simple_provenance_graph().pipe().decode().replace("<svg ", "<svg id=\"provenancegraph\" class=\"img-fluid\" ").replace("\n",""))
-                    context['stream_graph'] = mark_safe(obj.get_stream_graph().pipe().decode().replace("<svg ", "<svg id=\"streamgraph\" class=\"img-fluid\" ").replace("\n", ""))
-                context['values_html'] = mark_safe(obj.html_values())
+                    stream_graph = obj.get_stream_graph()
+                    try:
+                        stream_graph = stream_graph.pipe()
+                        context['stream_graph'] = mark_safe(stream_graph.decode().replace("<svg ", "<svg id=\"streamgraph\" class=\"img-fluid\" ").replace("\n", ""))
+                    except:
+                        print("Stream graph failed to load")
+#                context['values_html'] = mark_safe(obj.html_values())
                 context['has_uploaded_file'] = obj.has_value("uploaded_spreadsheet") | obj.has_value("uploaded_artifact")
                 context['filetype'] = obj.get_result_type()
                 return context
@@ -343,16 +364,24 @@ class Result(Object):
     def related_analyses(self):
         return apps.get_model("db", "Analysis").objects.filter(pk=self.analysis.pk)
 
+    def is_qiime2_artifact(self):
+        return self.has_value("qiime2_type")
+
     def get_qiime2_command(self):
-        #First, check that the Result is a QIIME artifact
-        plugin = ""
-        cmd = ""
-        input_results = ""
-        input_parameters = ""
+        if not self.is_qiime2_artifact():
+            return "Error: Result does not appear to be a QIIME2 artifact, no command possible through this function"
+        if self.source_step.name == "qiime2_import":
+            return "qiime tools import --type %s --input-format %s --input-path <data directory>" % (self.get_value("qiime2_type"), self.get_value("qiime2_format"))
+        step = self.source_step.name
+        plugin, command = step.split("__")
+        qiime2_command = "qiime %s %s" % (plugin, command)
+        param_dict = self.get_parameters(step_field="name")[step]
+        for parameter in param_dict:
+            qiime2_command += " --%s %s" % (param_dict[parameter][0].signature.get().name, str(param_dict[parameter][0].data.get()))
+        return qiime2_command
 
     def get_node_attrs(self, show_values=True, highlight=False, value_counts=None):
-        htm = "<<table border=\"0\">"
-#        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.base_name.upper(),)
+        htm = "<<table border=\"0\"><tr><td colspan=\"2\"><b>%s</b></td></tr>" % (self.name,)
         if not show_values:
            sep = ""
         else:

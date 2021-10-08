@@ -13,13 +13,52 @@
 <div class="card card-header">
 <h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
 </div>
-<div class="card-body">
+<div class="card card-body">
 <h3>Taxonomic Classifications</h3>
-{{ object.taxonomy_badges }}
+<p>{{ object.taxonomy_badges }}</p>
+<br/><br/>
+<h3>Sequences</h3>
+{% for sequence in object.sequences %}
+<div class="row align-items-center">
+<div class="card card-body col-lg-10" style="font-family: monospace;" id="sequence">
+{{ sequence }}
 </div>
-<br/>
-<br/>
-
+<div class="col-sm-2" align="center">
+	<button type="button" class="btn btn-primary" onclick="copyDivToClipboard()" id="copyButton" data-container="body" data-toggle="popover" data-placement="top" data-content="Copied!"><i class="fas fa-clipboard"></i> Copy Sequence</button><br/><br/>
+	<a type="button" class="btn btn-primary" href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&BLAST_SPEC=&LINK_LOC=blasttab&LAST_PAGE=blastp&QUERY={{ sequence }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i> BLAST</a>
+</div>
+{% endfor %}
+<script>
+    function copyDivToClipboard() {
+        var range = document.createRange();
+        range.selectNode(document.getElementById("sequence"));
+        window.getSelection().removeAllRanges(); // clear current selection
+        window.getSelection().addRange(range); // to select text
+        document.execCommand("copy");
+        window.getSelection().removeAllRanges();// to deselect
+        $('#copyButton').popover('show')
+    }
+    $(document).ready(function () {
+    
+        $('[data-toggle="popover"]').popover({
+            placement: 'top',
+            delay: {
+                "show": 300,
+                "hide": 100
+            }
+        });
+    
+        $('[data-toggle="popover"]').click(function () {
+    
+            setTimeout(function () {
+                $('.popover').fadeOut('slow');
+            }, 3000);
+    
+        });
+    
+    });
+</script>
+</div>
 {% endblock main %}
 
 {% block bottom_scripts %}

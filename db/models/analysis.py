@@ -103,6 +103,7 @@ class Analysis(Object):
         results = self.results.all()
         if upstream:
             results = results | apps.get_model("db", "Result").objects.filter(pk__in=results.values("all_upstream").distinct())
+        return results
 
     def html_results_list(self):
         html_val = '<ul class="list-group">'

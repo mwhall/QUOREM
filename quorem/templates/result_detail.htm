@@ -39,6 +39,55 @@
 	      <br/><br/>
 	      <div class="card card-header">
 <h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
+{% if object.is_qiime2_artifact %}
+<p class="lead">This is a {{object.human_short}} created with the command:</p>
+	<div class="row align-items-center">
+		<div class="col-lg-11">
+<div class="card-body card">
+<p style="font-family: monospace;" id="qiime2cmd">{{object.get_qiime2_command}}</p>
+</div>
+		</div>
+<div class="col-xs-1"  align="center">
+	<button type="button" class="btn btn-primary" onclick="copyDivToClipboard()" id="copyButton" data-container="body" data-toggle="popover" data-placement="top" data-content="Copied!"><i class="fa fa-clipboard"></i> Copy</button>
+</div>
+	</div>
+<script>
+    function copyDivToClipboard() {
+        var range = document.createRange();
+        range.selectNode(document.getElementById("qiime2cmd"));
+        window.getSelection().removeAllRanges(); // clear current selection
+        window.getSelection().addRange(range); // to select text
+        document.execCommand("copy");
+        window.getSelection().removeAllRanges();// to deselect
+        $('#copyButton').popover('show')
+    }
+    $(document).ready(function () {
+    
+        $('[data-toggle="popover"]').popover({
+            placement: 'top',
+            delay: {
+                "show": 300,
+                "hide": 100
+            }
+        });
+    
+        $('[data-toggle="popover"]').click(function () {
+    
+            setTimeout(function () {
+                $('.popover').fadeOut('slow');
+            }, 3000);
+    
+        });
+    
+    });
+</script>
+{% endif %}
+</div>
+	      </div>
+	      <br/>
+	      <div class="card card-body mx-auto">
+	      <h3>Parameters</h3>
+	      {{ object.get_parameters_html }}
 	      </div>
 	      <br/>
 {% if stream_graph %}
@@ -66,9 +115,6 @@
 <br/>
 <h3>Samples</h3>
 {{ samples_html }}
-<br/>
-<h3>Values</h3>
-{{values_html}}
 <br/>
 	<script>var panZoomSG = svgPanZoom('#streamgraph', {controlIconsEnabled: true})</script>
 {% endblock main %}

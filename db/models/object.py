@@ -589,7 +589,9 @@ class Object(models.Model):
         return processes
 
     def related_features(self):
-        return apps.get_model("db", "Feature").objects.filter(samples__in=self.related_samples()).distinct()
+        feat_model = apps.get_model("db", "Feature")
+        qs = feat_model.objects.filter(results__in=self.related_results()).distinct()
+        return qs
 
     def related_features_count(self):
         return self.related_features().count()

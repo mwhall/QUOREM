@@ -54,6 +54,9 @@ class Feature(Object):
             html_val += '<a class="badge badge-light" data-toggle="tooltip" data-placement="top" title="%s" href="/result/%d/">%s</a>&nbsp;' % (tax, row[1]["results__pk"], last_tax,)
         return mark_safe(html_val)
 
+    def sequences(self):
+        return self.dataframe(value_names=["representative_sequence"])["value_data"].tolist()
+
 
     def related_samples(self, upstream=False):
         #SQL Depth: 1
