@@ -24,7 +24,7 @@ import pandas as pd
 import graphviz as gv
 import colour
 
-from quorem.wiki import refresh_automated_report
+#from quorem.wiki import refresh_automated_report
 
 from django_pandas.managers import DataFrameManager
 import django_pandas as dpd

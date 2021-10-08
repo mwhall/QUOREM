@@ -134,7 +134,7 @@ class Feature(Object):
                 context = super().get_context_data(**kwargs)
                 #Add to context dict to make available in template
                 context['samples_html'] = mark_safe(self.get_object().html_samples())
-                context['values_html'] = mark_safe(self.get_object().html_values())
+            #    context['values_html'] = mark_safe(self.get_object().html_values())
                 return context
         if as_view:
             return FeatureDetailView.as_view()

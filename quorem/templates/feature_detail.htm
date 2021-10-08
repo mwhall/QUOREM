@@ -17,27 +17,34 @@
 <h3>Taxonomic Classifications</h3>
 <p>{{ object.taxonomy_badges }}</p>
 <br/><br/>
+<hr/>
 <h3>Sequences</h3>
 {% for sequence in object.sequences %}
+{% if forloop.counter > 1 %}
+<hr class="m-5"/>
+{% endif %}
 <div class="row align-items-center">
-<div class="card card-body col-lg-10" style="font-family: monospace;" id="sequence">
-{{ sequence }}
+	<div class="col-lg-10" style="font-family: monospace;" id="sequence{{forloop.counter}}">
+	<p>{{ sequence }}</p>
 </div>
 <div class="col-sm-2" align="center">
-	<button type="button" class="btn btn-primary" onclick="copyDivToClipboard()" id="copyButton" data-container="body" data-toggle="popover" data-placement="top" data-content="Copied!"><i class="fas fa-clipboard"></i> Copy Sequence</button><br/><br/>
+	<button type="button" class="btn btn-primary" onclick="copyDivToClipboard{{forloop.counter}}()" id="copyButton" data-container="body" data-toggle="popover" data-placement="top" data-content="Copied!"><i class="fas fa-clipboard"></i> Copy Sequence</button><br/><br/>
 	<a type="button" class="btn btn-primary" href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&BLAST_SPEC=&LINK_LOC=blasttab&LAST_PAGE=blastp&QUERY={{ sequence }}" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt"></i> BLAST</a>
 </div>
-{% endfor %}
 <script>
-    function copyDivToClipboard() {
+    function copyDivToClipboard{{ forloop.counter }}() {
         var range = document.createRange();
-        range.selectNode(document.getElementById("sequence"));
+        range.selectNode(document.getElementById("sequence{{ forloop.counter }}"));
         window.getSelection().removeAllRanges(); // clear current selection
         window.getSelection().addRange(range); // to select text
         document.execCommand("copy");
         window.getSelection().removeAllRanges();// to deselect
         $('#copyButton').popover('show')
     }
+</script>
+</div>
+{% endfor %}
+<script>
     $(document).ready(function () {
     
         $('[data-toggle="popover"]').popover({
