@@ -469,8 +469,7 @@ class Group(Value):
     str_description = "Groups represent a grouping of Objects, that isn't necessarily non-overlapping"
 
 class Matrix(Value):
-    # A special datatype that stores sparse matrices for all objects linked to it
-    # Matrices must be stored sparsely, and indexes must be object pks for absolute consistency
+    # A special datatype that stores matrices for all objects linked to it
     base_name = "matrix"
     plural_name = "matrices"
 

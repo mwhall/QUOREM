@@ -22,6 +22,7 @@ from .user import UserProfile
 from .object import Object
 from ..postgres import ArrayPosition, ArrayPositions, Unnest
 
+import pandas as pd
 import ete3
 import arrow
 import pint
@@ -29,6 +30,7 @@ import geopy
 import datetime
 import version_parser.version as version
 import re
+import io
 from scipy.sparse import coo_matrix
 
 #This should be fine to live here, but may need to move if this file reloads often
@@ -520,23 +522,42 @@ class UserDatum(Data):
     cast_function = lambda x: UserProfile.objects.get(pk=x)
     value = models.ForeignKey("UserProfile", on_delete=models.CASCADE)
 
-class MatrixDatum(Data):
+class COOMatrixDatum(Data):
     # A container for Sparse Matrices
     type_name = "coomatrix"
     native_type = coo_matrix
-    db_cast_function = lambda x: {'value': x.data.tolist(), 'row': x.row.tolist(), 'col': x.col.tolist(),
-                                  'rowobj': ContentType.objects.get_by_natural_key('db', x.rowobj),
-                                  'colobj': ContentType.objects.get_by_natural_key('db', x.colobj)}
     value = ArrayField(base_field=models.FloatField())
     row = ArrayField(base_field=models.IntegerField())
     col = ArrayField(base_field=models.IntegerField())
+    row_names = ArrayField(base_field=models.CharField(max_length=255))
+    col_names = ArrayField(base_field=models.CharField(max_length=255))
     # Generally intended to be Object subclasses, but I could see abusing this for other purposes
     rowobj = models.ForeignKey(ContentType, related_name="matrix_row", on_delete=models.CASCADE)
     colobj = models.ForeignKey(ContentType, related_name="matrix_col", on_delete=models.CASCADE)
+
+    def db_cast_function(value):
+        assert type(value) == pd.DataFrame
+        coo_mat = value.sparse.to_coo()
+        row = coo_mat.row.tolist()
+        row_names = value.index.tolist()
+        col = coo_mat.col.tolist()
+        col_names = value.columns.tolist()
+        data = coo_mat.data.tolist()
+        return {'value': data, 
+                'row': row, 
+                'col': col,
+                'row_names': row_names,
+                'col_names': col_names,
+                'rowobj': ContentType.objects.get_by_natural_key('db', value.rowobj), 
+                'colobj': ContentType.objects.get_by_natural_key('db', value.colobj)}
     def __str__(self):
         return "COO Matrix with %d non-zero values" % (len(self.value),)
     def get_value(self):
-        return coo_matrix((self.value, (self.row, self.col)))
+        coo_mat = coo_matrix((self.value, (self.row, self.col)))
+        df = pd.DataFrame.sparse.from_spmatrix(coo_mat)
+        df.index = self.row_names
+        df.columns = self.col_names
+        return df
     def register_observations(self):
         assert colobj == ContentType.objects.get_by_natural_key('db.Sample')
         # Grab all unique pks in col
@@ -557,6 +578,8 @@ class MatrixDatum(Data):
 class SequenceDatum(Data):
     # A container for a biological sequence
     type_name = "sequence"
+    # Can be either a FASTA entry, a FASTQ entry, or just a plain sequence
+    # All stored as text and inferred/converted later for whatever purpose
     value = models.TextField()
 
 class NewickTreeDatum(Data):
