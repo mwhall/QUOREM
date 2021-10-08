@@ -2,10 +2,12 @@ import zipfile
 import yaml
 import re
 import os
+import sys
 import time
 import tempfile
 import h5py as h5
 import ete3
+import biom
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
@@ -168,13 +170,20 @@ class ArtifactIterator:
                 self.base_format = yf["format"]
                 self.base_type = yf["type"]
         self.scraper = None
-        ads = ArtifactDataScraper.for_format(self.base_format)
+        ads = ArtifactDataScraper.for_type(qiime_format=self.base_format, 
+                                           qiime_type=self.base_type)
         if ads:
             self.scraper = ads(self)
 
     def iter_objects(self, update=True):
+        sys.stdout.write("Iterating on objects...")
         # Yields single records of artifact contents that describe QUOR'em Objects
         for uuid, yf in self.iter_actionyaml():
+            if 'action' not in yf:
+                raise ValueError("QIIME2 Artifact does not appear to have an action yaml")
+            if 'type' not in yf['action']:
+                raise ValueError("QIIME2 Artifact does not appear to have a type")
+            sys.stdout.write("Action and type identified")
             if yf['action']['type'] in ['method', 'pipeline', 'visualizer']:
                 step_name = yf['action']['plugin'].split(":")[-1] +\
                                "__" + yf['action']['action']
@@ -206,6 +215,7 @@ class ArtifactIterator:
                                     yield {"result_name": self.base_uuid,
                                            "result_sample": val}
         if self.scraper:
+            sys.stdout.write("Going to artifact scraper with update %s" % ("on" if update else "off",))
             for record in self.scraper.iter_objects(update=update):
                 yield record
 
@@ -349,16 +359,85 @@ class ArtifactIterator:
             yield (uuid, yf)
 
 class ArtifactDataScraper:
+    qiime_format = None
+    qiime_type = None
+
     @classmethod
-    def for_format(cls, format):
+    def for_type(cls, qiime_type=None, qiime_format=None):
+        if qiime_type == None and qiime_format == None:
+            raise ValueError("Must provide at least one of qiime_type or qiime_format for ArtifactDataScraper.for_type()")
         for sc in cls.__subclasses__():
-            if sc.qiime_format == format:
-                return sc
+            if qiime_type != None and qiime_format != None:
+                #Check both
+                if qiime_type == sc.qiime_type and qiime_format == sc.qiime_format:
+                    return sc
+            elif qiime_type != None:
+                if qiime_type == sc.qiime_type:
+                    return sc
+            elif qiime_format != None:
+                if qiime_format == sc.qiime_format:
+                    return sc
+        print("No scraper found... importing only basic metadata")
 
 # Stub for Alex
 #class PCoAResults(ArtifactDataScraper):
 #    qiime_format = 'OrdinationDirectoryFormat'
 #
+
+class FeatureDataSequence(ArtifactDataScraper):
+    qiime_format = "DNASequencesDirectoryFormat"
+    qiime_type = "FeatureData[Sequence]"
+
+    def __init__(self, ai):
+        self.fasta = False
+        self.ai = ai
+        self.uuid = ai.base_uuid
+        self.data_file = self.uuid + "/data/dna-sequences.fasta"
+        self.reset_fasta()
+
+    def reset_fasta(self):
+        if self.fasta:
+            self.fasta.close()
+        self.fasta = self.ai.zfile.open(self.data_file)
+
+    def iter_objects(self, update=True):
+        # Just register the features
+        idx = 0
+        record = {"result_name": self.uuid, "feature_result": self.uuid}
+        while True:
+            line = self.fasta.readline().decode()
+            if line.startswith(">"):
+                feature_name = line.strip(">").strip()
+                record.update({"feature_name.%d" % (idx,): feature_name})
+                idx += 1
+            if line == "":
+                break
+        self.reset_fasta()
+        if len(record) == 2:
+            yield {}
+        else:
+            yield record
+        
+    def iter_values(self):
+        print("Iterating over representative sequence values")
+        while True:
+            line = self.fasta.readline().decode()
+            if line == "":
+                break
+            # Pull out the actual sequences
+            label = line
+            feature_name = line.strip(">").strip()
+            line = self.fasta.readline().decode()
+            seq = line.strip()
+            yield {"feature_name": feature_name,
+                   "result_name": self.uuid,
+                   "value_name": "representative_sequence",
+                   "value_data": seq,
+                   "value_type": "measure",
+                   "data_type": "sequence",
+                   "value_object": "result",
+                   "value_object.1": "feature"}
+        self.reset_fasta()
 
 class Dada2DenoiseStats(ArtifactDataScraper):
     qiime_format = 'DADA2StatsDirFmt'
@@ -477,6 +556,7 @@ class AlphaDiversity(ArtifactDataScraper):
 
 
 class Taxonomy(ArtifactDataScraper):
+    qiime_type = 'FeatureData[Taxonomy]'
     qiime_format = 'TSVTaxonomyDirectoryFormat'
 
     def __init__(self, ai):
@@ -520,10 +600,11 @@ class Taxonomy(ArtifactDataScraper):
 
 class FeatureTable(ArtifactDataScraper):
     qiime_format = 'BIOMV210DirFmt'
+    qiime_type = 'FeatureTable[Frequency]'
 
     def __init__(self, ai):
         self.uuid = ai.base_uuid
-        self.coo_mat, self.samples, self.features = self.get_data(ai)
+        self.df, self.samples, self.features = self.get_data(ai)
         for uuid, yf in ai.iter_actionyaml():
             if uuid == self.uuid:
                 plugin = yf['action']['plugin'].split(":")[-1]
@@ -550,15 +631,16 @@ class FeatureTable(ArtifactDataScraper):
         yield record
         if update:
             for sample in self.samples.all():
-                record = {"sample_name": str(sample.name)}
-                features_present = self.coo_mat.getcol(sample.pk).tocoo().row
-                record.update({"sample_feature.%d" % (idx,): feature_dict[pk] for idx, pk in enumerate(features_present)})
+                record = {"sample_name": sample.name}
+                features_present = self.df[self.df[sample.name]>0][sample.name].index.tolist()
+                record.update({"sample_feature.%d" % (idx,): feature for idx, feature in enumerate(features_present)})
                 yield record
 
     def iter_values(self):
         # Infer the table type if we can
-        self.coo_mat.colobj = "sample"
-        self.coo_mat.rowobj = "feature"
+        print("Table values being collected")
+        self.df.rowobj = "feature"
+        self.df.colobj = "sample"
         record = {"result_name": self.uuid,
                   "value_name": self.value_name,
                   "value_object": "result",
@@ -566,9 +648,10 @@ class FeatureTable(ArtifactDataScraper):
                   "value_object.1": "feature",
                   "value_type": "matrix",
                   "data_type": "coomatrix",
-                  "value_data": self.coo_mat}
+                  "value_data": self.df}
         record.update({"sample_name.%d" % (idx,): str(sample.name) for idx, sample in enumerate(self.samples)})
         record.update({"feature_name.%d" % (idx,): feature.name for idx, feature in enumerate(self.features)})
+        print(record)
         yield record
 
     def get_data(self, ai):
@@ -576,18 +659,11 @@ class FeatureTable(ArtifactDataScraper):
         with tempfile.NamedTemporaryFile() as temp_file:
             x=ai.zfile.read(data_file)
             temp_file.write(x)
-            tf = h5.File(temp_file.name)
-            data = tf['observation/matrix/data'][:]
-            indptr = tf['observation/matrix/indptr'][:]
-            indices = tf['observation/matrix/indices'][:]
-            sample_ids = tf['sample/ids'][:]
-            feature_ids = tf['observation/ids'][:]
-        feature_ids = [x.decode() for x in feature_ids]
-        sample_ids = [x.decode() for x in sample_ids]
-        csr_mat = csr_matrix((data,indices,indptr))
-        # We have to convert the names in the BIOM files to database PKs for the
-        # matrix
-        coo_mat = csr_mat.tocoo()
+            df = biom.load_table(temp_file.name).to_dataframe()
+            #Sparsify it with Pandas
+            df = df.astype(pd.SparseDtype("int", 0))
+            sample_ids = df.columns.tolist()
+            feature_ids = df.index.tolist()
         # We can release the h5 file at this point: we have all we need from it
         samples = Sample.objects.filter(name__in=sample_ids)
         features = Feature.objects.filter(name__in=feature_ids)
@@ -609,10 +685,7 @@ class FeatureTable(ArtifactDataScraper):
                 features = features | new_features
             else:
                 feature_pks[idx] = found_features[feature]
-        row = [feature_pks[x] for x in coo_mat.row]
-        col = [sample_pks[x] for x in coo_mat.col]
-        coo_mat = coo_matrix((coo_mat.data, (row, col)))
-        return coo_mat, samples, features
+        return df, samples, features
 
 
 
