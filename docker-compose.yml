@@ -1,0 +1,46 @@
+version: "3.9"
+   
+services:
+  db:
+    container_name: db
+    image: postgres:latest
+    restart: always
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_DB=quoremdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=diu12y89eun
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - djangonetwork
+    user: ${UID_GID}  #When initializing the database, this should be commented out
+                      #After initializing, run chown on the files and uncomment, and things should be fine
+  django:
+    build: .
+    command: ./scripts/launchquorem.sh
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+      - "8888:8888"
+    expose:
+      - "8888"
+    depends_on:
+      - db
+    links:
+      - db:db
+    networks:
+      - djangonetwork
+  redis:
+    expose:
+      - "6379"
+    image: redis:latest
+    restart: always
+    networks:
+      - djangonetwork
+networks:
+  djangonetwork:
+    driver: bridge
