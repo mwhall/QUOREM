@@ -173,6 +173,7 @@ urlpatterns += [
 #    path('test/', testView, name='test'),
     path('data-csv/', csv_download_view, name='csv_download'),
     path('data-xls/', xls_download_view, name='xls_download'),
+    path('taxon-table/', tax_table_download_view, name="tax_table_download"),
     path('data-artifact/', artifact_download_view, name='artifact_download'),
     path('data-spreadsheet/', spreadsheet_download_view, name='spreadsheet_download'),
     #redirect no-auth users to here

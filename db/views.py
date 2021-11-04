@@ -1367,6 +1367,29 @@ def xls_download_view(request):
         response['Content-Disposition'] = 'attachment; filename="hello.xls"'
         return response
 
+
+def tax_table_download_view(request):
+    taxonomy_pk = request.GET.get('taxonomy_pk','')
+    countmatrix_pk = request.GET.get('countmatrix_pk','')
+    level = request.GET.get('level',6)
+    normalization = request.GET.get('normalization',"None")
+    metadata_name = request.GET.get('metadata_name',None)
+    collapsed_df = collapsed_table(taxonomy_pk, countmatrix_pk, 
+                                   level, normalization, 
+                                   metadata_name)
+    filename_suffix = "_taxpk_%s_matrixpk_%s" % (str(taxonomy_pk), str(countmatrix_pk))
+    filename_suffix += "_%s" % (str(level),)
+    filename_suffix += "_%s" % (normalization,)
+    if metadata_name is not None:
+        filename_suffix += "_%s" % (metadata_name,)
+    with BytesIO() as b:
+        writer = pd.ExcelWriter(b, engine="xlsxwriter")
+        collapsed_df.to_excel(writer)
+        writer.save()
+        response = HttpResponse(b.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="taxonomy_table%s.xlsx"' % (filename_suffix,)
+        return response
+
 def csv_download_view(request):
 
     model_map =  {'investigation': Investigation,

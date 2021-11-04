@@ -204,3 +204,40 @@ def tax_correlation_plot(taxonomy_pk, countmatrix_pk, samples=None, level=3, rel
 
 
     return plt.plot(fig, output_type="div")
+
+def collapsed_table(taxonomy_pk, countmatrix_pk, level="full", normalization="None", metadata_name=None):
+    linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
+    linnean_levels['domain'] = 1
+    if type(level) != int:
+        level = level.lower()
+        if level in linnean_levels:
+            level = linnean_levels[level]
+        else:
+            if level != "full":
+                raise ValueError("Unknown level %s" % (level,))
+    tax_result = Result.objects.get(pk=taxonomy_pk)
+    count_matrix_result = Result.objects.get(pk=countmatrix_pk)
+    matrix = count_matrix_result.values.instance_of(Matrix).first().data.get().get_value()
+    if metadata_name != None:
+        sample_df = Sample.dataframe(Sample.objects.filter(name__in=matrix.columns), 
+                                     value_names=[metadata_name])
+        matrix = matrix.groupby(by=sample_df[metadata_name],axis=1).sum()
+    assert normalization.lower() in ["none", "raw", "counts", "percent", "proportion"], \
+        "Normalization method must be one of: none, raw, counts, percent, or proportion"
+    if normalization.lower() == "proportion":
+        matrix = matrix/matrix.sum()
+    elif normalization.lower() == "percent":
+        matrix = matrix/matrix.sum()*100
+    
+    tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
+                                  additional_fields=["features__name"])
+    tax_df = tax_df.set_index("features__name")
+    if level == "full":
+        level_df = tax_df['value_data']
+    else:
+        level_df = tax_df['value_data'].str.split(";",expand=True)[level]
+    level_df[level_df.isna()] = "Unclassified at level %s" % (str(level),)
+    level_df = level_df.astype('category')
+    level_df.name = None
+    collapsed_df = matrix.groupby(by=level_df, sort=False).sum()
+    return collapsed_df
