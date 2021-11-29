@@ -119,6 +119,23 @@ class DataSignatureAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(name__icontains=self.q)
         return qs.distinct()
 
-class TaxonomicLevelAutocomplete(autocomplete.Select2ListView):
+class SampleMetadataAutocomplete(autocomplete.Select2QuerySetView):
+    def get_queryset(self):
+        count_matrix = self.forwarded.get("count_matrix", None)
+        qs = DataSignature.objects.filter(object_counts__samples=1)
+        if count_matrix:
+            cm = Result.objects.get(pk=count_matrix)
+            samples = cm.samples.all()
+            qs = qs.filter(values__samples__in=samples)
+        if self.q:
+            qs = qs.filter(name__icontains=self.q, object_counts__samples=1)
+        return qs.distinct()
+    def get_result_label(self, item):
+        return mark_safe(format_html('{}', item.name))
+
+class TableNormalizeMethodAutocomplete(autocomplete.Select2ListView):
     def get_list(self):
-        return [x.capitalize() for x in ["kingdom","phylum","class","order","family","genus","species"]]
+        #raw, counts, and none are synonyms for just plot the sequence counts
+        #proportion is a simple division by the sum
+        #percent is proportion * 100
+        return ["raw","counts","none","proportion","percent"]

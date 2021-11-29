@@ -161,4 +161,6 @@ class Analysis(Object):
             return AnalysisDetailView
 
 
-
+    def count_tables_list(self):
+        # Return all metadata that are known to carry count tables
+        return self.results.filter(values__signature__name__in=["otu_table", "asv_table"]).distinct()

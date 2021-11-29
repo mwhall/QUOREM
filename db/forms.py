@@ -14,14 +14,12 @@ from .models import (
 )
 from .models.object import Object
 
-from django.forms import inlineformset_factory, ModelForm
+from django.forms import formset_factory, ModelForm
 
 #Stuff for custom FieldSetForm
 from django.forms.models import ModelFormOptions
 
 from dal import autocomplete
-#import dal_queryset_sequence
-#import dal_select2_queryset_sequence
 
 
 class OrderedModelMultipleChoiceField(forms.ModelMultipleChoiceField):
@@ -30,52 +28,6 @@ class OrderedModelMultipleChoiceField(forms.ModelMultipleChoiceField):
         qs = super(OrderedModelMultipleChoiceField, self).clean(value)
         preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(value)])
         return qs.filter(pk__in=value).order_by(preserved)
-
-"""
-Custom Form Classes
-"""
-#ModelFormOption config to allow FieldSetForm
-_old_init = ModelFormOptions.__init__
-def _new_init(self, options=None):
-    _old_init(self, options)
-    self.fieldsets = getattr(options, 'fieldsets', None)
-ModelFormOptions.__init__ = _new_init
-
-##Fieldset class will allow multi-part forms to be Rendered  in the way
-# you might expect rather than having to use sessions and third party libs.
-class Fieldset(object):
-    def __init__(self, form, title, description, fields, classes):
-        self.form = form
-        self.title = title
-        self.description = description
-        self.fields = fields
-        self.classes = classes
-    #iter allows intuitive template rendering
-    def __iter__(self):
-        for field in self.fields:
-            yield field
-
-##Add a fieldsets() method to BaseForm to allow forms to have fieldsets.
-def fieldsets(self):
-    meta = getattr(self, '_meta', None)
-    if not meta:
-        meta = getattr(self, 'Meta', None)
-    if not meta or not meta.fieldsets:
-        return
-    for name, desc, data in meta.fieldsets:
-        yield Fieldset(
-            form=self,
-            title=name,
-            description=desc,
-            fields=(self[f] for f in data.get('fields',())),
-            classes=data.get('classes', '')
-        )
-
-forms.BaseForm.fieldsets = fieldsets
-
-'''
-Django-Jinja-Knockout Forms
-'''
 
 #Base Forms and Display Forms
 
@@ -94,11 +46,6 @@ class UploadForm(ModelForm):
         model = UploadFile
         fields = ['upload_file']
 
-#UserUploadFormset = ko_inlineformset_factory(UserProfile,
-#                                             UploadFile,
-#                                             form=UploadForm,
-#                                             extra=0,
-#                                             min_num=1)
 
 ################ Upload Forms
 class ArtifactUploadForm(ModelForm):
@@ -143,18 +90,6 @@ class ErrorDisplayForm(ModelForm):
         model = UploadMessage
         fields = '__all__'
 
-#class FileDisplayWithInlineErrors(FormWithInlineFormsets):
-#    FormClass = UploadFileDisplayForm
-#    FormsetClasses =[FileDisplayErrorFormset]
-#    def get_formset_inline_title(self, formset):
-#        return "Status Messages"
-#
-#class UserWithInlineUploads(FormWithInlineFormsets):
-#    FormClass = UserProfileForm
-#    FormsetClasses = [UserUploadFormset]
-#    def get_formset_inline_title(self, formset):
-#        return "User Uploads"
-
 class NameLabelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return "%s" % (obj.name,)
@@ -162,12 +97,9 @@ class NameLabelChoiceField(forms.ModelChoiceField):
 #### Investigation Forms
 
 class InvestigationForm(ModelForm):
-    #value_type = forms.ChoiceField(choices=[(x.base_name.capitalize(), x.base_name.capitalize()) for x in Value.get_value_types()],
-    #                               required=False,
-    #                               widget=autocomplete.ListSelect2(url="value-autocomplete", attrs={'data-placeholder': 'Select a Value Type', 'style': 'width: auto;'}))
     class Meta:
         model = Investigation
-        exclude = ['search_vector', 'values', 'value_type']
+        exclude = ['search_vector', 'values']
 
 class InvestigationCreateForm(forms.ModelForm):
     class Meta:
@@ -352,6 +284,113 @@ class TreeSelectForm(forms.Form):
                                          label="Phylogenetic Tree",
                                          widget=autocomplete.ModelSelect2(url='result-tree-autocomplete', attrs={"style": "flex-grow: 1", 'data-html': True}))
 
+class TableCollapseForm(forms.Form):
+    count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                          label="Count Matrix",
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
+                                          forward=("taxonomy_result",),
+                                          attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+    taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                             label="Taxonomic Classification Set",
+                                             widget=autocomplete.ModelSelect2(url='result-taxonomy-autocomplete',
+                                                 forward=("count_matrix",),
+                                                 attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+                                             
+    normalize_methods = ["raw", "counts", "none", "proportion", "percent"]
+    normalize_method = autocomplete.Select2ListChoiceField(choice_list=normalize_methods,
+                                                           widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                                 "data-placeholder": "proportion", 
+                                                                                                 'data-html': True}))
+
+    tax_ranks = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species","Full"]
+    taxonomic_level = autocomplete.Select2ListChoiceField(choice_list=tax_ranks,
+                                                          widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                                 "data-placeholder": "Genus", 
+                                                                                                 'data-html': True}))
+    metadata_collapse = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
+                                                      label="Metadata for Aggregation",
+                                                      required=False,
+                                                      widget=autocomplete.ModelSelect2(url='sample-metadata-autocomplete',
+                                                                                               forward=("count_matrix",),
+                                                                                               attrs={"data-allow-clear": "true",
+                                                                                                   "style": "flex-grow: 1; width: 50%",
+                                                                                                      "data-html": True}))
+
+class PCoAPlotForm(forms.Form):
+    count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                          label="Count Matrix",
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
+                                          forward=("taxonomy_result",),
+                                          attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+    measures = ['euclidean', 'l2', 'l1', 'manhattan', 'cityblock', 'braycurtis', 'canberra', 'chebyshev', 'correlation', 'cosine', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule', 'wminkowski', 'nan_euclidean', 'haversine']
+    measure = autocomplete.Select2ListChoiceField(required=True, choice_list=measures,
+                                             widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                    "data-placeholder": "Select a distance/dissimilarity measure",
+                                                                                    'data-html': True}))
+    metadata_colour = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
+                                                      label="Metadata for Colour",
+                                                      required=False,
+                                                      widget=autocomplete.ModelSelect2(url='sample-metadata-autocomplete',
+                                                                                               forward=("count_matrix",),
+                                                                                               attrs={"data-allow-clear": "true",
+                                                                                                   "data-placeholder": "Select metadata to colour Samples by",
+                                                                                                   "style": "flex-grow: 1; width: 50%",
+                                                                                                      "data-html": True}))
+    three_dimensional = forms.BooleanField(required=False, initial=False, label="3D Plot", widget=forms.CheckboxInput(attrs={"class":"big-checkbox"}))
+
+
+class TablePlotForm(forms.Form):
+
+    plot_types = ['bar', 'heatmap', 'area', 'box', 'violin']
+    plot_type = autocomplete.Select2ListChoiceField(required=True, choice_list=plot_types,
+                                             widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                    "data-placeholder": "Select a plot type",
+                                                                                    'data-html': True}))
+    count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                          label="Count Matrix",
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
+                                          forward=("taxonomy_result",),
+                                          attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+    taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                             label="Taxonomic Classification Set",
+                                             widget=autocomplete.ModelSelect2(url='result-taxonomy-autocomplete',
+                                                 forward=("count_matrix",),
+                                                 attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+                                             
+    normalize_methods = ["raw", "counts", "none", "proportion", "percent"]
+    normalize_method = autocomplete.Select2ListChoiceField(choice_list=normalize_methods,
+                                                           widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                                 "data-placeholder": "proportion", 
+                                                                                                 'data-html': True}))
+
+    tax_ranks = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species","Full"]
+    taxonomic_level = autocomplete.Select2ListChoiceField(choice_list=tax_ranks,
+                                                          widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                                 "data-placeholder": "Genus", 
+                                                                                                 'data-html': True}))
+    plot_height = forms.IntegerField(initial=750)
+    metadata_collapse = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
+                                                      label="Metadata for Aggregation",
+                                                      required=False,
+                                                      widget=autocomplete.ModelSelect2(url='sample-metadata-autocomplete',
+                                                                                               forward=("count_matrix",),
+                                                                                               attrs={"data-allow-clear": "true",
+                                                                                                   "data-placeholder": "Select metadata to collapse Samples on",
+                                                                                                   "style": "flex-grow: 1; width: 50%",
+                                                                                                      "data-html": True}))
+    metadata_sort = OrderedModelMultipleChoiceField(queryset=DataSignature.objects.all(),
+                                                      label="Metadata for Sort",
+                                                      required=False,
+                                                      widget=autocomplete.ModelSelect2Multiple(url='sample-metadata-autocomplete',
+                                                                                               forward=("count_matrix",),
+                                                                                               attrs={"data-allow-clear": "true",
+                                                                                                   "style": "flex-grow: 1; width: 50%",
+                                                                                                      "data-html": True}))
+
+    plot_height = forms.IntegerField(initial=750, label="Height (px)")
+    n_taxa = forms.IntegerField(initial=25, label="Plot N Most Abundant Taxa")
+    label_bars = forms.BooleanField(required=False, initial=True, label="Taxonomic Labels on Bars", widget=forms.CheckboxInput(attrs={"class":"big-checkbox"}))
+
 class TaxBarSelectForm(forms.Form):
     taxonomy_result = forms.ModelChoiceField(queryset=Result.objects.all(),
                                              label="Taxonomic Classification Set",
@@ -389,6 +428,7 @@ class TaxBarSelectForm(forms.Form):
                                                                                                       "data-html": True}))
     plot_height = forms.IntegerField(initial=750, label="Height (px)")
     n_taxa = forms.IntegerField(initial=25, label="Plot N Most Abundant Taxa")
+    label_bars = forms.BooleanField(initial=True, label="Taxonomic Labels on Bars", widget=forms.CheckboxInput(attrs={"class":"big-checkbox"}))
 
 class AnalysisSelectForm(forms.Form):
     analysis = forms.ModelChoiceField(queryset=Analysis.objects.all(),

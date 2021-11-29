@@ -7,114 +7,95 @@ import plotly.offline as plt
 import plotly.express as px
 from itertools import cycle
 import ete3
+import skbio
 from .models import *
 
 
-def tax_bar_plot(taxonomy_pk, countmatrix_pk, plot_height=750, samples=None, level=6, n_taxa=25, samples_from_investigation=None, metadata_sort_by=None, relative=True, jupyter=False):
-    linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
-    if level in linnean_levels:
-        level = linnean_levels[level]
-    elif type(level) == str:
-        level = int(level)
-    tax_result = Result.objects.get(pk=taxonomy_pk)
+
+def pcoa_plot(countmatrix_pk, measure='braycurtis', metadata_colour=None, plot_height=750, three_dimensional=False):
     count_matrix_result = Result.objects.get(pk=countmatrix_pk)
-    matrix = count_matrix_result.values.instance_of(Matrix).first().data.get().get_value()
-    if relative:
-        matrix = matrix/matrix.sum(axis=0)
+    count_matrix = count_matrix_result.values.instance_of(Matrix).first().data.get().get_value()
+    count_matrix = count_matrix.loc[:, (count_matrix != 0).any(axis=0)]
+    pcoa = skbio.stats.ordination.pcoa(skbio.diversity.beta_diversity(measure, count_matrix.T))
+    pcoa.samples.index = count_matrix.T.index
+    plot_kwargs = {}
+    if metadata_colour != None and metadata_colour != '':
+        try:
+            metadata_colour = int(metadata_colour)
+            metadata_name = DataSignature.objects.get(pk=metadata_colour).name
+        except:
+            metadata_name = metadata_colour
+        sample_df = Sample.dataframe(Sample.objects.filter(name__in=pcoa.samples.index.tolist()),
+                                     value_names=[metadata_name])
+        not_in_df = [x for x in pcoa.samples.index if x not in sample_df.index]
+        md = pd.DataFrame({metadata_name:{x:"No Metadata Found" for x in not_in_df}})
+        sample_df = sample_df.append(md)
+        plot_kwargs['color'] = sample_df[metadata_name][pcoa.samples.index]
+    relative_x_axis = (pcoa.proportion_explained['PC1']/pcoa.proportion_explained['PC2'])
+    if three_dimensional:
+        fig = px.scatter_3d(pcoa.samples, x="PC1", y="PC2", z="PC3",
+                            hover_name=pcoa.samples.index.tolist(), height=plot_height, **plot_kwargs)
+        fig.update_traces(marker={'size': 2})
+        fig.update_layout(title={
+                                  'text': "PCoA Plot (Measure: %s)" % (measure,),
+                                  'y':0.9,
+                                  'x':0.5,
+                                  'xanchor': 'center',
+                                  'yanchor': 'top'}, 
+               scene=dict(xaxis_title="PC1 (%3.2f%%)" % (pcoa.proportion_explained['PC1']*100,),
+                          yaxis_title="PC2 (%3.2f%%)" % (pcoa.proportion_explained['PC2']*100,),
+                          zaxis_title="PC3 (%3.2f%%)" % (pcoa.proportion_explained['PC3']*100,)))
+
     else:
-        matrix = matrix.todense()
-    sample_pks = count_matrix_result.samples.order_by("pk")
-    sample_names = count_matrix_result.samples.order_by("pk")
-    if samples:
-        sample_pks = sample_pks.filter(pk__in=samples)
-        sample_names = sample_names.filter(pk__in=samples)
-    if samples_from_investigation:
-        sample_pks = sample_pks.filter(investigations__pk=samples_from_investigation)
-        sample_names = sample_names.filter(investigations__pk=samples_from_investigation)
-    sample_pks = list(sample_pks.values_list("pk",flat=True))
-    sample_names = list(sample_names.values_list("name",flat=True))
+        fig = px.scatter(pcoa.samples, x="PC1", y="PC2",hover_name=pcoa.samples.index.tolist(), height=plot_height, width=plot_height*relative_x_axis, **plot_kwargs)
+        fig.update_layout(xaxis_title="PC1 (%3.2f%%)" % (pcoa.proportion_explained['PC1']*100,),
+                          yaxis_title="PC2 (%3.2f%%)" % (pcoa.proportion_explained['PC2']*100,))
+    return fig
 
-    if metadata_sort_by:
-        metadata_pks = metadata_sort_by
-        print(metadata_sort_by)
-        metadata_names = [DataSignature.objects.get(pk=x).name for x in metadata_sort_by]
-        print(metadata_names)
-        metadata_df = Sample.dataframe(samples=sample_names, value_names=metadata_names, wide=True)
-        metadata_df = metadata_df.sort_values(list(metadata_names))
-        sample_names = list(metadata_df.index)
+def count_table_tax_plot(taxonomy_pk, countmatrix_pk, plot_type='bar', plot_height=1000, level='full', n_taxa=10, normalize_method='proportion', metadata_collapse=None, metadata_sort=None, label_bars=False, remove_empty_samples=True):
+    collapsed_df = collapsed_table(taxonomy_pk, countmatrix_pk, level, normalize_method, metadata_collapse, metadata_sort)
+    # Remove empty columns
+    if remove_empty_samples:
+        collapsed_df = collapsed_df.loc[:, (collapsed_df != 0).any(axis=0)]
+    # Sort table by taxon sum
+    collapsed_df = collapsed_df.assign(sum=collapsed_df.sum(axis=1)).sort_values(by='sum', ascending=False).drop(columns='sum')
+    # Take the top n_taxa
+    collapsed_df = collapsed_df.iloc[0:n_taxa]
+    # Plot the transpose with Plotly Express
+    plot_kwargs = {}
+    if plot_type == 'bar':
+        if label_bars:
+            plot_kwargs['text']='taxonomy'
+        fig=px.bar(collapsed_df.T, **plot_kwargs)
+        fig.update_layout(height=plot_height,
+                      yaxis_title=normalize_method.capitalize(),
+                      xaxis_title='Samples',
+                      legend_title='Taxonomic Classification',
+                      plot_bgcolor='rgba(0,0,0,0)')
+    elif plot_type == 'heatmap':
+        fig=px.imshow(collapsed_df,aspect='auto')
+        fig.update_layout(height=plot_height,
+                          yaxis_nticks=n_taxa, 
+                          xaxis_title='',
+                          yaxis_title='Taxonomy',
+                          plot_bgcolor='rgba(0,0,0,0)')
+    elif plot_type == 'area':
+        fig=px.area(collapsed_df.T)
+        fig.update_layout(height=plot_height,
+                          plot_bgcolor='rgba(0,0,0,0)')
+    elif plot_type == 'box':
+        fig=px.box(collapsed_df.T)
+        fig.update_layout(height=plot_height,
+                          plot_bgcolor='rgba(0,0,0,0)')
+    elif plot_type == 'violin':
+        fig=px.violin(collapsed_df.T)
+        fig.update_layout(height=plot_height,
+                          plot_bgcolor='rgba(0,0,0,0)')
 
-    tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
-                                  additional_fields=["features__pk"])
-    def format_taxonomy(x):
-        if len(x) <= level:
-            tax_index = len(x)-1
-        else:
-            tax_index = level
-        while x[tax_index].endswith("__"):
-            tax_index -= 1
-        if tax_index > 0:
-            return "; ".join([x[tax_index-1], x[tax_index]])
-        else:
-            return x[tax_index]
-    tax_df["value_data"] = tax_df["value_data"].str.split(";").apply(format_taxonomy)
-    tax_merge = tax_df.groupby("value_data").apply(lambda x: x['features__pk'].unique())
-    data = []
-    tax_abundance = {}
-    for tax, merge in tax_merge.items():
-        tax_abundance[tax] = pd.DataFrame(matrix[merge]).sum().sum()
-    abundant_taxa = pd.Series(tax_abundance).sort_values(ascending=False).index[0:n_taxa].tolist()
-    others = {}
-    palette = cycle(px.colors.qualitative.Light24)
-    for tax, merge in tax_merge.items():
-        if tax in abundant_taxa:
-            data.append(go.Bar(name=tax,
-                               x=sample_names,
-                               y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0],
-                               text=tax,
-                               hoverinfo='x+text+y',
-                               marker_color=next(palette)))
-        else:
-            if tax in others:
-                others[tax] = others[tax] + matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
-            else:
-                others[tax] = matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
-    fig = go.Figure(data=data)
-    # Change the bar mode
-    fig.update_layout(barmode='stack',
-                     yaxis_title="Relative Abundance",
-                     legend_orientation='h',
-                     #y=-0.4 dodges it enough so that it usually doesn't overlap sample names
-                     legend=dict(yanchor='top', x=0,y=-0.5),
-                     height=plot_height,
-                     plot_bgcolor='rgba(0,0,0,0)')
-    """
-    #change structure a bit to let plotly express do the plot. This makes dash
-    # interactivty easier for later.
-    sample_df = pd.DataFrame({'sample':sample_names})
+    return fig
 
-    for tax, merge in tax_merge.items():
-        y=matrix[merge][:,sample_pks].sum(axis=0).tolist()[0]
-        sample_df[tax] = y[0]
-    #px.bar can handle long or wide data. here, we use wide.
-    x_column = 'sample'
-    y_columns = [col for col in sample_df.columns if col != x_column]
-    fig = px.bar(sample_df, x=x_column, y=y_columns)
-    fig.update_layout(legend_orientation='h',
-                        legend=dict(x=0,y=-1.7),
-                        xaxis_title=None,
-                        yaxis_title=None,
-                        height=plot_height)
-                        """
-    if jupyter:
-        return plt.iplot(fig)
-    return plt.plot(fig, output_type="div")
-
-def tree_plot(tree_pk, feature_pks=[], show_names=False, return_ete=False):
+def tree_plot(tree_pk, feature_names=[], show_names=False, return_ete=False):
     tree_result = Result.objects.get(pk=tree_pk)
-    if not feature_pks:
-        feature_pks = list(tree_result.features.values_list("name", flat=True))
-    else:
-        feature_pks = list(Feature.objects.filter(pk__in=feature_pks).values_list("name", flat=True))
     newick_str = tree_result.get_value("newick")
     tree = ete3.Tree(newick_str)
     if return_ete:
@@ -125,7 +106,7 @@ def tree_plot(tree_pk, feature_pks=[], show_names=False, return_ete=False):
     ts.root_opening_factor = 0.075
     ts.arc_start = -180 # 0 degrees = 3 o'clock
     ts.arc_span = 360
-    tree = tree.get_common_ancestor(feature_pks)
+    tree = tree.get_common_ancestor(feature_names)
     svg = tree.render("%%return", tree_style=ts)[0].replace("b'","'").strip("'").replace("\\n","").replace("\\'","")
     svg = svg.replace("<svg ", "<svg class=\"img-fluid\" ")
     return svg
@@ -205,9 +186,14 @@ def tax_correlation_plot(taxonomy_pk, countmatrix_pk, samples=None, level=3, rel
 
     return plt.plot(fig, output_type="div")
 
-def collapsed_table(taxonomy_pk, countmatrix_pk, level="full", normalization="None", metadata_name=None):
+def collapsed_table(taxonomy_pk, countmatrix_pk, level="full", normalize_method="none", metadata_collapse=None, metadata_sort=None):
     linnean_levels = {y: x for x,y in enumerate(["kingdom", "phylum", "class", "order", "family", "genus", "species"])}
     linnean_levels['domain'] = 1
+    try:
+        level = int(level)
+        level = level - 1 #0-based indexing on array
+    except:
+        pass
     if type(level) != int:
         level = level.lower()
         if level in linnean_levels:
@@ -218,17 +204,22 @@ def collapsed_table(taxonomy_pk, countmatrix_pk, level="full", normalization="No
     tax_result = Result.objects.get(pk=taxonomy_pk)
     count_matrix_result = Result.objects.get(pk=countmatrix_pk)
     matrix = count_matrix_result.values.instance_of(Matrix).first().data.get().get_value()
-    if metadata_name != None:
-        sample_df = Sample.dataframe(Sample.objects.filter(name__in=matrix.columns), 
+    if metadata_collapse != None and metadata_collapse != '':
+        try:
+            metadata_collapse = int(metadata_collapse)
+            metadata_name = DataSignature.objects.get(pk=metadata_collapse).name
+        except:
+            metadata_name = metadata_collapse
+        sample_df = Sample.dataframe(Sample.objects.filter(name__in=matrix.columns),
                                      value_names=[metadata_name])
         matrix = matrix.groupby(by=sample_df[metadata_name],axis=1).sum()
-    assert normalization.lower() in ["none", "raw", "counts", "percent", "proportion"], \
+    assert normalize_method.lower() in ["none", "raw", "counts", "percent", "proportion"], \
         "Normalization method must be one of: none, raw, counts, percent, or proportion"
-    if normalization.lower() == "proportion":
+    if normalize_method.lower() == "proportion":
         matrix = matrix/matrix.sum()
-    elif normalization.lower() == "percent":
+    elif normalize_method.lower() == "percent":
         matrix = matrix/matrix.sum()*100
-    
+
     tax_df = tax_result.dataframe(value_names=["taxonomic_classification"],
                                   additional_fields=["features__name"])
     tax_df = tax_df.set_index("features__name")
@@ -236,8 +227,11 @@ def collapsed_table(taxonomy_pk, countmatrix_pk, level="full", normalization="No
         level_df = tax_df['value_data']
     else:
         level_df = tax_df['value_data'].str.split(";",expand=True)[level]
-    level_df[level_df.isna()] = "Unclassified at level %s" % (str(level),)
+        level_df[level_df.isna()] = "Unclassified at level %s" % (str(level+1),)
     level_df = level_df.astype('category')
     level_df.name = None
-    collapsed_df = matrix.groupby(by=level_df, sort=False).sum()
-    return collapsed_df
+    matrix=matrix.melt(ignore_index=False, var_name = "sample", value_name="abundance")
+    matrix["taxonomy"] = level_df.loc[matrix.index]
+    matrix = matrix.groupby(['sample','taxonomy']).sum().unstack().transpose()
+    matrix.reset_index(level=0,drop=True,inplace=True)
+    return matrix

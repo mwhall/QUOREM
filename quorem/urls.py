@@ -57,8 +57,8 @@ urlpatterns += [
         auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     url(r'^reset/done/$', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
     # Wiki routing
-    path('notifications/', include('django_nyt.urls')),
-    path('wiki/', include('wiki.urls')),
+    #path('notifications/', include('django_nyt.urls')),
+#    path('wiki/', include('wiki.urls')),
     # Home Page after login
     ####### FOR REWRITE: UNCOMMENTED URLS ARE DJK DEPRECATED
 
@@ -118,24 +118,11 @@ urlpatterns += [
     path('search/', search, name='search-results'),
 
     #### analysis routing
-    path('analyze/', analyze, name='analysis'),
-    ### plot Routing
-    path('analyze/plot/', plot_view, name='plot'),
-    ## Aggregate routing
-    path('analyze/plot/aggregate/', PlotAggregateView.as_view(), name='plot_aggregate'),
-    path('ajax/model-options/', ajax_aggregates_meta_view, name="ajax_load_model_options"),
-    ## Trend Routing
-    path('ajax/trendx-options/', ajax_plot_trendx_view, name="ajax_trend_x_options"),
-    path("ajax/trendy-options/", ajax_plot_trendy_view, name="ajax_trend_y_options"),
-    path('analyze/plot/trend/', PlotTrendView.as_view(), name='plot_trend'),
-
-    path('plot/bar/taxonomy/select/', TaxBarSelectView.as_view(), name='plot-tax-bar-select'),
-    path('plot/bar/taxonomy/', TaxBarPlotView.as_view(), name='plot-tax-bar'),
-    path('plot/tree/select/', TreeSelectView.as_view(), name='plot-tree-select'),
+    path('analyze/table/collapse/', TableCollapseView.as_view(), name='table_collapse'),
+    path('plot/pcoa/', PCoAPlotView.as_view(), name='plot-pcoa'),
+    path('plot/table/', TablePlotView.as_view(), name='plot-table'),
     path('plot/tree/', TreePlotView.as_view(), name='plot-tree'),
 
-    path('plot/correlation/select/', TaxCorrelationSelectView.as_view(), name='plot-tax-correlation-select'),
-    path('plot/correlation/', TaxCorrelationPlotView.as_view(), name='plot-tax-correlation'),
     ## Autocomplete Routing
     re_path(r'^value-autocomplete/$',
             ValueAutocomplete.as_view(),
@@ -152,22 +139,14 @@ urlpatterns += [
     re_path(r'^object-autocomplete/result/countmatrix/$',
             CountMatrixAutocomplete.as_view(),
             name='result-countmatrix-autocomplete'),
-    re_path(r'^taxonomic-level-autocomplete/$',
-            TaxonomicLevelAutocomplete.as_view(),
-            name='taxonomic-level-autocomplete'),
     re_path(r'^data-signature-autocomplete/$',
             DataSignatureAutocomplete.as_view(),
             name='data-signature-autocomplete'),
-    ##onto test
-    path('ontology/viewer/', onto_view, name='onto_view'),
-    path('ajax/load-onto/', onto_json, name='onto_json'),
+    re_path(r'^sample-metadata-autocomplete/$',
+            SampleMetadataAutocomplete.as_view(),
+            name='sample-metadata-autocomplete'),
     path('mail/', MailBoxView.as_view(), name='mail'),
     re_path(r'mail/open/(?P<mail_id>\d+)/$', MailOpen.as_view(), name='open_mail'),
-
-    #value table views
-    path('values/', ValueTableView.as_view(), name='value_table'),
-    path('ajax/value-names/', ajax_value_table_view, name='ajax_value_names'),
-    path('ajax/field-names-y/', ajax_value_table_related_models_view, name='ajax_field_names_y' ),
 
     #downloads
 #    path('test/', testView, name='test'),

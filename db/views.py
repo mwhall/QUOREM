@@ -799,68 +799,6 @@ def analyze(request):
 def plot_view(request):
     return render(request, 'analyze/plot.htm')
 
-################################################################################
-## Aggregate Views!                                                            #
-################################################################################
-
-class PlotAggregateView(FormView):
-        template_name = 'analyze/plot_aggregate.htm'
-        form_class = AggregatePlotInvestigation
-        action = 'plot_aggregate'
-        success_url = '/analyze/'
-
-        def get_context_data(self, *args, **kwargs):
-            context = super(PlotAggregateView, self).get_context_data(**kwargs)
-            context['action'] = self.action
-            return context
-
-        def form_invalid(self, form):
-            print(form.errors)
-            return super().form_invalid(form)
-
-        def form_valid(self, form):
-            req = self.request.POST
-            inv = req.getlist('invField')
-            html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
-                                req.getlist('metaValueField'))
-            return render(self.request, 'analyze/plot_aggregate.htm', {'graph':html, 'choices': choices, 'investigation': inv, 'action':self.action})
-
-
-#ajax view for populating metaValue Field
-#This view generates html for metavalue selection and populates a template
-#The template html is passed to the view via AJAX javascript; 'aggregation_form.js'
-def ajax_aggregates_meta_view(request):
-    inv_id = request.GET.getlist('inv_id[]')
-    #if only one id is selected, not a list.
-    if not inv_id:
-        inv_id = request.GET.get('inv_id')
-    model_choice = request.GET.get('otype')
-    exclude = request.GET.get('exclude')
-    #get investigation specific meta data.
-    #E.g. Inv -> Samples -> SampleMetadata
-    qs = None
-    otype = None
-
-    if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
-
-    if model_choice == "1": #Samples
-#        qs = SampleMetadata.objects.filter(
-#            sample__in = Sample.objects.filter(
-#            investigation__in = inv_id
-#            )).order_by('key').distinct('key')
-        #excludes are defined in each conditional to allow later flexibility
-#        if exclude:
-#            qs = qs.exclude(key=exclude)
-        #With making investigations manytomany in Samples, this __in probably is broken...
-        qs = Value.objects.filter(samples__in=Sample.objects.filter(investigations=inv_id)).order_by('name').distinct('name')
-        otype = "sample"
-    elif model_choice == "2": #Features
-        qs = Value.objects.filter(features__isnull=False).order_by('name').distinct('name')
-        otype = "feature"
-#    elif model_choice == '3': #Computational something or other
-    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
-
 class TreePlotView(TemplateView):
     template_name = "plot/treeplot.htm"
     def get_context_data(self, **kwargs):
@@ -877,6 +815,130 @@ class TreePlotView(TemplateView):
         context["plot_html"] = mark_safe(plot)
         return context
 
+class TableCollapseView(FormView):
+    template_name = "tablecollapse.htm"
+    form_class = TableCollapseForm
+    success_url = '/taxon-table/'
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['count_matrix'] = self.request.GET.get('count_matrix')
+        initial['taxonomy_result'] = self.request.GET.get('taxonomy_result')
+        initial['taxonomic_level'] = self.request.GET.get('taxonomic_level','genus').capitalize()
+        initial['metadata_collapse'] = self.request.GET.get('metadata_collapse',None)
+        initial['normalize_method'] = self.request.GET.get('normalize_method','proportion')
+        return initial
+
+    def form_valid(self, form):
+        return redirect(reverse('tax_table_download'))
+
+    def post(self, request, *args, **kwargs):
+#        request.POST = request.POST.copy()
+        #metadata_sort = request.POST.getlist('metadata_sort',None)
+        #if metadata_sort != None:
+        #    request.POST['metadata_sort'] = ",".join(request.POST.getlist('metadata_sort'))
+        return redirect(reverse('tax_table_download'))
+
+#    def get_context_data(self, **kwargs):
+#        context = super().get_context_data(**kwargs)
+#        cmr = self.request.GET.get('count_matrix','')
+#        tr = self.request.GET.get('taxonomy_result','')
+#        level = self.request.GET.get('taxonomic_level','genus')
+#        metadata_collapse = self.request.GET.get('metadata_collapse',None)
+#        metadata_sort = self.request.GET.get('metadata_sort',None)
+#        normalize_method = self.request.GET.get('normalize_method','proportion')
+#        if cmr and tr: #Minimum input to make a plot
+#            plot_html = tax_bar_plot(tr, cmr, 
+#                                     plot_height=plot_height,
+#                                     level=level,
+#                                     n_taxa=n_taxa,
+#                                     normalize_method=normalize_method,
+#                                     metadata_collapse=metadata_collapse,
+#                                     metadata_sort=metadata_sort,
+#                                     label_bars=label_bars).to_html()
+#            context['plot_html'] = mark_safe(plot_html)
+#        return context
+#
+
+class PCoAPlotView(FormView):
+    template_name = "pcoaplot.htm"
+    form_class = PCoAPlotForm
+
+    def get_initial(self):
+       initial = super().get_initial()
+       initial['count_matrix'] = self.request.GET.get('count_matrix')
+       initial['measure'] = self.request.GET.get('measure','braycurtis')
+       initial['metadata_colour'] = self.request.GET.get('metadata_colour')
+       initial['three_dimensional'] = self.request.GET.get('three_dimensional')
+       return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cmr = self.request.GET.get('count_matrix','')
+        measure = self.request.GET.get('measure','braycurtis')
+        metadata_colour = self.request.GET.get('metadata_colour','')
+        three_dimensional = self.request.GET.get('three_dimensional',False)
+        if cmr: #Minimum input to make a plot
+            plot_html = pcoa_plot(cmr,
+                                  measure=measure,
+                                  metadata_colour=metadata_colour,
+                                  three_dimensional=three_dimensional).to_html()
+            context['plot_html'] = mark_safe(plot_html)
+        return context
+
+class TablePlotView(FormView):
+    template_name = "tableplot.htm"
+    form_class = TablePlotForm
+
+    def get_initial(self):
+        initial = super().get_initial()
+        initial['count_matrix'] = self.request.GET.get('count_matrix')
+        initial['taxonomy_result'] = self.request.GET.get('taxonomy_result')
+        initial['taxonomic_level'] = self.request.GET.get('taxonomic_level','genus').capitalize()
+        initial['plot_height'] = int(self.request.GET.get('plot_height',750))
+        initial['n_taxa'] = int(self.request.GET.get('n_taxa',10))
+        initial['label_bars'] = bool(self.request.GET.get('label_bars',False))
+        initial['metadata_collapse'] = self.request.GET.get('metadata_collapse',None)
+        initial['metadata_sort'] = self.request.GET.getlist('metadata_sort',None)
+        initial['normalize_method'] = self.request.GET.get('normalize_method','proportion')
+        initial['plot_type'] = self.request.GET.get('plot_type','bar')
+        return initial
+
+    def get(self, request, *args, **kwargs):
+        request.GET = request.GET.copy()
+        print(dict(request.GET))
+        if "metadata_collapse" in request.GET:
+            if request.GET.get("metadata_collapse")=="" or request.GET.get("metadata_collapse")==None:
+                request.GET.pop("metadata_collapse")
+        print("GETTING TABLE PLOT")
+        print(dict(request.GET))
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cmr = self.request.GET.get('count_matrix','')
+        tr = self.request.GET.get('taxonomy_result','')
+        level = self.request.GET.get('taxonomic_level','genus')
+        plot_height = int(self.request.GET.get('plot_height',1000))
+        n_taxa = int(self.request.GET.get('n_taxa',10))
+        label_bars = bool(self.request.GET.get('label_bars',False))
+        metadata_collapse = self.request.GET.get('metadata_collapse',None)
+        metadata_sort = self.request.GET.get('metadata_sort',None)
+        normalize_method = self.request.GET.get('normalize_method','proportion')
+        plot_type = self.request.GET.get('plot_type','bar')
+        if cmr and tr: #Minimum input to make a plot
+            plot_html = count_table_tax_plot(tr, cmr,
+                                     plot_type=plot_type, 
+                                     plot_height=plot_height,
+                                     level=level,
+                                     n_taxa=n_taxa,
+                                     normalize_method=normalize_method,
+                                     metadata_collapse=metadata_collapse,
+                                     metadata_sort=metadata_sort,
+                                     label_bars=label_bars).to_html()
+            context['plot_html'] = mark_safe(plot_html)
+        return context
+
 class TaxBarPlotView(TemplateView):
     template_name = "taxbarplot.htm"
     def get_context_data(self, **kwargs):
@@ -890,6 +952,7 @@ class TaxBarPlotView(TemplateView):
         metadata_sort_by = self.request.GET.get('metadata_sort_by','')
         plot_height = self.request.GET.get('plot_height','')
         n_taxa = self.request.GET.get('n_taxa','')
+        label_bars = self.request.GET.get('label_bars','')
         opt_kwargs = {}
         if samples != '':
             samples = samples.split(",")
@@ -898,6 +961,8 @@ class TaxBarPlotView(TemplateView):
             opt_kwargs["level"] = tl
         if relative != '':
             opt_kwargs["relative"] = False if relative.lower() in ["", "false", "f", "no", "n", "0"] else True
+        if label_bars != '':
+            opt_kwargs["label_bars"] = False if label_bars.lower() in ["", "false", "f", "no", "n", "0"] else True
         if plot_height != '':
             opt_kwargs["plot_height"] = int(plot_height)
         if n_taxa != '':
@@ -932,197 +997,6 @@ class TaxCorrelationPlotView(TemplateView):
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
         context["matrix_card"] = apps.get_model("db.Result").objects.get(pk=cmr).bootstrap_card()
         return context
-
-###############################################################################
-### Trend Analysis Views                                                    ###
-###############################################################################
-
-class ValueTableView(FormView):
-    template_name="search/value_tables.htm"
-    form_class = ValueTableForm
-    action = 'value_table' #change this after
-    success_url = '/values/'
-
-    def get_context_data(self, *args, **kwargs):
-        context = super(ValueTableView, self).get_context_data(**kwargs)
-        context['action'] = self.action
-        return context
-
-    def form_invalid(self, form):
-        print(form.errors)
-        return super().form_invalid(form)
-
-    def form_valid(self, form):
-        print("form Valid!")
-        req = self.request.POST
-        x_selected = {}
-    #    y_selected = {}
-        x_selected[req.get('depField')] = req.getlist('depValue')
-        i = 0
-    #    key_name = 'indField_%s' % (i,)
-        print(req)
-#        while req.get(key_name):
-#            val_name = 'indValue_%s' % (i,)
-#            y_selected[req.get(key_name)] = req.getlist(val_name)
-#            i += 1
-#            key_name = 'indField_%s' % i
-
-        html = value_table_html(x_selected)
-        """
-        inv = req.getlist('invField')
-        html, choices = barchart_html(req['agg_choice'], inv, req['modelField'],
-                            req.getlist('metaValueField'))
-        """
-        return render(self.request, 'search/value_tables.htm', {'table': html, 'action': self.action, 'form':self.form_class()})
-
-#ajax view for populating Value Names based on Selected Model
-def ajax_value_table_view(request):
-    print("value name view was accessed")
-    klass_map = {'1': (Investigation, 'investigations__isnull'),
-                 '2': (Sample, 'samples__isnull'),
-                 '3': (Feature, 'features__isnull'),
-                 '4': (Step, 'steps__isnull'),
-                 '5': (Process, 'processes__isnull'),
-                 '6': (Analysis, 'analyses__isnull'),
-                 '7': (Result, 'results__isnull'),}
-
-
-    #this variable is passed to the reuqest by JS
-    klass_tuple = klass_map[request.GET.get('object_klass')]
-    klass = klass_tuple[0]
-    q = klass_tuple[1]
-    #gives a qs with the distinct names of values ass. w the selected class
-#    qs = Value.objects.filter(**{q: klass.objects.all()}).distinct().values_list('name', flat=True)
-    qs = Value.objects.filter(**{q: False}).order_by('signature__name').distinct('signature__name').values_list('signature__name', flat=True)
-    return render(request, 'search/ajax_value_names.htm', {'qs': qs})
-
-def ajax_value_table_related_models_view(request):
-    #translate from input to query
-    klass_map = {'1': (Investigation, 'investigations__in'),
-                 '2': (Sample, 'samples__in'),
-                 '3': (Feature, 'features__in'),
-                 '4': (Step, 'steps__in'),
-                 '5': (Process, 'processes__in'),
-                 '6': (Analysis, 'analyses__in'),
-                 '7': (Result, 'results__in'),}
-    #use to populate form from results of this view
-    reverse_klass_map = {'investigations': ('1', 'Investigation'),
-                         'samples': ('2', 'Sample'),
-                         'features': ('3', 'Feature'),
-                         'steps': ('4', 'Step'),
-                         'processes': ('5', 'Process'),
-                         'analyses': ('6', 'Analysis'),
-                         'results': ('7', "Results"),
-                        }
-
-    klass_tuple = klass_map[request.GET.get('object_klass')]
-    klass = klass_tuple[0]
-    q = klass_tuple[1]
-    value_names = request.GET.getlist('vals[]') #getlist?
-    vqs = Value.objects.filter(**{q:klass.objects.all()}, signature__name__in=value_names)
-    dd = defaultdict(set)
-    for val in vqs:
-        links_dict = val.get_links()
-        for key, value in links_dict.items():
-            dd[key].update(value)
-    linked_objects = dict(dd)
-    # Right now have a dict of all possible objects.
-    # Current logic prevents using more than just the names, so use them for now.
-    klasses = list(linked_objects.keys())
-    klass_list = [reverse_klass_map[k] for k in klasses]
-    klass_list.insert(0, ('', "Select..."))
-    #pass the class list to html snippet, which will be used to populate form
-    return render(request, 'search/ajax_value_names_y.htm', {'options': klass_list})
-
-class PlotTrendView(FormView):
-    template_name="analyze/plot_trend.htm"
-    form_class = TrendPlotForm
-    action = "plot_trend"
-    success_url = '/analyze/'
-
-    def get_context_data(self, *args, **kwargs):
-        context = super(PlotTrendView, self).get_context_data(**kwargs)
-        context['action'] = self.action
-        return context
-
-    def form_invalid(self, form):
-        return super().form_invalid(form)
-
-    def form_valid(self, form):
-        req = self.request.POST
-        html, choices= trendchart_html(req['x_val'], req['x_val_category'],
-                                        req['y_val'], req['operation_choice'])
-        return render(self.request, '/analyze/plot_trend.htm', {'graph':html, 'choices':choices, 'action':self.action})
-
-
-# View for x choices. Will need to populate x-val choices based on Investigations
-# selected as well as x_val_category. Example, if choice is BB samples, populate
-# with metadata found in BB. If two or more invs are selected, need to only show
-# options found in all invs.
-
-#trendx_view is the same as aggregate view for now. This may change at some point which is why
-# its a seperate function.
-def ajax_plot_trendx_view(request):
-    print("HI")
-
-    model_choice = request.GET.get('type')
-    print(model_choice)
-    exclude = request.GET.get('exclude')
-
-    qs = None
-    otype = None
-
-    type_map = {'1': (Sample, 'sample'),
-                '2': (Feature, 'feature'),
-                '3': (Result, ''),}
-
-    q_string = {'1' : 'samples__isnull',
-                '2': 'features__isnull',
-                '3': 'results__isnull',
-                #'step': 'steps__isnull',
-                #'analysis': 'analyses__isnull',
-                #'process': 'processes__isnull',
-                }[model_choice]
-
-    qs = Value.objects.filter(**{q_string: False}).exclude(
-        signature__value_type__in=[ContentType.objects.get_for_model(Version)]).order_by(
-        'signature__name').distinct('signature__name').values_list(
-        'signature__name', flat=True)
-    print(qs)
-    if not model_choice:
-        return render (request, 'analyze/ajax_model_options.htm', {'otype': type, 'qs':qs,})
-
-    return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
-
-#trend y view will need to know what was chosen in trend x.
-def ajax_plot_trendy_view(request):
-    x_model = request.GET.get('x_model')
-    x_sel = request.GET.get('x_choice')
-
-    q_tuple = {'1' : (Sample, 'samples__in'),
-                '2': (Feature, 'features__in'),
-                '3': (Result, 'results__in'),
-                #'step': 'steps__isnull',
-                #'analysis': 'analyses__isnull',
-                #'process': 'processes__isnull',
-                }[x_model]
-
-    qs = None
-
-    if not x_model:
-        return render (request, 'analyze/ajax_model_options.htm', {'otype': otype, 'qs':qs,})
-
-    xqs = None
-    klass = q_tuple[0]
-    q_string = q_tuple[1]
-
-    xqs = klass.objects.filter(values__signature__name__in=[x_sel])
-    yops = None
-    if xqs:
-        yops = Value.objects.filter(**{q_string: xqs}).exclude(signature__value_type__in=[ContentType.objects.get_for_model(Version)]).order_by('signature__name').distinct('signature__name').values_list('signature__name', flat=True)
-    print("YOPS")
-    print(yops)
-    return render (request, 'analyze/ajax_model_options.htm', {'qs':yops,})
 
 ###############################################################################
 ### View for handling file uploads                                          ###
@@ -1280,19 +1154,6 @@ class artifact_upload(CreateView):
     def get_success_url(self):
         return reverse('uploadfile_detail_new', kwargs={'uploadfile_id': self.object.pk,
                                                                            'new':"new"})
-################################################################################
-## onto testing                                                              ###
-###############################################################################
-
-def onto_view(request):
-    return render(request, 'ontology/ontoview.htm', {'active_page': 'ontology'})
-
-import json
-def onto_json(request):
-    with open('ontology/ontology.json', 'r') as f:
-        onto = json.load(f)
-    return JsonResponse(onto)
-
 
 class MailBoxView(View):
     template_name="mail/mailbox.htm"
@@ -1369,19 +1230,19 @@ def xls_download_view(request):
 
 
 def tax_table_download_view(request):
-    taxonomy_pk = request.GET.get('taxonomy_pk','')
-    countmatrix_pk = request.GET.get('countmatrix_pk','')
-    level = request.GET.get('level',6)
-    normalization = request.GET.get('normalization',"None")
-    metadata_name = request.GET.get('metadata_name',None)
-    collapsed_df = collapsed_table(taxonomy_pk, countmatrix_pk, 
-                                   level, normalization, 
-                                   metadata_name)
-    filename_suffix = "_taxpk_%s_matrixpk_%s" % (str(taxonomy_pk), str(countmatrix_pk))
-    filename_suffix += "_%s" % (str(level),)
-    filename_suffix += "_%s" % (normalization,)
-    if metadata_name is not None:
-        filename_suffix += "_%s" % (metadata_name,)
+    taxonomy_result = request.GET.get('taxonomy_result','')
+    count_matrix = request.GET.get('count_matrix','')
+    taxonomic_level = request.GET.get('taxonomic_level','genus')
+    normalize_method = request.GET.get('normalize_method',"None")
+    metadata_collapse = request.GET.get('metadata_collapse',None)
+    collapsed_df = collapsed_table(taxonomy_result, count_matrix, 
+                                   taxonomic_level, normalize_method, 
+                                   metadata_collapse)
+    filename_suffix = "_taxpk_%s_matrixpk_%s" % (str(taxonomy_result), str(count_matrix))
+    filename_suffix += "_%s" % (str(taxonomic_level),)
+    filename_suffix += "_%s" % (normalize_method,)
+    if metadata_collapse is not None and metadata_collapse != '':
+        filename_suffix += "_%s" % (metadata_collapse,)
     with BytesIO() as b:
         writer = pd.ExcelWriter(b, engine="xlsxwriter")
         collapsed_df.to_excel(writer)
@@ -1476,6 +1337,3 @@ def artifact_download_view(request):
         response['Content-Disposition'] = 'attachment; filename="%s"' % (filename,)
         return response
 
-
-## DASH APPS
-# These need to be here or in urls.py apparently.

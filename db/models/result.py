@@ -48,9 +48,12 @@ class Result(Object):
 
     def get_detail_link(self):
         return mark_safe(format_html('<a{}>{}</a>',
-                         flatatt({'href': reverse(self.base_name + '_detail',
-                                 kwargs={self.base_name + '_id': self.pk})}),
+                         flatatt({'href': self.get_detail_url()}),
                                  self.name))
+    def get_detail_url(self):
+        return reverse(self.base_name + '_detail',
+                                 kwargs={self.base_name + '_id': self.pk})
+
 
     def get_parameters(self, step_field="pk"):
         Parameter = apps.get_model("db.Parameter")

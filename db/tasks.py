@@ -127,21 +127,6 @@ def react_to_file(upload_file_id, **kwargs):
         errorMessage = UploadMessage(file=upfile, error_message=e)
         errorMessage.save()
 
-@shared_task
-def process_table(upfile):
-    infile = upfile.upload_file._get_file().open()
-    print("Getting parser")
-    tp = TableParser(infile)
-    print("Initializing")
-    for model, data in tp.initialize_generator():
-        print("For %s" % (model.base_name,))
-        model.initialize(data, log=lgr)
-    print("Updating")
-    for model, data in tp.update_generator():
-        model.update(data, log=lgr)
-#    print("Adding values")
-#    Value.add_values(tp.value_table(), log=lgr)
-    return "Success"
 
 @shared_task
 def process_qiime_artifact(upfile, analysis_pk):
@@ -177,16 +162,6 @@ def process_spreadsheet(upfile, analysis_pk):
                        data_type="uploadfile", results=res)
     ingest_spreadsheet(infile, user, res.get())
     return "Success"
-
-@shared_task
-def process_simple_metadata(upfile, overwrite):
-    infile = upfile.upload_file._get_file().open()
-    print("Getting logger")
-    lgr = upfile.logfile.get_logger()
-    print("Parsing...")
-    samples_found, samples_not_found = simple_sample_metadata_parser(infile, overwrite)
-    print("Done.")
-    return "Success", samples_found, samples_not_found
 
 @shared_task
 def report_success(upfile):

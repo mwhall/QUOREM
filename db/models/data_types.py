@@ -138,7 +138,7 @@ class DataSignature(models.Model):
 
     def __str__(self):
         link_str = ", ".join(["%d %s" % (self.object_counts[Obj.plural_name],Obj.plural_name) for Obj in Object.get_object_types()])
-        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, ", ".join([x.model_class().__name__ for x in self.data_types.all()]), link_str)
+        return "%s '%s' storing %s, linked to %s" % (str(self.value_type).capitalize(), self.name, ", ".join([x.model_class().__name__ for x in self.data_types.all() if x.model_class()]), link_str)
 
     @classmethod
     def create(cls, name, value_type, object_counts):
