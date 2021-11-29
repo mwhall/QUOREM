@@ -1,0 +1,36 @@
+{% extends 'base.htm' %}
+{% block body %}
+<br/>
+<div class="card" style="margin-left: 50px; margin-right: 50px;">
+ <button class="btn btn-outline-info" type="button" data-toggle="collapse" data-target="#collapseGenerate" aria-expanded="false" aria-controls="collapseGenerate">
+    How is this table generated?
+  </button>
+<div class="collapse panel-collapse" id="collapseGenerate">
+<div class="card card-body">
+        <p>This table generator calls on the collapsed_table() function in db/plot.py in QUOREM's codebase.</p>
+
+        <p>In collapsed_table(): The count table (as a Matrix Value) is retrieved from the Result and stored in a Pandas DataFrame using the Feature names and Sample names as the indexes. If a metadata value is supplied to collapse by, the counts are summed at this stage. The count table is then normalized with the user-selected method. "Raw", "counts", and "none" all return the counts unchanged. "Proportion" divides each count by the sum in the Sample. "Percent" is proportion multiplied by 100. The taxonomic classifications are retrieved by pulling the 'taxonomic_classification' metadata from the classification Result along with the Feature names. The classifications are cut on semi-colon characters (;) and the user-specified level is taken by mapping the typical Linnean levels KPCOFGS to 1 through 7. If a Feature's 'taxonomic_classification' did not have an N-th level, it is assigned 'Unclassified at level N'. This category can be dynamically hidden by double-clicking its legend entry. If your classifications are not 7-level semi-colon delimited, this function may not behave as expected. The count and taxonomic tables are then merged and returned.</p>
+</div>
+</div>
+</div>
+
+<br/>
+<div class="container-fluid">
+    <div class="col col-lg-12">
+            {% if plot_html %}
+            {{ plot_html|safe }}
+            {% endif %}
+    </div>
+<div class="card" style="margin-left: 50px; margin-right: 50px;">
+<div class="card card-body">
+
+	<form action="/taxon-table/" method="get">
+        {{ form.as_p }}
+	<button class="btn btn-primary" type="submit" ><i class="fas fa-table"></i>&nbsp;Download Table</button>
+</form>
+</div>
+</div>
+</div>
+<br/>
+{{ form.media }}
+{% endblock body %}
