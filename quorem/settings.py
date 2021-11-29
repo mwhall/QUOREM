@@ -10,7 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
-import os
+import os, sys
 import hashlib
 from distutils.version import LooseVersion
 from django.utils.version import get_version
@@ -32,6 +32,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
 # Application definition
+sys.modules['fontawesome_free'] = __import__('fontawesome-free')
 
 INSTALLED_APPS = [
     'quorem',
@@ -58,7 +59,7 @@ INSTALLED_APPS = [
     ##########
     'django_nyt.apps.DjangoNytConfig',
     'mptt',
-    'django_extensions',
+#    'django_extensions',
     'sekizai',
     'sorl.thumbnail',
     'wiki.apps.WikiConfig',
@@ -88,10 +89,19 @@ MIDDLEWARE = [
     ]
 
 
+if DEBUG:
+    MIDDLEWARE += [
+            'whitenoise.middleware.WhiteNoiseMiddleware',
+            ] + MIDDLEWARE
+    INSTALLED_APPS = [
+            'whitenoise.runserver_nostatic',
+            ] + INSTALLED_APPS
+
 ROOT_URLCONF = 'quorem.urls'
 SECURE_SSL_REDIRECT = False
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379'
+CELERY_HOSTNAME = 'redis' #Switch to 127.0.0.1 if installing manually and running locally
+CELERY_BROKER_URL = 'redis://%s:6379' % (CELERY_HOSTNAME,)
+CELERY_RESULT_BACKEND = 'redis://%s:6379' % (CELERY_HOSTNAME,)
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
