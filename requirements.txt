@@ -20,7 +20,7 @@ django-autocomplete-light==3.8.2
 django-polymorphic==3.0.0
 #django-jinja==2.9.0
 django-filter==2.4.0
-wiki==0.7.8
+wiki==0.7.9
 combomethod==1.0.12
 colour==0.1.5
 arrow==1.2.1
