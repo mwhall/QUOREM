@@ -31,7 +31,7 @@ django-pandas==0.6.6
 xlsxwriter==3.0.3
 ete3==3.1.2
 html5lib==1.1
-bleach==5.0.0
+bleach==4.1.0
 django-nyt==1.2.2
 django-mptt==0.13.4
 django-sekizai==3.0.1
