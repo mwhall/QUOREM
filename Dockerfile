@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:impish
+FROM ubuntu:jammy
 ENV PYTHONUNBUFFERED=1
 WORKDIR /code
 #COPY required config files first
 COPY requirements.txt /code/
-COPY scripts/qiime2/qiime2-2021.8-py38-linux-conda.yml /code/
+COPY scripts/qiime2/qiime2-2022.2-py38-linux-conda.yml /code/
 
 ####SYSTEM UPDATES####
 
@@ -22,12 +22,12 @@ RUN bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda -b
 RUN rm Miniconda3-latest-Linux-x86_64.sh
 ENV PATH=/miniconda/bin:${PATH}
 RUN conda update -y conda
-RUN conda create --name quorem python=3.8.10
+RUN conda create --name quorem python=3.8.12
 #This is the way to run a conda command when you can't activate, which we can't
 #seem to from in here at build time, so this activates RUN commands that follow
 # see: https://pythonspeed.com/articles/activate-conda-dockerfile/
 SHELL ["conda", "run", "-n", "quorem", "/bin/bash", "-c"]
-RUN conda env update --file qiime2-2021.8-py38-linux-conda.yml
+RUN conda env update --file qiime2-2022.2-py38-linux-conda.yml
 RUN pip install -r requirements.txt
 #Using VOLUME here causes timeouts with http on Django image
 COPY . /code/
