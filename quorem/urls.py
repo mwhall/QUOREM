@@ -15,7 +15,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, re_path, include
-from django.conf.urls import url
 from django.conf.urls.static import static
 from django.conf import settings
 from landingpage.views import index
@@ -51,11 +50,11 @@ urlpatterns += [
     # Main page routing
     path('admin/', admin.site.urls),
     # Password Reset Routing
-    url(r'^password_reset/$', auth_views.PasswordResetView.as_view(), name='password_reset'),
-    url(r'^password_reset/done/$', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
-    url(r'^reset/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
+    re_path(r'^password_reset/$', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    re_path(r'^password_reset/done/$', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    re_path(r'^reset/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
         auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    url(r'^reset/done/$', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    re_path(r'^reset/done/$', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
     # Wiki routing
     #path('notifications/', include('django_nyt.urls')),
 #    path('wiki/', include('wiki.urls')),
@@ -177,10 +176,10 @@ js_info_dict = {
 try:
     from django.views.i18n import JavaScriptCatalog
     urlpatterns += [
-        url(r'^jsi18n/$', JavaScriptCatalog.as_view(**js_info_dict), name='javascript-catalog'),
+        re_path(r'^jsi18n/$', JavaScriptCatalog.as_view(**js_info_dict), name='javascript-catalog'),
     ]
 except ImportError:
     from django.views.i18n import javascript_catalog
     urlpatterns += [
-        url(r'^jsi18n/$', javascript_catalog, js_info_dict, name='javascript-catalog',)
+        re_path(r'^jsi18n/$', javascript_catalog, js_info_dict, name='javascript-catalog',)
     ]
