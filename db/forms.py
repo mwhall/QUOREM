@@ -299,13 +299,11 @@ class TableCollapseForm(forms.Form):
     normalize_methods = ["raw", "counts", "none", "proportion", "percent"]
     normalize_method = autocomplete.Select2ListChoiceField(choice_list=normalize_methods,
                                                            widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                                 "data-placeholder": "proportion", 
                                                                                                  'data-html': True}))
 
     tax_ranks = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species","Full"]
     taxonomic_level = autocomplete.Select2ListChoiceField(choice_list=tax_ranks,
                                                           widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                                 "data-placeholder": "Genus", 
                                                                                                  'data-html': True}))
     metadata_collapse = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
                                                       label="Metadata for Aggregation",
@@ -325,7 +323,6 @@ class PCoAPlotForm(forms.Form):
     measures = ['euclidean', 'l2', 'l1', 'manhattan', 'cityblock', 'braycurtis', 'canberra', 'chebyshev', 'correlation', 'cosine', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule', 'wminkowski', 'nan_euclidean', 'haversine']
     measure = autocomplete.Select2ListChoiceField(required=True, choice_list=measures,
                                              widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                    "data-placeholder": "Select a distance/dissimilarity measure",
                                                                                     'data-html': True}))
     metadata_colour = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
                                                       label="Metadata for Colour",
@@ -356,7 +353,6 @@ class TablePlotForm(forms.Form):
     plot_types = ['bar', 'heatmap', 'area', 'box', 'violin']
     plot_type = autocomplete.Select2ListChoiceField(required=True, choice_list=plot_types,
                                              widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                    "data-placeholder": "Select a plot type",
                                                                                     'data-html': True}))
     count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
                                           label="Count Matrix",
@@ -372,13 +368,11 @@ class TablePlotForm(forms.Form):
     normalize_methods = ["raw", "counts", "none", "proportion", "percent"]
     normalize_method = autocomplete.Select2ListChoiceField(choice_list=normalize_methods,
                                                            widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                                 "data-placeholder": "proportion", 
                                                                                                  'data-html': True}))
 
     tax_ranks = ["Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species","Full"]
     taxonomic_level = autocomplete.Select2ListChoiceField(choice_list=tax_ranks,
                                                           widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                                 "data-placeholder": "Genus", 
                                                                                                  'data-html': True}))
     plot_height = forms.IntegerField(initial=750)
     metadata_collapse = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
@@ -426,7 +420,8 @@ class TaxBarSelectForm(forms.Form):
                                           widget=autocomplete.ModelSelect2Multiple(url='object-sample-autocomplete',
                                                                                    forward=('count_matrix',),
                                                                                    attrs={"data-allow-clear": "true", "style": "flex-grow: 1", 'data-html': True}))
-    taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", "data-placeholder": "Genus", 'data-html': True}))
+    taxonomic_level = autocomplete.Select2ListChoiceField(widget=autocomplete.ListSelect2(url='taxonomic-level-autocomplete', attrs={"style": "flex-grow: 1", 
+        'data-html': True}))
     plot_height = forms.IntegerField(initial=750)
 #    def __init__(self, *args, **kwargs):
 #        super().__init__(*args, **kwargs)
