@@ -343,7 +343,6 @@ class FeatureSelectForm(forms.Form):
     methods = ['variance', 'chi2', 'f_classif', 'mutual_info_classif']
     method = autocomplete.Select2ListChoiceField(required=True, choice_list=methods,
                                              widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
-                                                                                    "data-placeholder": "Select a feature selection method/scoring measure",
                                                                                     'data-html': True}))
     n_features = forms.IntegerField(initial=100, label="Number of Features to Select")
 
