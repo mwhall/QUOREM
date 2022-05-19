@@ -44,6 +44,7 @@ import numpy as np
 from celery import current_app
 
 from .plot import *
+from .ml import *
 from .models import *
 from .models.object import Object
 from .forms import *
@@ -884,6 +885,32 @@ class PCoAPlotView(FormView):
                                   metadata_colour=metadata_colour,
                                   three_dimensional=three_dimensional).to_html()
             context['plot_html'] = mark_safe(plot_html)
+        return context
+
+class FeatureSelectPlotView(FormView):
+    template_name = "featureselect.htm"
+    form_class = FeatureSelectForm
+
+    DEFAULT_METHOD = 'variance'
+    DEFAULT_N_FEATURES = 100
+
+    def get_initial(self):
+       initial = super().get_initial()
+       initial['count_matrix'] = self.request.GET.get('count_matrix')
+       initial['method'] = self.request.GET.get('method',self.DEFAULT_METHOD)
+       initial['n_features'] = self.request.GET.get('n_features', self.DEFAULT_N_FEATURES)
+       return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        cmr = self.request.GET.get('count_matrix','')
+        method = self.request.GET.get('method',self.DEFAULT_METHOD)
+        n_features = self.request.GET.get('n_features', self.DEFAULT_N_FEATURES)
+        if cmr: #Minimum input to make a plot
+            feature_html = feature_select(cmr,
+                                  method=method,
+                                  n_features=n_features)
+            context['feature_html'] = mark_safe(feature_html)
         return context
 
 class TablePlotView(FormView):

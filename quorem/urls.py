@@ -120,6 +120,7 @@ urlpatterns += [
     #### analysis routing
     path('analyze/table/collapse/', TableCollapseView.as_view(), name='table_collapse'),
     path('plot/pcoa/', PCoAPlotView.as_view(), name='plot-pcoa'),
+    path('ml/feature-select/', FeatureSelectPlotView.as_view(), name='ml-feature-select'),
     path('plot/table/', TablePlotView.as_view(), name='plot-table'),
     path('plot/tree/', TreePlotView.as_view(), name='plot-tree'),
 

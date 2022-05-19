@@ -338,6 +338,18 @@ class PCoAPlotForm(forms.Form):
                                                                                                       "data-html": True}))
     three_dimensional = forms.BooleanField(required=False, initial=False, label="3D Plot", widget=forms.CheckboxInput(attrs={"class":"big-checkbox"}))
 
+class FeatureSelectForm(forms.Form):
+    count_matrix = forms.ModelChoiceField(queryset=Result.objects.all(),
+                                          label="Count Matrix",
+                                          widget=autocomplete.ModelSelect2(url='result-countmatrix-autocomplete',
+                                          attrs={"style": "flex-grow: 1; width: 50%", 'data-html': True, 'data-allow-clear': 'true'}))
+    methods = ['variance', 'chi2', 'f_classif', 'mutual_info_classif']
+    method = autocomplete.Select2ListChoiceField(required=True, choice_list=methods,
+                                             widget=autocomplete.ListSelect2(attrs={"style": "flex-grow: 1", 
+                                                                                    "data-placeholder": "Select a feature selection method/scoring measure",
+                                                                                    'data-html': True}))
+    n_features = forms.IntegerField(initial=100, label="Number of Features to Select")
+
 
 class TablePlotForm(forms.Form):
 
