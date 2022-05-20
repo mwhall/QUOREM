@@ -39,3 +39,4 @@ sorl-thumbnail==12.8.0
 #django-plotly-dash
 fontawesome-free==5.15.4
 whitenoise==6.1.0
+scikit-learn==1.1.1
