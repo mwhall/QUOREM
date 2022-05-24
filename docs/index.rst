@@ -11,6 +11,7 @@ Welcome to QUOREM's documentation!
    :caption: Contents:
 
    overview.md
+   installation.md
 
 Indices and tables
 ==================
