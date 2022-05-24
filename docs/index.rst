@@ -13,9 +13,4 @@ Welcome to QUOREM's documentation!
    overview.md
    installation.md
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
