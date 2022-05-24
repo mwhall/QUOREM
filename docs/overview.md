@@ -16,6 +16,12 @@ QUOREM runs on a computer running Linux and Python, and can be run as a developm
 - Keeps your samples and their metadata organized
 - Download stored artifacts and metadata in convenient formats to take your analysis further
 
+## Ways to Use QUOREM
+
+*Web*: A simple web interface helps users search, download, and visualize their microbial ecology data. This is suitable for all users. The web interface can easily be run as a test server on a local machine, or with a bit more work as a proper web server on the internet with appropriate security configuration.
+
+*Code*: Objects in the QUOREM database can be accessed directly with Python code through the Django ORM. JupyterHub gives trusted users the ability to access samples, features, metadata, trees, tables, etc. programmatically. This gives a powerful query and retrieval interface for coders.
+
 ## Objects
 
 On a QUOREM server, data are organized as objects that are accessed through an [Object-relational mapping (ORM)](https://en.wikipedia.org/wiki/Object%E2%80%93relational_mapping) provided by the [Django project](https://www.djangoproject.com/).
