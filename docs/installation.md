@@ -4,13 +4,17 @@ QUOREM is a series of servers (web, process, database), so installation is compl
 
 To start, you must download a copy of the repository. You can do this with the `git` or `gh` utilities:
 
-`git clone git@github.com:mwhall/QUOREM.git`
+```
+git clone git@github.com:mwhall/QUOREM.git
+```
 
 or
 
-`gh repo clone mwhall/QUOREM`
+```
+gh repo clone mwhall/QUOREM
+```
 
-# Quickstart with Docker
+## Quickstart with Docker
 
 Install the Docker engine using Docker's most up-to-date installation instructions: https://docs.docker.com/engine/install/
 
@@ -18,27 +22,35 @@ If you do not want to use `sudo` with your Docker commands, follow the non-root 
 
 If you are comfortable using `sudo`, then you'll need to give the root user permission to run the launch script:
 
-`chmod o+x scripts/launchquorem.sh`
+```bash
+chmod o+x scripts/launchquorem.sh
+```
 
 Because we are setting up a database, process, and web server as separate images, we'll be using `docker compose`:
 
-`sudo docker compose up --build`
+```bash
+sudo docker compose up --build
+```
 
 To start the Docker up in the future, omit the --build flag to start it up without a rebuild:
 
-`sudo docker compose up`
+```bash
+sudo docker compose up
+```
 
 There is an [idiosyncracy](https://github.com/docker-library/docs/blob/master/postgres/README.md#arbitrary---user-notes) with the Postgres Docker image that sets up bad permissions on start and requires a one-time intervention after the database is built. This issue only seems to occur if you don't use `sudo`. After the initial build stage, Docker will crash saying Postgresql lacks permissions. There is a `data/db` directory created in the `QUOREM` directory that will have the `db` folder set to `root` ownership. Set the permissions and owner of the `db` folder: `sudo chown -R <USER> data/ && sudo chgrp -R <USER> data/` with your user name replacing `<USER>`. Relaunching with `docker compose up` should fix the permission error.
 
-# System Install
+## System Install
 
-## Install non-Conda dependencies
+### Install non-Conda dependencies
 
 A number of packages must be installed at the system level, which typically requires root access. On an Ubuntu server, you can install the required packages with `apt`:
 
-`sudo apt install tzdata gcc-multilib g++-multilib curl graphviz apache2 apache2-dev postgresql celery redis-server`
+```bash
+sudo apt install tzdata gcc-multilib g++-multilib curl graphviz apache2 apache2-dev postgresql celery redis-server
+```
 
-## Install miniconda
+### Install miniconda
 
 Miniconda is an environment manager that enables the creation of virtual environments. This keeps the many software dependencies of QUOREM safely isolated from your system's other versions. The gist is below butfull information is available at: https://docs.conda.io/en/latest/miniconda.html
 
@@ -88,7 +100,7 @@ Lines 181-186: (optional) Set up e-mail credentials to allow QUOREM to send pass
 
 Finally, some Django commands must be run to set up the web server:
 
-```
+```bash
 python manage.py makemigrations
 python manage.py migrate
 python manage.py collectstatic
@@ -97,25 +109,25 @@ python manage.py initialize
 
 Once these have completed successfully, you must make a superuser account to approve any new users:
 
-```
+```bash
 python manage.py createsuperuser
 ```
 
 You can now start the Django test server with:
 
-```
+```bash
 python manage.py runserver
 ```
 
 This server works very well for local, single-user applications. Launching `127.0.0.1` in your web browser should bring up your new QUOREM instance. After signing up, be sure to log in with your superuser account and check the `Has Access` checkbox at `127.0.0.1/admin/`.
 
-# Production Deployment
+## Production Deployment
 
 In this section, we describe the general steps to tighten up configuration to allow secure remote access over the web to a QUOREM instance. We'll use the Apache2 webserver with the `mod_wsgi` plugin, a recommended approach for Django apps. This is a finnicky, often error-prone procedure. There are many ways to secure a production server, and this is one example. Report any issues or struggles to: https://github.com/mwhall/QUOREM/issues
 
 First, in your QUOREM conda environment, ensure you have the `mod_wsgi` package.
 
-```
+```bash
 pip install mod_wsgi
 ```
 
@@ -123,13 +135,13 @@ It is _very_ important that you install this via `pip` in your conda environment
 
 Find the location of your `mod_wsgi` compiled library with:
 
-```
+```bash
 mod_wsgi-express module-config
 ```
 
 This will return two lines, but only the `LoadModule` line is needed. It should look something like (but may not be exactly):
 
-```
+```bash
 LoadModule wsgi_module "/home/quorem/miniconda3/envs/quorem/lib/python3.8/site-packages/mod_wsgi/server/mod_wsgi-py38.cpython-38-x86_64-linux-gnu.so"
 ```
 
@@ -167,7 +179,7 @@ This process, if successful, will have modified your `000-default.conf` and crea
 
 Finally, restart your Apache2 server with this new configuration:
 
-```
+```bash
 sudo systemctl restart apache2
 ```
 
