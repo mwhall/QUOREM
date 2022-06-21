@@ -443,168 +443,32 @@ class AnalysisCreateForm(forms.ModelForm):
             #Simple way to bootstrapify the input
             visible.field.widget.attrs['class'] = 'form-control'
 
-##### Search form
-class SearchBarForm(forms.Form):
-    search = forms.CharField(max_length=100)
+class SampleFilterForm(forms.Form):
+    sample_name_contains = forms.CharField(label='Sample Name Contains', 
+                                           max_length=4096,
+                                           widget=forms.TextInput(attrs={
+                                               'class': 'form-control',
+                                               'placeholder': 'Select Samples containing query (case-insensitive)'}))
 
-##### Fieldset Forms
+#class ValueComparator(models.TextChoices):
+#    EQUAL = 'EQ', _('Equal/Is (=)')
+#    GREATER = 'GT', _('Greater Than (>)')
+#    LESS = 'LT', _('Less Than (<)')
+#    GREATER_EQUAL = 'GE', _('Greater Than Equal To (>=)')
+#    LESS_EQUAL = 'LE', _('Less Than Equal To (<=)')
 
-class AggregatePlotForm(forms.Form):
-    AGG_CHOICES = (
-        ('C', 'Count'),
-        ('U', 'Mean'),
-    )
-    agg_choice = forms.ChoiceField(choices=AGG_CHOICES)
-    #Other Fields, placeholder for now until I figure it out
-    field1 = forms.CharField()
-    field2 = forms.CharField()
-    field3 = forms.CharField()
+class SampleValueFilterForm(forms.Form):
+    sample_value_name = forms.ModelChoiceField(queryset=DataSignature.objects.all(),
+                                               label="Sample Value Filter",
+                                               required=False,
+                                               widget=autocomplete.ModelSelect2(url='sample-metadata-autocomplete',
+                                                                                attrs={"data-allow-clear": "true",
+                                                                                       "data-placeholder": "Select Sample Value name",
+                                                                                       "style": "flex-grow: 1; width: 50%",
+                                                                                       "data-html": True}))
+    sample_value_comparator = forms.CharField(max_length=2)
+#                                              choices=ValueComparator.choices,
+#                                              default=ValueComparator.EQUAL)
+    sample_value_comparison = forms.CharField(max_length=4096)
 
-    class Meta:
-        fieldsets = (
-        #title, description, Fields
-            ('Select an Aggregate Query', 'Select Aggregate', {'fields': ('agg_choice',)}),
-            ('Select Dependent and Independent Variables', 'Select Variables', {'fields': ('field1', 'field2')}),
-            ('Select Filters for Data', 'Filter Data', {'fields': ('field3',)}),
-        )
-
-##### Aggregation Views and utils
-
-# Custom Field Choice for rendering form
-class CustomModelChoiceField(forms.ModelChoiceField):
-    def label_from_instance(self, obj):
-        #if type(obj) is SampleMetadata or type(obj) is ReplicateMetadata:
-        #    return obj.key
-        #else:
-            return super().label_from_instance(obj)
-
-#Form for barcharts. Maybe pie charts someday!
-class AggregatePlotInvestigation(forms.Form):
-    AGG_CHOICES = (
-        ('1', 'Count'),
-        ('2', 'Mean'),
-        ('3', 'Stack'),
-    )
-    MODEL_CHOICES = (
-        ('', '----------'),
-        ('1', 'Samples'),
-    #    ('2', 'Biological Replicates'),
-    #    ('3', 'Computational Pipelines'),
-
-    )
-    agg_choice = forms.ChoiceField(widget=forms.RadioSelect, choices=AGG_CHOICES)
-    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
-                                      label="Select Investigation(s)")
-    modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
-    #metaValueField will be populated by AJAX call to ajax_model_options view
-    metaValueField = forms.CharField(widget=forms.SelectMultiple, label="Select X Value")
-
-    class Meta:
-        fieldsets = (
-            ('Aggregate', 'Select Aggregation Operation', {'fields': ('agg_choice',)}),
-            ('Data Choice', 'Select Investigation and Models', {'fields': ('invField', 'modelField',)}),
-            ('Filter', 'Select parameters to filter your data', {'fields': ('metaValueField',)}),
-        )
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        #self.fields['metaValueField'].queryset = SampleMetadata.objects.order_by('key').distinct('key')
-"""
-class AggregatePlotStackedForm(forms.Form):
-    MODEL_CHOICES = (
-        ('', '----------'),
-        ('1', 'Samples'),
-    #    ('2', 'Biological Replicates'),
-    #    ('3', 'Computational Pipelines'),
-
-    )
-    invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
-                                      label="Select Investigation(s)")
-    modelField = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Query Object")
-    stackedParams = forms.CharField(widget=forms.SelectMultiple, label="Choose stacked values")
-
-    class Meta:
-        fieldsets = (
-            ('Aggregate', 'Select Aggregation Operation', {'fields': ('agg_choice',)}),
-            ('Data Choice', 'Select Investigation and Models', {'fields': ('invField', 'modelField',)}),
-            ('Filter', 'Select parameters to filter your data', {'fields': ('stackedParams',)}),
-        )
-"""
-#Form for trendline plotting
-class TrendPlotForm(forms.Form):
-    MODEL_CHOICES = (
-        ('', '----------'),
-        ('1', 'Samples'),
-        ('2', 'Features'),
-        ('3', 'Results'),
-
-    )
-    #In each field, define class labels for widgets where field change affects subesqeuent fields.
-    #These class labels will have JS event listeneres attached where relevant.
-    #invField = forms.ModelMultipleChoiceField(queryset = Investigation.objects.all(),
-    #                                  label="Select Investigation(s)")
-    x_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select X-value category.", widget=forms.Select(attrs={'class':'x-val'}))
-    x_val = forms.CharField(widget=forms.Select, label="Select X Value.")
-
-#    y_val_category = forms.ChoiceField(choices = MODEL_CHOICES, label="Select Y-value category.")
-    y_val = forms.CharField(widget=forms.Select, label="Select Y Value.")
-
-    operation_choice = forms.ChoiceField(choices = (('1','Scatter'),('2','Contiuous')),
-                                        label="Select Plot Type.")
-
-    class Meta:
-        fieldsets = (
-            ('Choose Dependent Variable', "Select X", {'fields': ('x_val_category', 'x_val',)}),
-            ("Choose Independent Variable", "Select Y", {'fields': ('y_val',)}),
-            ("Choose output format", "Select Plot", {'fields':('operation_choice',)}),
-        )
-
-class ValueTableForm(forms.Form):
-    #need a field for choosing a dependent variable
-    CHOICES = [
-                ('', "Select..."),
-                ('1', 'Investigation'),
-                ('2', 'Sample'),
-                ('3', 'Feature'),
-                ('4', 'Step'),
-                ('5', 'Process'),
-                ('6', 'Analysis'),
-                ('7', 'Result'),
-              ]
-
-    depField = forms.ChoiceField(choices=CHOICES, label="Object")
-    depValue = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value")
-
-    #independent variables
-#    indField_0 = forms.CharField(widget=forms.Select, label="Select Related Model(s)")
-#    indValue_0 = forms.CharField(widget=forms.SelectMultiple(attrs={'tabindex':"0"}), label="Select Value(s)")
-
-    #??? how do filters get made???
-    class Meta:
-        fieldsets = (
-            ("Select the object type and values",
-             "Select Object", {'fields': ('depField', 'depValue')}),
-        #    ("Select the independent variable (rows of the table; data tuples)",
-        #     "Select Independent", {'fields': ('indField_0', 'indValue_0')}),
-        )
-
-    """
-    Not sure if i need this at all? Maybe can get JS to call a view instead
-    """
-    """
-    def clean(self):
-        print('clean')
-        print(self)
-        indVals = set()
-        i = 0
-        field_name = 'indField_%s' % (i,)
-        val_name = 'indValue_%s' % (i,)
-        print(self.cleaned_data)
-        while self.cleaned_data.get(field_name):
-            field = self.cleaned_data[field_name]
-            print(field)
-            values = self.cleaned_data[val_name]
-            print("***\n", values)
-            i += 1
-            field_name = 'indField_%s' % (i,)
-            val_name = 'indValue_%s' % (i,)
-    """
+SampleValueFilterFormset = formset_factory(SampleValueFilterForm)

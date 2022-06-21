@@ -123,21 +123,3 @@ class Feature(Object):
         attrs['fillcolor'] = col.hex_l
         return attrs
 
-    @classmethod
-    def get_detail_view(cls, as_view=False):
-        class FeatureDetailView(DetailView):
-            pk_url_kwarg = 'feature_id'
-            form = cls.get_display_form()
-            queryset = cls.objects.all()
-            template_name = "feature_detail.htm"
-            def get_context_data(self, **kwargs):
-                context = super().get_context_data(**kwargs)
-                #Add to context dict to make available in template
-                context['samples_html'] = mark_safe(self.get_object().html_samples())
-            #    context['values_html'] = mark_safe(self.get_object().html_values())
-                return context
-        if as_view:
-            return FeatureDetailView.as_view()
-        else:
-            return FeatureDetailView
-

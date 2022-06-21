@@ -63,23 +63,6 @@ class Analysis(Object):
         accordions['results']['content'] = content
         return self._make_accordion("results", accordions)
 
-    @classmethod
-    def get_display_form(cls):
-        ParentDisplayForm = super().get_display_form()
-        class DisplayForm(ParentDisplayForm):
-            result_accordion = forms.CharField(label="Results")
-            node = None #Cheating way to override parent's Node and hide it
-            class Meta:
-                model = cls
-                exclude = ['search_vector', 'values']
-            def __init__(self, *args, **kwargs):
-                if kwargs.get('instance'):
-                    kwargs['initial'] = OrderedDict()
-                    kwargs['initial']['result_accordion'] = mark_safe(kwargs['instance'].html_results())
-                super().__init__(*args, **kwargs)
-                self.fields.move_to_end("value_accordion")
-        return DisplayForm
-
     def related_samples(self, upstream=False):
         # All samples for all Results coming out of this Analysis
         samples = apps.get_model("db", "Sample").objects.filter(pk__in=self.results.values("samples").distinct())
@@ -141,25 +124,6 @@ class Analysis(Object):
         html_val += artifact_html[False]
         html_val += "</ul>"
         return mark_safe(html_val)
-
-    @classmethod
-    def get_detail_view(cls, as_view=False):
-        class AnalysisDetailView(DetailView):
-            pk_url_kwarg = 'analysis_id'
-            form = cls.get_display_form()
-            queryset = cls.objects.all()
-            template_name = "analysis_detail.htm"
-            def get_context_data(self, **kwargs):
-                context = super().get_context_data(**kwargs)
-                #Add to context dict to make available in template
-                context['results_html'] = mark_safe(self.get_object().html_results())
-                context['values_html'] = mark_safe(self.get_object().html_values())
-                return context
-        if as_view:
-            return AnalysisDetailView.as_view()
-        else:
-            return AnalysisDetailView
-
 
     def count_tables_list(self):
         # Return all metadata that are known to carry count tables

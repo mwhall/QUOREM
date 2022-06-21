@@ -13,3 +13,4 @@ quorem/__pycache__/*
 tests/data/qiime_data/
 upload/*
 *.log
+staticfiles/*
