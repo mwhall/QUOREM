@@ -972,6 +972,7 @@ class TaxBarPlotView(TemplateView):
         if metadata_sort_by != "":
             metadata_sort_by = metadata_sort_by.split(",")
             opt_kwargs["metadata_sort_by"] = [int(x) for x in metadata_sort_by]
+        print(opt_kwargs)
         plot_html = tax_bar_plot(tr,cmr,**opt_kwargs)
         context["plot_html"] = plot_html
         context["taxonomy_card"] = apps.get_model("db.Result").objects.get(pk=tr).bootstrap_card()
