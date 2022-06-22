@@ -10,7 +10,8 @@ Welcome to QUOREM's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   overview.md
-   installation.md
+   overview.rst
+   installation.rst
+   development.rst
 
 * :ref:`search`

@@ -18,7 +18,7 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'QUOREM'
-copyright = '2021, Mike Hall'
+copyright = '2022, Mike Hall'
 author = 'Mike Hall'
 
 
@@ -28,7 +28,8 @@ author = 'Mike Hall'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-        'myst_parser',
+        'sphinx_rtd_theme',
+#        'myst_parser',
         "sphinxcontrib.mermaid",
 ]
 
@@ -54,4 +55,4 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_static_path = ['_static']
 
 #MyST Parser options
-myst_enable_extensions = ['deflist']
+#myst_enable_extensions = ['deflist']
