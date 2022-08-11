@@ -1,4 +1,4 @@
-Django==4.0.4
+Django==4.0.7
 celery==5.2.6
 redis==4.3.1
 numpy==1.22.3
