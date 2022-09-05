@@ -15,31 +15,35 @@ or
     gh repo clone mwhall/QUOREM
 
 
-Quickstart with Docker
+Quickstart Development Mode with Docker
 ----------------------
 
 Install the Docker engine using Docker's most up-to-date installation instructions: https://docs.docker.com/engine/install/
 
-If you do not want to use `sudo` with your Docker commands, follow the non-root user post-installation instructions: https://docs.docker.com/engine/install/linux-postinstall/
+These instructions will only work to set up a server accessible by `localhost` or `127.0.0.1` from the Docker host machine. To deploy to an outside network, see the Production Deployment section below.
 
-If you are comfortable using `sudo`, then you'll need to give the root user permission to run the launch script:
-
-.. parsed-literal::
-    chmod o+x scripts/launchquorem.sh
-
-Because we are setting up a database, process, and web server as separate images, we'll be using `docker compose`:
+Because we are setting up a database, cache, and web server as separate images, we'll be using `docker compose` from within the QUOREM project's root directory (where docker-compose.yml is located):
 
 .. parsed-literal::
-    sudo docker compose up --build
+    sudo docker compose --env-file docker/example_secrets.env build
 
-To start the Docker up in the future, omit the --build flag to start it up without a rebuild:
+The build process installs a QIIME2 environment for QUOREM to utilize, so it can take 20 minutes to complete on the first build.
+
+If using `sudo` with Docker, root needs access to the launch entrypoint for Django:
 
 .. parsed-literal::
-    sudo docker compose up
+    chmod o+x docker/django_entrypoint.sh
 
-There is an [idiosyncracy](https://github.com/docker-library/docs/blob/master/postgres/README.md#arbitrary---user-notes) with the Postgres Docker image that sets up bad permissions on start and requires a one-time intervention after the database is built. This issue only seems to occur if you don't use `sudo`. After the initial build stage, Docker will crash saying Postgresql lacks permissions. There is a `data/db` directory created in the `QUOREM` directory that will have the `db` folder set to `root` ownership. Set the permissions and owner of the `db` folder: `sudo chown -R <USER> data/ && sudo chgrp -R <USER> data/` with your user name replacing `<USER>`. Relaunching with `docker compose up` should fix the permission error.
+To start the Docker up in the future use the `up` subcommand:
 
-System Install
+.. parsed-literal::
+    sudo docker compose --env-file docker/example_secrets.env up
+
+Note: The database files will be in /docker/persistence/postgresql/ but this folder **will be owned by root on your host system**. If you have Docker access but not root access on your host system, this could be a problem for you.
+
+List the running containers with `sudo docker ps`, and find the name of the container for quorem_django (likely quorem-django-1). You can attach to a bash shell the running container with `sudo docker exec -it quorem-django-1 bash` and after activating the QUOREM/QIIME2 conda environment with `conda activate quorem`, you have full access to Django's management command line utilities through `python manage.py`.
+
+Native System Install
 --------------
 
 Install non-Conda dependencies
@@ -70,29 +74,39 @@ After you have configured the installation using the interactive prompts, you wi
 Next, you must install QIIME2 in this conda environment:
 
 .. parsed-literal::
-    conda env update --file scripts/qiime2/qiime2-2022.2-py38-linux-conda.yml
+    conda env update --file scripts/qiime2/qiime2-2022.8-py38-linux-conda.yml
 
-Configure the Postgres database. Here we are using Postgres username `quser`, naming the database `qdb`, and you mustb supply your own password. You may change credentials and database name as desired, but be sure to update `settings.py` appropriately:
+Set up Postgresql Database
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Configure the Postgresql database. We do this by setting environment variables (see docker/example_secrets.env). You should keep your QUOREM deployment's environment file out of version control to avoid accidental pushing or overwriting.
 
 .. parsed-literal::
-    sudo -u postgres bash -c "psql -c \"CREATE USER quser WITH PASSWORD '<PASSWORD>';\""
-    sudo -u postgres createdb --owner=quser qdb
+    POSTGRES_USER=postgres
+    POSTGRES_DB=quoremdb
+    POSTGRES_PASSWORD=abcdefg12345
 
+.. parsed-literal::
+    sudo -u postgres bash -c "psql -c \"CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}';\""
+    sudo -u postgres createdb --owner=${POSTGRES_USER} ${POSTGRES_DB}
+
+Django Configuration
+^^^^^^^^^^^^^^^^^^^^
+
+We need a secret key for our Django installation, and one can be generated from https://djecrety.ir/:
+
+.. parsed-literal::
+    DJANGO_SECRET_KEY="@v-n8hwx!@@jex(jqr-w^94^#_=%ub3ypd#*epx1&-rnv@@qj@"
+
+Make sure to save these environment variables, as they must be set in the shell whenever QUOREM is run.
+ 
 In the `quorem/settings.py` file, some default strings that are needed for the Docker install must be changed for a full system install:
-
-Line 25: Update the `SECRET_KEY` string with a random set of characters. *Do not let this get pushed to any public source control repositories.*
 
 Line 30: If your QUOREM server is using a qualified domain name or a static IP instead of `localhost` for remote access, either the domain or IP must be added to the `ALLOWED_HOSTS` list.
 
 Line 102: `CELERY_HOSTNAME` must be set to `127.0.0.1`
 
-Line 145: `NAME` must be set to the Postgres database name created above.
-
-Line 146: `USER` must be set to the Postgres user created above.
-
-Line 147: `PASSWORD` must be set to the Postgres password created above. *Do not let this get pushed to any public source control repositories.*
-
-Line 148: `HOST` must be set to `localhost`.
+Line 148: `HOST` must be set to `localhost` for Postgresql.
 
 Lines 181-186: (optional) Set up e-mail credentials to allow QUOREM to send password and account e-mails to users.
 
