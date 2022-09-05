@@ -6,28 +6,31 @@ services:
     image: postgres:latest
     restart: always
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+      - ./docker/persistence/postgresql/:/var/lib/postgresql/data
     expose:
       - "5432"
     environment:
-      - POSTGRES_DB=quoremdb
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=diu12y89eun
-      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - djangonetwork
-    user: ${UID_GID}  #When initializing the database, this should be commented out
-                      #After initializing, run chown on the files and uncomment, and things should be fine
   django:
-    build: .
-    command: ./scripts/launchquorem.sh
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile.django
+    environment:
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    command: ./docker/django_entrypoint.sh
     volumes:
       - .:/code
     ports:
       - "8000:8000"
-      - "8888:8888"
-    expose:
-      - "8888"
     depends_on:
       - db
     links:

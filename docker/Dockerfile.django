@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+FROM ubuntu:jammy
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+WORKDIR /code
+#COPY required config files first
+COPY ../requirements.txt /code/
+
+####SYSTEM UPDATES####
+RUN apt-get update \
+  && DEBIAN_FRONTEND="noninteractive" apt-get install -y --no-install-recommends build-essential \ 
+  libpq-dev tzdata gcc-multilib g++-multilib ca-certificates curl graphviz \  
+  && rm -rf /var/lib/apt/lists/*
+
+####INSTALL MINICONDA AND QIIME2####
+RUN curl -LO "http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+RUN bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda -b
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda \
+    && conda create --name quorem python=3.8.12
+#This is the way to run a conda command when you can't activate, which we can't
+#seem to from in here at build time, so this activates RUN commands that follow
+# see: https://pythonspeed.com/articles/activate-conda-dockerfile/
+SHELL ["conda", "run", "-n", "quorem", "/bin/bash", "-c"]
+COPY ../scripts/qiime2/qiime2-2022.8-py38-linux-conda.yml /code/
+RUN conda env update --file qiime2-2022.8-py38-linux-conda.yml
+RUN pip install --no-cache-dir -r requirements.txt
+#Activate bash with conda for future interactive sessions
+RUN conda init bash
+#Using VOLUME here causes timeouts with http on Django image for some reason
+COPY .. /code/

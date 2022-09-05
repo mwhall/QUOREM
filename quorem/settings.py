@@ -109,7 +109,6 @@ CELERY_RESULT_SERIALIZER = 'json'
 ####CORS
 CORS_ORIGIN_WHITELIST = [
     "https://view.qiime2.org",
-    "https://oceanman.research.cs.dal.ca",
 ]
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -142,10 +141,10 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'xxxxxx',
-        'USER': 'xxxxx',
-        'PASSWORD': 'xxxxxx',
-        'HOST': 'xxxxxx',
+        'NAME': os.environ['POSTGRES_DB'],
+        'USER': os.environ['POSTGRES_USER'],
+        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
