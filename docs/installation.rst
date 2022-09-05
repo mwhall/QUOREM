@@ -22,10 +22,16 @@ Install the Docker engine using Docker's most up-to-date installation instructio
 
 These instructions will only work to set up a server accessible by ``localhost`` or ``127.0.0.1`` from the Docker host machine. To deploy to an outside network, see the Production Deployment section below.
 
+Make a copy of the `docker/example_secrets.env` file outside of the repository and **change the default passwords and secret key** and other settings, if desired:
+
+.. parsed-literal::
+    cp docker/example_secrets.env ~/quorem_secrets.env
+    #Edit any desired settings in ~/quorem_secrets.env
+
 Because we are setting up a database, cache, and web server as separate images, we'll be using ``docker compose`` from within the QUOREM project's root directory (where docker-compose.yml is located):
 
 .. parsed-literal::
-    sudo docker compose --env-file docker/example_secrets.env build
+    sudo docker compose --env-file ~/quorem_secrets.env build
 
 The build process installs a QIIME2 environment for QUOREM to utilize, so it can take 20 minutes to complete on the first build.
 
@@ -37,7 +43,7 @@ If using ``sudo`` with Docker, root needs access to the launch entrypoint for Dj
 To start the Docker up in the future use the ``up`` subcommand:
 
 .. parsed-literal::
-    sudo docker compose --env-file docker/example_secrets.env up
+    sudo docker compose --env-file ~/quorem_secrets.env up
 
 Note: The database files will be in /docker/persistence/postgresql/ but this folder **will be owned by root on your host system**. If you have Docker access but not root access on your host system, this could be a problem for you.
 
