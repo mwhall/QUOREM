@@ -21,8 +21,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secrets
-SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY','')
+# SECURITY WARNING: keep the secret key used in production secret!
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -59,7 +59,7 @@ INSTALLED_APPS = [
     ##########
     'django_nyt.apps.DjangoNytConfig',
     'mptt',
-#    'django_extensions',
+    'django_extensions',
     'sekizai',
     'sorl.thumbnail',
     'wiki.apps.WikiConfig',
@@ -141,10 +141,10 @@ WSGI_APPLICATION = 'quorem.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ['POSTGRES_DB'],
-        'USER': os.environ['POSTGRES_USER'],
-        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
         'HOST': 'db',
+        'NAME': os.environ.get('POSTGRES_DB',''),
+        'USER': os.environ.get('POSTGRES_USER',''),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD',''),
         'PORT': '5432',
     }
 }
