@@ -155,7 +155,7 @@ class DataSignature(models.Model):
             if Obj.plural_name not in object_counts:
                 object_counts[Obj.plural_name] = 0
         signature = DataSignature(name=name,
-                                  value_type=ContentType.objects.get_for_model(value_type),
+                                  value_type=ctype,
                                   object_counts=object_counts)
         signature.save()
         return signature
