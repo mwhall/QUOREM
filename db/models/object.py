@@ -135,7 +135,10 @@ class Object(models.Model):
             value_type = apps.get_model("db.Value").get_value_types(type_name=value_type)
         else:
             value_type = apps.get_model("db.Value")
-        return self.values.instance_of(value_type).get(signature__name=name).data.get().get_value()
+        q = self.values.instance_of(value_type).filter(signature__name=name)
+        if not q.exists():
+            return None
+        return q.get(signature__name=name).data.get().get_value()
 
     def has_value(self, name, value_type=None):
         if value_type is not None:
