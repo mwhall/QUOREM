@@ -16,9 +16,9 @@ then
 	exit 0
 fi
 
-conda create --name $venv python=3.8.8
+conda create --name $venv python=3.8.12
 conda activate $venv
-conda env update --file scripts/qiime2/qiime2-2021.4-py38-linux-conda.yml
+conda env update --file scripts/qiime2/qiime2-2022.8-py38-linux-conda.yml
 pip install -r requirements.txt
 echo "Sudo password required to act as postgres user"
 sudo -u postgres bash -c "psql -c \"CREATE USER $pguname WITH PASSWORD '$pswd1';\""
