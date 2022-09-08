@@ -1,10 +1,109 @@
 {% extends 'base.htm' %}
-
+{% load quorem_tags %}
 {% block title %}
 <title>{{object.base_name|capfirst}} Detail: {{object.name}}</title>
 {% endblock title %}
 
 {% block main %}
+<style>
+@import url('https://fonts.googleapis.com/css?family=Ubuntu');
+
+.objectgrid {
+    display: flex;
+    font-family: 'Ubuntu', sans-serif;
+}
+
+
+h1 {
+}
+
+.objectcard {
+    margin-left: 10px;
+    position: relative;
+    border-radius: 5px;
+    border: 1px solid black;
+    height: 200px;
+    overflow: hidden;
+    width: 200px;
+}
+
+.objectcard > figure {
+    width: 90%;
+    margin: 10px auto 0 auto;
+}
+
+.objectcard > figure > img {
+    width: 100%;
+}
+
+.details {
+    background-color: #FFF;
+    border-radius: 5px;
+    padding: 10px;
+    position: absolute;
+    top: 105px;
+    width: 100%;
+    transition: box-shadow .3s ease-in-out,
+                top .3s ease-in-out;
+}
+
+.objectcard:hover .details {
+    top: 0%;
+}
+
+.details > .min-details,
+.details > .options,
+.details > .options > .options-list {
+    margin-bottom: 0px;
+   padding-bottom: 0px;
+}
+
+.details > .min-details {
+    display: flex;
+}
+
+.details > .min-details > h1 {
+    font-size: 0.7rem;
+}
+
+.details > .min-details > h1 > span {
+    color: #7B7B7B;
+    display: block;
+    font-size: .6rem;
+}
+
+.details > .options ul {
+    list-style-type: none;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+     padding-left: 10px;
+    margin-left: 0px;
+   display: flex;
+}
+
+.details > .options ul li {
+    border-radius: 5px;
+    cursor: pointer;
+    height: 20px;
+    line-height: 20px;
+    margin-right: 5px;
+    padding-left: 3px;
+    padding-right: 3px;
+    text-align: center;
+}
+
+.options-list > ul > li {
+    background-color: #192a56;
+    color: #FFF;
+    font-size: .7rem;
+    font-weight: 900;
+}
+
+.options-list > ul > li > a {
+    text-decoration: none;
+    color: white;
+}
+</style>
 
 <a class="btn btn-primary" href="/feature/all/">
             <i class="fas fa-angle-left"></i> Back to All Features
@@ -13,7 +112,62 @@
 <div class="card card-header">
 <h1>{{object.base_name|capfirst }}: {{ object.name }}</h1>
 </div>
+
 <div class="card card-body">
+<div class="card-body">
+<br/>
+<div class="card card-body">
+<h3>Count Tables</h3>
+<div class="objectgrid">
+{% for table in object.count_tables_list %}
+<div class="objectcard">
+  <figure>
+    <center>
+    <i class="fas fa-table fa-5x"></i>
+    </center>
+  </figure>
+  <section class="details">
+    <div class="min-details">
+      <h1>{{ table.human_short }}</h1>
+    </div>
+    <div class="min-details">
+      <h1><span>{{ table.analysis.name }}</span><span>{{ table.features.count }} Features, {{ table.samples.count }} Samples</span>
+      <span>{{ table.source_step.name }} ({{ table|get_value:"qiime2" }})</span>
+        <span>Date: {{ table|get_value:"start" }}</span>
+        <span>Uploaded by: {{ table.get_file_uploader }}</span>
+      </h1>
+
+    </div>
+    <div class="options">
+      <div class="options-list">
+        <ul>
+          <i class="fas fa-sticky-note"></i> &nbsp;&nbsp;
+          <li><a href="{{ table.get_detail_url }}">Result</a></li>
+          <!-- TO BE ADDED LATER WHEN FEATURE AND SAMPLE LISTS CAN FILTER BY RESULT  >
+          <li>Features</li>
+          <li>Samples</li -->
+        </ul>
+      </div>
+      <div class="options-list">
+        <ul>
+          <i class="fas fa-chart-bar"></i> &nbsp;&nbsp;
+          <li>Bar</li>
+          <li>Heatmap</li>
+          <li>PCoA</li>
+        </ul>
+      </div>
+      <div class="options-list">
+        <ul>
+          <i class="fas fa-download"></i> &nbsp;&nbsp;
+          <li><a href="{{ table.get_artifact_url }}">Artifact</a></li>
+          <li>Spreadsheet</li>
+        </ul>
+      </div>
+  </section>
+</div>
+{% endfor %}
+</div>
+<hr/>
 <h3>Taxonomic Classifications</h3>
 <p>{{ object.taxonomy_badges }}</p>
 <br/><br/>

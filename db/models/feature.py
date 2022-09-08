@@ -48,7 +48,10 @@ class Feature(Object):
         tab = self.dataframe(value_names=["taxonomic_classification"], additional_fields=["results__pk"])
         for row in tab[['value_data','results__pk']].iterrows():
             tax=row[1]['value_data']
-            last_tax = tax.split(";")[-1]
+            if "|" in tax:
+                last_tax = tax.split("|")[-1]
+            else:
+                last_tax = tax.split(";")[-1]
             if len(last_tax) <= 4:
                 last_tax = tax.split(";")[-2]
             html_val += '<a class="badge badge-light" data-toggle="tooltip" data-placement="top" title="%s" href="/result/%d/">%s</a>&nbsp;' % (tax, row[1]["results__pk"], last_tax,)
@@ -123,3 +126,5 @@ class Feature(Object):
         attrs['fillcolor'] = col.hex_l
         return attrs
 
+    def count_tables_list(self):
+        return self.results.filter(values__signature__name__in=["otu_table","asv_table","filtered_table"]).distinct()

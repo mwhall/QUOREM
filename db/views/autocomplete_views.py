@@ -104,7 +104,7 @@ class TaxonomyResultAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(name__icontains=self.q) | qs.filter(analysis__name__icontains=self.q)
         return qs.distinct()
     def get_result_label(self, item):
-        return mark_safe(format_html('<b>Result {}</b>, UUID {}, <b>Analysis</b>: {}', item.pk, item.name, item.analysis.name))
+        return mark_safe(format_html('{}: {}, Produced by {}', item.analysis.name, item.human_short(), item.source_step.name))
 
 
 class CountMatrixAutocomplete(autocomplete.Select2QuerySetView):
@@ -119,7 +119,7 @@ class CountMatrixAutocomplete(autocomplete.Select2QuerySetView):
             qs = qs.filter(analysis=tr.analysis)
         return qs.distinct()
     def get_result_label(self, item):
-        return mark_safe(format_html('<b>Result {}</b>, UUID {}, Produced by {}', item.pk, item.name, item.source_step.name))
+        return mark_safe(format_html('{}: {}, Produced by {}', item.analysis.name, item.human_short(), item.source_step.name))
 
 class DataSignatureAutocomplete(autocomplete.Select2QuerySetView):
     def get_queryset(self):
