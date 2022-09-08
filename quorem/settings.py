@@ -57,18 +57,7 @@ INSTALLED_APPS = [
     ########## CAREFUL! USED FOR Q2 VIZ BUT MAYBE A SECURITY PROBLEM
     'corsheaders',
     ##########
-    'django_nyt.apps.DjangoNytConfig',
-    'mptt',
     'django_extensions',
-    'sekizai',
-    'sorl.thumbnail',
-    'wiki.apps.WikiConfig',
-    'wiki.plugins.attachments.apps.AttachmentsConfig',
-    'wiki.plugins.notifications.apps.NotificationsConfig',
-    'wiki.plugins.images.apps.ImagesConfig',
-    'wiki.plugins.macros.apps.MacrosConfig',
-    'wiki.plugins.links.apps.LinksConfig',
-    'wiki.plugins.help.apps.HelpConfig',
     'polymorphic',
 ]
 # Below line is needed for d-p-dash if we upgrade to django 3.0
@@ -184,13 +173,6 @@ EMAIL_HOST_USER = 'xxxxxxxxxxxxxxx'
 EMAIL_HOST_PASSWORD = 'xxxxxxxxxxxx'
 DEFAULT_FROM_EMAIL = 'xxxxxxxxxxxxxxx'
 
-NOTEBOOK_ARGUMENTS = [
-    # exposes IP and port
-#    '--ip=192.168.1.115',
-    '--port=8888',
-    # disables the browser
-    '--no-browser',
-]
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
@@ -231,14 +213,3 @@ MEDIA_URL = "/uploaddata/"
 LOG_ROOT = os.path.join(BASE_DIR, "logs")
 
 AUTH_USER_MODEL = 'accounts.User'
-
-# For the django-wiki installation
-SITE_ID = 1
-WIKI_ACCOUNT_HANDLING = False
-WIKI_MARKDOWN_KWARGS = {'extension_configs':
-                             {'wiki.plugins.macros.mdx.toc': {'title': 'Contents'}},
-                        'extensions': ['markdown.extensions.footnotes', 'markdown.extensions.attr_list',
-                                       'markdown.extensions.footnotes', 'markdown.extensions.attr_list',
-                                       'markdown.extensions.def_list', 'markdown.extensions.tables',
-                                       'markdown.extensions.abbr', 'markdown.extensions.sane_lists',
-                                       'markdown.extensions.admonition']}
