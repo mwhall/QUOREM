@@ -30,7 +30,7 @@ class Result(Object):
     grid_fields = ["name", "source_step", "analysis"]
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#ffeea8'}
 
-    name = models.CharField(max_length=255, unique=True) #For QIIME2 results, this can still be the UUID
+    name = models.CharField(max_length=255, unique=True, db_index=True) #For QIIME2 results, this can still be the UUID
     analysis = models.ForeignKey('Analysis', related_name='results', on_delete=models.CASCADE)
     # This process result is from this step
     source_step = models.ForeignKey('Step', on_delete=models.CASCADE, verbose_name="Source Step")

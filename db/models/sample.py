@@ -23,7 +23,7 @@ class Sample(Object):
     gv_node_style = {'style': 'rounded,filled', 'shape': 'box', 'fillcolor': '#aee8ae'}
     grid_fields = ["name", "source_step", "investigations"]
 
-    name = models.CharField(max_length=255,unique=True)
+    name = models.CharField(max_length=255,unique=True,db_index=True)
     investigations = models.ManyToManyField('Investigation', related_name='samples', blank=True)  # fk 2
     source_step = models.ForeignKey('Step', related_name='samples', on_delete=models.CASCADE, blank=True, null=True)
     features = models.ManyToManyField('Feature', related_name='samples', blank=True)

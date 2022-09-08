@@ -1,6 +1,7 @@
 import warnings
 
 from django.db import models
+from django.apps import apps
 
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -120,7 +121,7 @@ class VersionField(models.BigIntegerField):
         return value.get_number()
 
 class DataSignature(models.Model):
-    name = models.CharField(max_length=512)
+    name = models.CharField(max_length=512, db_index=True)
     description = models.TextField(blank=True) #This seems useful to have... can store the interpretation for data with this signature
     value_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     data_types = models.ManyToManyField(ContentType, related_name="+")
@@ -142,6 +143,14 @@ class DataSignature(models.Model):
 
     @classmethod
     def create(cls, name, value_type, object_counts):
+        if type(value_type) == ContentType:
+            ctype = value_type
+        elif type(value_type) == str:
+            ctype = ContentType.objects.get_for_model(apps.get_model(app_label="db",
+                                                                     model_name="Value").get_value_types(type_name=value_type))
+        else:
+            ctype = ContentType.objects.get_for_model(value_type)
+
         for Obj in Object.get_object_types():
             if Obj.plural_name not in object_counts:
                 object_counts[Obj.plural_name] = 0
@@ -152,10 +161,18 @@ class DataSignature(models.Model):
         return signature
 
     @classmethod
-    def get_or_create(cls, name, **kwargs):
-        signatures, object_counts = cls.get(name, return_counts=True, **kwargs)
+    def get_or_create(cls, name, value_type, **kwargs):
+        if type(value_type) == ContentType:
+            ctype = value_type
+        elif type(value_type) == str:
+            ctype = ContentType.objects.get_for_model(apps.get_model(app_label="db",
+                                                                     model_name="Value").get_value_types(type_name=value_type))
+        else:
+            ctype = ContentType.objects.get_for_model(value_type)
+
+        signatures, object_counts = cls.get(name, ctype, return_counts=True, **kwargs)
         if not signatures.exists():
-            signature = cls.create(name, kwargs['value_type'], object_counts)
+            signature = cls.create(name, ctype, object_counts)
             signatures = DataSignature.objects.filter(pk=signature.pk)
         return signatures
 
@@ -177,12 +194,12 @@ class DataSignature(models.Model):
         if type(value_type) == ContentType:
             ctype = value_type
         elif type(value_type) == str:
-            ##This throws an error, and can't fix it due to circular import. TODO resolve
-            ctype = ContentType.objects.get_for_model(Value.get_value_types(type_name=value_type))
+            ctype = ContentType.objects.get_for_model(apps.get_model(app_label="db",
+                                                                     model_name="Value").get_value_types(type_name=value_type))
         else:
             ctype = ContentType.objects.get_for_model(value_type)
         signatures = DataSignature.objects.filter(name=name,
-                     object_counts=object_counts,
+                     object_counts__contains=object_counts,
                      value_type=ctype)
         if return_counts:
             return (signatures, object_counts)
@@ -306,7 +323,7 @@ class StrDatum(Data):
     type_name = "str"
     native_type = str
     cast_function = str
-    value = models.TextField()
+    value = models.TextField(db_index=True)
 
 class IntDatum(Data):
     atomic = True

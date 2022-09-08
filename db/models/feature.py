@@ -27,7 +27,7 @@ class Feature(Object):
 
     description = "A Feature represents something that is being tracked across Samples, such as a taxonomic group, a functional gene, or a molecule"
 
-    name = models.CharField(max_length=255, verbose_name="Name")
+    name = models.CharField(max_length=255, verbose_name="Name", db_index=True)
 
     values = models.ManyToManyField('Value', related_name="features", blank=True)
 
