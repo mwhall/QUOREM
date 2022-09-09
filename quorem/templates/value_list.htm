@@ -1,0 +1,145 @@
+{% extends 'base.htm' %}
+{% load quorem_tags %}
+
+
+{% block title %}
+<title>Values List</title>
+{% endblock title %}
+
+{% block main %}
+<script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+  })
+</script>
+<style>
+.tooltip-inner {
+	    max-width: 1200px;
+	        /* If max-width does not work, try using width instead */
+/*	        width: 150px; */
+}
+   table td { max-width:400px; word-wrap:anywhere;}
+.jumbotron {
+    padding-top: 7px;
+    padding-bottom: 5px;
+    max-height: 200px;
+}
+.form-control {
+	padding: 0rem 0.5rem;
+	height: auto;
+}
+</style>
+<div class="jumbotron jumbotron-fluid bg-info text-light">
+  <div class="container">
+    <h1 class="display-4">Values List</h1>
+    <p class="lead">This is a filterable list of all of the Values stored on the server.</p>
+  </div>
+</div>
+<div class="card">
+ <button class="btn btn-outline-info" type="button" data-toggle="collapse" data-target="#collapseFilter" aria-expanded="false" aria-controls="collapseFilter">
+    Show Filter Options
+  </button>
+<div class="collapse" id="collapseFilter">
+<div class="card card-body">
+
+<form method="get">
+        {{ filterset.form.as_p }}
+        <button class="btn btn-primary" type="submit" >Filter&nbsp;<i class="fas fa-filter"></i></button>
+</form>
+</div>
+</div>
+</div>
+<br/>
+<table class="table table-sm table-hover">
+  <thead>
+     <tr>
+	     <th scope="col">Name</th>
+	     <th scope="col">Data</th>
+	     <th scope="col">Data Signature ID</th>
+	     <th scope="col">Value ID</th>
+	     <th scope="col">Investigations</th>
+	     <th scope="col">Steps</th>
+	     <th scope="col">Processes</th>
+	     <th scope="col">Results</th>
+	     <th scope="col">Analyses</th>
+	     <th scope="col">Samples</th>
+	     <th scope="col">Features</th>
+    </tr>
+
+  </thead>
+  <tbody>
+{% for obj in page_obj %}
+    <tr>
+      <td scope="col">{{ obj.signature.get.name }}</td>
+      <td scope="col">{{ obj.data.get }}</td>
+      <td scope="col">{{ obj.signature.get.pk }}</td>
+      <td scope="col"><a href="/value/{{obj.pk}}/">{{ obj.pk }}</a></td>
+      <td scope="col"></td> <!--Investigations-->
+      <td scope="col">
+      {% for step in obj.steps.all %}
+      {{step}}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+      </td>
+      <td scope="col"><!--Processes--></td>
+      <td scope="col">
+      {% for result in obj.results.all %}
+      {{result}}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+      </td>
+       
+      <td scope="col">
+      {% for analysis in obj.analyses.all %}
+      {{analysis}}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+      </td>
+      <td scope="col">
+      {% for sample in obj.samples.all %}
+      {{sample}}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+      </td>
+      <td scope="col">
+      {% for feature in obj.features.all %}
+      {{feature}}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+      </td>
+
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+{{ filterset.form.media }}
+{% endblock main %}
+
+{% block pagination %}
+ <ul class="pagination justify-content-center flex-wrap mt-2 mb-4">
+    <nav aria-label="Page navigation">   <ul class="pagination">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% param_replace page=1 %}" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+        <span class="sr-only">begin</span>
+      </a>
+    </li>   {% endif %}
+    {% for n in page_obj.paginator.page_range %}
+      {% if page_obj.number == n %}
+        <li class="page-item active">
+          <span class="page-link">{{ n }}<span class="sr-only">(current)</span></span>
+        </li>
+      {% elif n > page_obj.number|add:'-3' and n < page_obj.number|add:'3' %}
+        <li class="page-item"><a class="page-link" href="?{% param_replace page=n %}">{{ n }}</a></li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?{% param_replace page=page_obj.paginator.num_pages %}" aria-label="Next">
+          <span aria-hidden="true">&raquo;</span>
+          <span class="sr-only">end</span>
+        </a>
+      </li>
+      {% endif %}   </ul> </nav>
+</ul>
+{% endblock pagination %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
+

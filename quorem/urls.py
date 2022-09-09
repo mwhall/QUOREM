@@ -129,6 +129,12 @@ urlpatterns += [
     re_path(r'analysis/create/$', login_required(AnalysisCreateView.as_view()),
             name = 'analysis_create'),
 
+    #Value routing
+    re_path(r'value/(?P<value_id>\d+)/$',
+            login_required(ValueDetailView.as_view()),
+            name='value_detail'),
+    re_path(r'value/all/$', login_required(ValueFilterListView.as_view()), name="value_all"),
+
     #### Search Result Routing
     #path('search/', search, name='search-results'),
 

@@ -17,6 +17,7 @@ from .result_views import ( ResultDetailView,
 from .investigation_views import ( InvestigationDetailView, 
                                    InvestigationFilterListView, 
                                    InvestigationCreateView )
+from .value_views import *
 from .user_views import *
 from .ml_views import *
 from .plot_views import *

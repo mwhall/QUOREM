@@ -12,6 +12,7 @@ from .investigation_forms import ( InvestigationDetailForm,
                                    InvestigationFilterSet, 
                                    InvestigationCreateForm )
 from .result_forms import ResultDetailForm, ResultFilterSet
+from .value_forms import *
 from .user_forms import UserProfileForm
 from .ml_forms import *
 from .plot_forms import *

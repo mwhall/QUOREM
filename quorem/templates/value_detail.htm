@@ -1,0 +1,53 @@
+{% extends 'base.htm' %}
+{% block title %}
+<title>{{object.base_name|capfirst}} Detail: {{signature.name}}</title>
+{% endblock title %}
+
+{% block main %}
+
+<a class="btn btn-primary" href="/values/all/">
+            <i class="fas fa-angle-left"></i> Back to All Values
+</a>
+<br/><br/>
+
+
+  <div class="row">
+    <div class="col-5">
+	    <div class="card">
+	    <div class="card-header">
+		    Value name: <b>{{signature.name}}</b>
+		    <span class="float-right badge badge-pill badge-info">{{object.base_name|capfirst}}</span>
+            </div>
+	    <div class="card-body">
+		    Data type: {{data.type_name}} </br>
+            <h5 class="card-text">{{data}}</h5>
+	    </div>
+	    </div>
+    </div>
+     <div class="col-7">
+	     <div class="card">
+	     <div class="card-header">
+		    Related Objects
+	     </div>
+	    <div class="card-body">
+		    <p class="card-text">
+		    <table>
+		    {% for object, count in signature.object_counts.items %}
+    <tr>
+        <td>{{object|capfirst}}</td>
+        <td>{{count}}</td>
+    </tr>
+    {% endfor %}
+		    </table>
+		    </p>
+	    </div>
+	     </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock main %}
+
+{% block bottom_scripts %}
+{% endblock bottom_scripts %}
